@@ -164,12 +164,23 @@ int tank_sdown_main(int wfd, int argc, char *argv[])
 {
 	speed--;
 	speed = max(0, speed);
+	if (speed == 0) {
+		insert_code(ignition, 10);
+		insert_code(idle, 40);
+	}
 	return 0;
 }
 DEFINE_MODULE(tank_sdown);
 
 int tank_sup_main(int wfd, int argc, char *argv[])
 {
+	if (speed ==0) {
+		
+		insert_code(idle, 40);
+		insert_code(ignition, 10);
+		insert_code(idle, 300);
+	}
+
 	speed++;
 	speed = min(2, speed);
 	return 0;
@@ -178,6 +189,7 @@ DEFINE_MODULE(tank_sup);
 
 int tank_fwd_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	if (speed == 1) {
 		insert_code(fwd_slow, -1);
 	} else if (speed == 2) {
@@ -189,6 +201,7 @@ DEFINE_MODULE(tank_fwd);
 
 int tank_rev_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	if (speed == 1) {
 		insert_code(rev_slow, -1);
 	} else if (speed == 2) {
@@ -200,6 +213,7 @@ DEFINE_MODULE(tank_rev);
 
 int tank_left_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	if (speed == 1) {
 		insert_code(left_slow, -1);
 	} else if (speed == 2) {
@@ -211,6 +225,7 @@ DEFINE_MODULE(tank_left);
 
 int tank_right_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	if (speed == 1) {
 		insert_code(right_slow, -1);
 	} else if (speed == 2) {
@@ -222,28 +237,36 @@ DEFINE_MODULE(tank_right);
 
 int tank_turret_left_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	insert_code(turret_left, 25);
+	insert_code(idle, 10);
 	return 0;
 }
 DEFINE_MODULE(tank_turret_left);
 
 int tank_turret_right_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	insert_code(turret_right, 25);
+	insert_code(idle, 10);
 	return 0;
 }
 DEFINE_MODULE(tank_turret_right);
 
 int tank_turret_elev_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	insert_code(turret_elev, 50);
+	insert_code(idle, 10);
 	return 0;
 }
 DEFINE_MODULE(tank_turret_elev);
 
 int tank_fire_main(int wfd, int argc, char *argv[])
 {
+	insert_code(idle, 10);
 	insert_code(fire, 50);
+	insert_code(idle, 10);
 	return 0;
 }
 DEFINE_MODULE(tank_fire);
