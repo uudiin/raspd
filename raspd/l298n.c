@@ -4,6 +4,9 @@
 #include <bcm2835.h>
 
 #include "module.h"
+#include "luaenv.h"
+
+#define MODNAME "l298n"
 
 #define INT1_DEFAULT	17
 #define INT2_DEFAULT	27
@@ -216,7 +219,7 @@ int l298n_init_main(int wfd, int argc, char *argv[])
 		{ 0, 0, 0, 0 } };
 
 	for (;;) {
-		c = getopt_long(argc, argv, "a:b:c:d:e:f:g:h:i:jklm:nopq:", opts, NULL);
+		c = getopt_long(argc, argv, "a:b:c:d:e:f:g:h:i:", opts, NULL);
 		if (c < 0) break;
 
 		switch (c) {
@@ -232,11 +235,36 @@ int l298n_init_main(int wfd, int argc, char *argv[])
 		}
 	}
 
-	bcm2835_init();
 	l298n_init();
 
         fprintf(fd, "l298n_main end\n");
 	return 0;
 }
 
-DEFINE_MODULE(l298n_init);
+static int l298n_init_init(void)
+{
+    luaenv_getconf_int(MODNAME, "ENA", &ena);
+    luaenv_getconf_int(MODNAME, "ENB", &enb);
+    luaenv_getconf_int(MODNAME, "IN1", &int1);
+    luaenv_getconf_int(MODNAME, "IN2", &int2);
+    luaenv_getconf_int(MODNAME, "IN3", &int3);
+    luaenv_getconf_int(MODNAME, "IN4", &int4);
+
+	l298n_init();
+
+    return 0;
+}
+
+/*
+ * DEFINE_MODULE(l298n_init);
+ */
+static struct module __module_l298n_init = {
+    .name = "l298n_init",
+    .init = l298n_init_init,
+    .main = l298n_init_main
+};
+
+static __init void __reg_module_l298n_init(void)
+{
+    register_module(&__module_l298n_init);
+}

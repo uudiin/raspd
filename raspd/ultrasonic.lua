@@ -2,12 +2,10 @@
 
 local lr = luaraspd
 
---lr.blink(gpio, n, t)
---lr.pwm(gpio, range, ...)
---lr.l298n(...)
+--lr.modexec(-1, "ultrasonic -n 999999 -t 2000")
 
 function urgent_cb(fd, distance)
-    --io.stderr:write("distance = " .. distance)
-    io.stderr:write("ultrasonic.lua  distance = " .. "lua\n")
-    lr.blink(18, 2, 500)
+    io.stderr:write("distance = " .. distance .. "\n")
+    lr.blink(16, 5, 300)
+    lr.modexec(fd, "l298n_lbrake; l298n_rbrake")
 end
