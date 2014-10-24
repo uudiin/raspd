@@ -2,14 +2,64 @@
 #include <errno.h>
 #include <sys/socket.h>
 
-static void handle_connection(int socket_accept)
+#include "tree.h"
+
+static fd_set master_readfds;
+
+struct fdinfo {
+    int fd;
+    union sockaddr_u remoteaddr;
+    socklen_t ss_len;
+    RB_ENTRY(fdinfo) node;
+};
+
+//static RB_HEAD(fdroot, fdinfo) tree_readfds = RB_INITIALIZER(&tree_readfds);
+static RB_HEAD(fdroot, fdinfo) tree_clients = RB_INITIALIZER(&tree_readfds);
+
+static int fdinfo_comp(struct fdinfo *f1, struct fdinfo *f2)
+{
+    return f1->fd - f2->fd;
+}
+
+RB_GENERATE_STATIC(fdroot, fdinfo, node, fdinfo_comp);
+
+static void client_add(int fd, union sockaddr_u *sockaddr, socklen_t ss_len)
+{
+    struct fdinfo *info;
+    info = (struct fdinfo *)xmalloc(sizeof(*info));
+    memset(info, 0, sizeof(*info));
+    info->fd = fd;
+    if (sockaddr && ss_len) {
+        info->ss_len = ss_len;
+        memcpy(&info->remoteaddr, sockaddr, ss_len);
+    }
+    RB_INSERT(fdroot, &tree_clients, info);
+}
+
+static void client_fd_add(int fd)
+{
+    client_add(fd, NULL, 0);
+}
+
+
+static void handle_connection(int fd_listen)
 {
     union sockaddr_u remoteaddr;
-    socklen_t ss_len
+    socklen_t ss_len;
     int fd;
 
-    fd = accept(socket_accept, &remoteaddr.sockaddr, &ss_len);
+    fd = accept(fd_listen, &remoteaddr.sockaddr, &ss_len);
     if (fd < 0)
+        return;
+
+    unblock_socket(fd);
+
+    /* TODO  cmdexec */
+
+    FD_SET(STDIN_FILENO, &master_readfds);
+    FD_SET(fd, &master_readfds);
+    client_fd_add(STDIN_FILENO);
+    client_add(fd, &remoteaddr, ss_len);
 }
 
 int do_listen(int type, int proto, const union sockaddr_u *srcaddr)
@@ -47,8 +97,7 @@ int listen_stream(int portno)
 {
     union sockaddr_u addr;
     size_t ss_len;
-    int sock;
-    fd_set master_readfds, master_writefds;
+    int fd_listen;
     int err;
 
     ss_len = sizeof(addr);
@@ -59,26 +108,36 @@ int listen_stream(int portno)
     signal(SIGCHLD, sigchld_handler);
     signal(SIGPIPE, SIG_IGN);
 
-    sock = do_listen(SOCK_STREAM, proto, &addr);
-    if (sock == -1)
+    fd_listen = do_listen(SOCK_STREAM, proto, &addr);
+    if (fd_listen == -1)
         return -1;
 
-    unblock_socket(sock);
+    unblock_socket(fd_listen);
 
     FD_ZERO(&master_readfds);
-    FD_ZERO(&master_writefds);
-    FD_SET(sock, &master_readfds);
+    FD_SET(fd_listen, &master_readfds);
+
+    client_fd_add(fd_listen);
+
     while (1) {
+        struct fdinfo *info;
         fd_set readfds = master_readfds;
-        fd_set writefds = master_writefds;
         int ready;
 
-        ready = select(sock + 1, &readfds, &writefds, NULL, NULL);
+        info = RB_MAX(fdroot, &tree_clients);
+        ready = select(info->fd + 1, &readfds, NULL, NULL, NULL);
         if (ready == 0)
             continue;
 
-        if (FD_ISSET(sock, &readfds)) {
-            handle_connection(sock);
+        RB_FOREACH(info, fdroot, &tree_clients) {
+            if (!FD_ISSET(info->fd, &readfds))
+                continue;
+
+            if (info->fd == fd_listen) {
+                handle_connection(fd_listen);
+            } else if (info->fd == STDIN_FILENO) {
+                /* FIXME */
+            }
         }
     }
 }
