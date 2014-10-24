@@ -32,3 +32,14 @@ static int resolve(const char *hostname, unsigned short port,
 
     return 0;
 }
+
+int unblock_socket(int sd)
+{
+    int options;
+
+    options = fcntl(sd, F_GETFL);
+    if (options == -1)
+        return -1;
+
+    return fcntl(sd, F_SETFL, options | O_NONBLOCK);
+}
