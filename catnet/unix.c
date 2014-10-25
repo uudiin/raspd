@@ -11,6 +11,7 @@
 #include <syslog.h>
 
 #include "catnet.h"
+#include "xmalloc.h"
 
 static int write_loop(int fd, char *buf, size_t size)
 {

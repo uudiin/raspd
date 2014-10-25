@@ -10,6 +10,7 @@
 
 #include "sock.h"
 #include "catnet.h"
+#include "xmalloc.h"
 
 static fd_set master_readfds;
 
@@ -98,7 +99,7 @@ static void clients_shutdown(int how)
 }
 
 
-static void handle_connection(int fd_listen)
+static void handle_connection(int fd_listen, const char *cmdexec)
 {
     union sockaddr_u remoteaddr;
     socklen_t ss_len;
@@ -111,11 +112,14 @@ static void handle_connection(int fd_listen)
     unblock_socket(fd);
 
     /* TODO  cmdexec */
-
-    FD_SET(STDIN_FILENO, &master_readfds);
-    FD_SET(fd, &master_readfds);
-    client_fd_add(STDIN_FILENO);
-    client_add(fd, &remoteaddr, ss_len);
+    if (cmdexec) {
+        netrun(fd, cmdexec);
+    } else {
+        FD_SET(STDIN_FILENO, &master_readfds);
+        FD_SET(fd, &master_readfds);
+        client_fd_add(STDIN_FILENO);
+        client_add(fd, &remoteaddr, ss_len);
+    }
 }
 
 static int read_stdin(void)
@@ -163,7 +167,7 @@ static void sigchld_handler(int signum)
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 
-int listen_stream(int proto, unsigned short portno)
+int listen_stream(unsigned short portno, const char *cmdexec)
 {
     union sockaddr_u addr;
     size_t ss_len;
@@ -178,7 +182,7 @@ int listen_stream(int proto, unsigned short portno)
     signal(SIGCHLD, sigchld_handler);
     signal(SIGPIPE, SIG_IGN);
 
-    fd_listen = do_listen(SOCK_STREAM, proto, &addr);
+    fd_listen = do_listen(SOCK_STREAM, IPPROTO_TCP, &addr);
     if (fd_listen == -1)
         return -1;
 
@@ -204,7 +208,7 @@ int listen_stream(int proto, unsigned short portno)
                 continue;
 
             if (info->fd == fd_listen) {
-                handle_connection(fd_listen);
+                handle_connection(fd_listen, cmdexec);
             } else if (info->fd == STDIN_FILENO) {
                 err = read_stdin();
                 if (err == 0)
