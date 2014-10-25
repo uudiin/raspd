@@ -3,6 +3,7 @@
 CC = gcc
 CFLAGS = -g
 LDFLAGS =
+LIBS =
 
 DGFLAGS = -MMD -MF -MT $@ -MF $(*D)/$(*F).d
 
@@ -17,10 +18,10 @@ $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
 all: $(PROGS)
 
 catnet: $(OBJS_catnet)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c
-	$(CC) $< -c -o $@ $(CFLAGS) $(DGFLAGS)
+	$(CC) $(CFLAGS) $(DGFLAGS) -c -o $@ $<
 
 ifneq ($(MAKECMDGOALS), clean)
 $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
@@ -28,3 +29,5 @@ endif
 
 clean:
 	rm -f *.d $(OBJS_catnet) $(PORGS)
+
+quiet-command = $(if $(V), $1, $(if $2, @echo $2 && $1, @$1))
