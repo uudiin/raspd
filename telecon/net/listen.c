@@ -1,8 +1,15 @@
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <signal.h>
 
 #include "tree.h"
+
+#include "sock.h"
+#include "catnet.h"
 
 static fd_set master_readfds;
 
@@ -30,7 +37,7 @@ static struct fdinfo *client_fd_find(int fd)
     return ret;
 }
 
-static int foreach_client(int (*fn)(struct fdinfo *info, void *opaque))
+static int foreach_client(int (*fn)(struct fdinfo *info, void *opaque), void *opaque)
 {
     struct fdinfo *info;
     int retval = 0;

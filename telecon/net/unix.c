@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -7,6 +9,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <syslog.h>
+
+#include "catnet.h"
 
 static int write_loop(int fd, char *buf, size_t size)
 {
@@ -175,6 +179,7 @@ int netexec(int fd, const char *cmdexec)
     int child_stdin[2];
     int child_stdout[2];
     int pid;
+    char buffer[DEFAULT_TCP_BUFLEN];
     int maxfd;
 
     if (pipe(child_stdin) == -1 || pipe(child_stdout) == -1)
@@ -186,7 +191,7 @@ int netexec(int fd, const char *cmdexec)
 
     if (pid == 0) {
         /* child */
-        char *cmdargs[];
+        char **cmdargs;
 
         close(child_stdin[1]);
         close(child_stdout[0]);
@@ -197,7 +202,7 @@ int netexec(int fd, const char *cmdexec)
         dup2(child_stdout[1], STDOUT_FILENO);
 
         cmdargs = cmdline_split(cmdexec);
-        evecv(cmdargs[0], cmdargs);
+        execv(cmdargs[0], cmdargs);
 
         return -1;
     }

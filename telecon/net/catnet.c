@@ -1,6 +1,11 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <getopt.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 static int listen_mode;
 static int deamon;

@@ -1,8 +1,9 @@
 #ifndef __SOCK_H__
 #define __SOCK_H__
 
-#include <sys/types.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 
 union sockaddr_u {
     struct sockaddr_storage storage;

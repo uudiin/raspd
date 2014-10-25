@@ -5,7 +5,7 @@ CFLAGS = -g
 LDFLAGS =
 LIBS =
 
-DGFLAGS = -MMD -MF -MT $@ -MF $(*D)/$(*F).d
+DGFLAGS = -MMD -MP -MT $@ -MF $(*D)/$(*F).d
 
 PROGS = catnet
 
@@ -28,6 +28,6 @@ $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
 endif
 
 clean:
-	rm -f *.d $(OBJS_catnet) $(PORGS)
+	rm -f *.d $(OBJS_catnet) $(PROGS)
 
 quiet-command = $(if $(V), $1, $(if $2, @echo $2 && $1, @$1))

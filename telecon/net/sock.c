@@ -1,5 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+#include "sock.h"
 
 int resolve(const char *hostname, unsigned short port,
         struct sockaddr_storage *ss, size_t *sslen, int af, int addl_flags)
@@ -69,7 +76,11 @@ int do_listen(int type, int proto, const union sockaddr_u *srcaddr)
     if (srcaddr->storage.ss_family == AF_UNIX)
         sa_len = SUN_LEN(&srcaddr->un);
     else
+#ifdef HAVE_SOCKADDR_SA_LEN
         sa_len = srcaddr->sockaddr.sa_len;
+#else
+        sa_len = sizeof(*srcaddr);
+#endif
 
     if (bind(sock, &srcaddr->sockaddr, sa_len) < 0)
         return -EFAULT;
@@ -90,11 +101,15 @@ int do_connect(int type, const union sockaddr_u *dstaddr)
         if (dstaddr->storage.ss_family == AF_UNIX)
             sa_len = SUN_LEN(&dstaddr->un);
         else
+#ifdef HAVE_SOCKADDR_SA_LEN
             sa_len = dstaddr->sockaddr.sa_len;
+#else
+            sa_len = sizeof(*dstaddr);
+#endif
 
-        if (connect(sock, &dstaddr.sockaddr, sa_len) != -1)
+        if (connect(sock, &dstaddr->sockaddr, sa_len) != -1)
             return sock;
-        else if (socket_errno() == EINPROGRESS || socket_errno() == EAGAIN)
+        else if (errno == EINPROGRESS || errno == EAGAIN)
             return sock;
     }
 
