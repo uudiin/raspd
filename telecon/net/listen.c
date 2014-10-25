@@ -13,7 +13,6 @@ struct fdinfo {
     RB_ENTRY(fdinfo) node;
 };
 
-//static RB_HEAD(fdroot, fdinfo) tree_readfds = RB_INITIALIZER(&tree_readfds);
 static RB_HEAD(fdroot, fdinfo) tree_clients = RB_INITIALIZER(&tree_readfds);
 
 static int fdinfo_comp(struct fdinfo *f1, struct fdinfo *f2)
@@ -22,6 +21,25 @@ static int fdinfo_comp(struct fdinfo *f1, struct fdinfo *f2)
 }
 
 RB_GENERATE_STATIC(fdroot, fdinfo, node, fdinfo_comp);
+
+static struct fdinfo *client_fd_find(int fd)
+{
+    struct fdinfo temp, *ret;
+    temp.fd = fd;
+    ret = RB_FIND(fdroot, &tree_clients, &temp);
+    return ret;
+}
+
+static int foreach_client(int (*fn)(struct fdinfo *info, void *opaque))
+{
+    struct fdinfo *info;
+    int retval = 0;
+    RB_FOREACH(info, fdroot, &tree_clients) {
+        if (fn(info, opaque) < 0)
+            retval = -1;
+    }
+    return retval;
+}
 
 static void client_add(int fd, union sockaddr_u *sockaddr, socklen_t ss_len)
 {
@@ -39,6 +57,37 @@ static void client_add(int fd, union sockaddr_u *sockaddr, socklen_t ss_len)
 static void client_fd_add(int fd)
 {
     client_add(fd, NULL, 0);
+}
+
+static int clients_broadcast(const char *buffer, size_t size)
+{
+    struct fdinfo *info;
+    int retval;
+    int err = 0;
+
+    RB_FOREACH(info, fdroot, &tree_clients) {
+        if (info->ss_len == 0)
+            continue;
+
+        /* blocking send */
+        block_socket(info->fd);
+        retval = send(info->fd, buffer, size, 0);
+        unblock_socket(info->fd);
+        if (retval < 0)
+            err = -1;
+    }
+
+    return err;
+}
+
+static void clients_shutdown(int how)
+{
+    struct fdinfo *info;
+    RB_FOREACH(info, fdroot, &tree_clients) {
+        if (info->ss_len == 0)
+            continue;
+        shutdown(info->fd, how);
+    }
 }
 
 
@@ -62,38 +111,52 @@ static void handle_connection(int fd_listen)
     client_add(fd, &remoteaddr, ss_len);
 }
 
-int do_listen(int type, int proto, const union sockaddr_u *srcaddr)
+static int read_stdin(void)
 {
-    int sock;
-    int option = 1;
-    size_t sa_len;
+    char buffer[DEFAULT_TCP_BUFLEN];
+    int nbytes;
 
-    sock = socket(srcaddr->storage.ss_family, type, proto);
-    if (sock == -1)
-        return sock;
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+    nbytes = read(STDIN_FILENO, buffer, sizeof(buffer));
+    if (nbytes <= 0) {
+        FD_CLR(STDIN_FILENO, &master_readfds);
+        return nbytes;
+    }
 
-    if (srcaddr->storage.ss_family == AF_UNIX)
-        sa_len = SUN_LEN(&srcaddr->un);
-    else
-        sa_len = srcaddr->sockaddr.sa_len;
+    clients_broadcast(buffer, nbytes);
 
-    if (bind(sock, &srcaddr->sockaddr, sa_len) < 0)
-        return -EFAULT;
+    return nbytes;
+}
 
-    if (type == SOCK_STREAM)
-        listen(sock, 10);
+static int read_socket(int fd_recv)
+{
+    struct fdinfo *info;
+    char buffer[DEFAULT_TCP_BUFLEN];
+    int n = 0;
 
-    return sock;
+    info = client_fd_find(fd_recv);
+    if (info == NULL)
+        return -1;
+
+    n = recv(fd_recv, buffer, sizeof(buffer), 0);
+    if (n <= 0) {
+        close(fd_recv);
+        FD_CLR(fd_recv, &master_readfds);
+        RB_REMOVE(fdroot, &tree_clients, info);
+
+        return n;
+    }
+
+    write(STDOUT_FILENO, buffer, n);
+
+    return n;
 }
 
 static void sigchld_handler(int signum)
 {
-    while (waitpid(-1, NULL, WNOHANG) > 0)
-        xxx;
+    while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 
-int listen_stream(int portno)
+int listen_stream(int proto, unsigned short portno)
 {
     union sockaddr_u addr;
     size_t ss_len;
@@ -136,8 +199,20 @@ int listen_stream(int portno)
             if (info->fd == fd_listen) {
                 handle_connection(fd_listen);
             } else if (info->fd == STDIN_FILENO) {
-                /* FIXME */
+                err = read_stdin();
+                if (err == 0)
+                    clients_shutdown(SHUT_WR);
+                else if (err < 0)
+                    return err;
+            } else {
+                err = read_socket(info->fd);
+                if (err < 0)
+                    return err;
             }
+
+            ready--;
         }
     }
+
+    return 0;
 }

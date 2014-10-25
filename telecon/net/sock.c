@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <errno.h>
 
-static int resolve(const char *hostname, unsigned short port,
-                        struct sockaddr_storage *ss, size_t *sslen,
-                        int af, int addl_flags)
+int resolve(const char *hostname, unsigned short port,
+        struct sockaddr_storage *ss, size_t *sslen, int af, int addl_flags)
 {
     struct addrinfo hints, *result;
     char portbuf[16];
@@ -23,7 +22,8 @@ static int resolve(const char *hostname, unsigned short port,
         return err;
     if (result == NULL)
         return EAI_NONAME;
-    if (result->ai_addrlen <= 0 || result->ai_addrlen > (int)sizeof(struct sockaddr_storage))
+    if (result->ai_addrlen <= 0
+            || result->ai_addrlen > (int)sizeof(struct sockaddr_storage))
         return EAI_SYSTEM;
 
     *sslen = result->ai_addrlen;
@@ -42,4 +42,61 @@ int unblock_socket(int sd)
         return -1;
 
     return fcntl(sd, F_SETFL, options | O_NONBLOCK);
+}
+
+int block_socket(int sd)
+{
+    int options;
+
+    options = fcntl(sd, F_SETFL);
+    if (options == -1)
+        return -1;
+
+    return fcntl(sd, F_SETFL, options & (~O_NONBLOCK));
+}
+
+int do_listen(int type, int proto, const union sockaddr_u *srcaddr)
+{
+    int sock;
+    int option = 1;
+    size_t sa_len;
+
+    sock = socket(srcaddr->storage.ss_family, type, proto);
+    if (sock == -1)
+        return -EINVAL;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
+    if (srcaddr->storage.ss_family == AF_UNIX)
+        sa_len = SUN_LEN(&srcaddr->un);
+    else
+        sa_len = srcaddr->sockaddr.sa_len;
+
+    if (bind(sock, &srcaddr->sockaddr, sa_len) < 0)
+        return -EFAULT;
+
+    if (type == SOCK_STREAM)
+        listen(sock, 10);
+
+    return sock;
+}
+
+int do_connect(int type, const union sockaddr_u *dstaddr)
+{
+    int sock;
+
+    sock = socket(dstaddr->storage.ss_family, type, 0);
+    if (sock != -1) {
+        size_t sa_len;
+        if (dstaddr->storage.ss_family == AF_UNIX)
+            sa_len = SUN_LEN(&dstaddr->un);
+        else
+            sa_len = dstaddr->sockaddr.sa_len;
+
+        if (connect(sock, &dstaddr.sockaddr, sa_len) != -1)
+            return sock;
+        else if (socket_errno() == EINPROGRESS || socket_errno() == EAGAIN)
+            return sock;
+    }
+
+    return -1;
 }

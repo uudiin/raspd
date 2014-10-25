@@ -6,20 +6,6 @@ static int listen_mode;
 static int deamon;
 static int udp;
 
-static union sockaddr_u srcaddr;
-static size_t srcaddrlen;
-static union sockaddr_u targetss;
-static size_t targetsslen;
-
-void err_exit(int retval, const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    exit(retval);
-}
-
 /*
  * telecon [options] port
  *     --listen      listen mode
@@ -66,6 +52,9 @@ int main(int argc, char *argv[])
     long_port = strtol(argv[optind], NULL, 10);
     if (long_port <= 0 || long_port > 65535)
         err_exit(4, "Invalid port number.\n");
+
+    if (listen_mode)
+        listen_stream(IPPROTO_TCP, (unsigned short)long_port);
 
     return 0;
 }
