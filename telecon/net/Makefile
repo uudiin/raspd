@@ -1,6 +1,7 @@
 # Makefile for catnet
 
 CC = gcc
+LD = gcc
 CFLAGS = -g
 LDFLAGS =
 LIBS =
@@ -18,10 +19,10 @@ $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
 all: $(PROGS)
 
 catnet: $(OBJS_catnet)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $@")
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(DGFLAGS) -c -o $@ $<
+	$(call quiet-command, $(CC) $(CFLAGS) $(DGFLAGS) -c -o $@ $<, "  CC    $@")
 
 ifneq ($(MAKECMDGOALS), clean)
 $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
