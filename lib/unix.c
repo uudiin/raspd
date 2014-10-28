@@ -13,6 +13,8 @@
 #include "xmalloc.h"
 #include "unix.h"
 
+#define DEFAULT_TCP_BUFLEN  (1024 * 8)
+
 int write_loop(int fd, char *buf, size_t size)
 {
     char *p;

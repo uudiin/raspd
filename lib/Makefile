@@ -13,3 +13,6 @@ OBJS_lib = $(SRCS_lib:%.c=%.o)
 all: $(LIBS)
 
 $(LIBS): $(OBJS_lib)
+
+clean:
+	rm -f $(OBJS_lib) $(SRCS_lib:%.c=%.d) $(LIBS)

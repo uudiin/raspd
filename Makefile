@@ -1,10 +1,10 @@
 # Makefile for raspberry
 
-include rule.mak
+include rules.mak
 
 SUBDIR_MAKEFLAGS = $(if $(V), , --no-print-directory)
 
-TARGET_DIRS = catnet test
+TARGET_DIRS = lib catnet test
 
 .PHONY: all
 
