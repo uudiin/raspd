@@ -11,7 +11,7 @@ DGFLAGS = -MMD -MP -MT $@ -MF $(*D)/$(*F).d
 
 PROGS = blink_act motor breath_led
 
-SRCS_blinkact = blink_act.c
+SRCS_blink_act = blink_act.c
 SRCS_motor = motor.c
 SRCS_breath_led = breath_led.c
 
@@ -24,10 +24,10 @@ all: $(PROGS)
 blink_act: $(OBJS_blink_act)
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $@")
 
-motor: $(OBJS_motor) ../libbcm2835.a
+motor: $(OBJS_motor) ../libbcm2835/libbcm2835.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $@")
 
-breath_led: $(OBJS_breath_led) ../libbcm2835.a
+breath_led: $(OBJS_breath_led) ../libbcm2835/libbcm2835.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $@")
 
 %.o: %.c

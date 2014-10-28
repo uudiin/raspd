@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     if (argc >= 3)
         count = atoi(argv[2]);
     if (argc >= 4)
-        io = atli(argv[3]);
+        io = atoi(argv[3]);
 
     if ((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0)
         return 1;
