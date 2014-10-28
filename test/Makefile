@@ -3,9 +3,9 @@
 SHELL = bash
 CC = gcc
 LD = gcc
-CFLAGS = -g
+CFLAGS = -g -I ../lib -I ../libbcm2835
 LDFLAGS = -g
-LIBS = -lbcm2835
+LIBS =
 
 DGFLAGS = -MMD -MP -MT $@ -MF $(*D)/$(*F).d
 
@@ -24,10 +24,10 @@ all: $(PROGS)
 blink_act: $(OBJS_blink_act)
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $@")
 
-motor: $(OBJS_motor)
+motor: $(OBJS_motor) ../libbcm2835.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $@")
 
-breath_led: $(OBJS_breath_led)
+breath_led: $(OBJS_breath_led) ../libbcm2835.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $@")
 
 %.o: %.c

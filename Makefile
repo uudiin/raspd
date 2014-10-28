@@ -4,7 +4,7 @@ include rules.mak
 
 SUBDIR_MAKEFLAGS = $(if $(V), , --no-print-directory)
 
-TARGET_DIRS = lib catnet test
+TARGET_DIRS = libbcm2835 lib catnet test
 
 .PHONY: all
 
