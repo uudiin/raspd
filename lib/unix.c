@@ -10,10 +10,10 @@
 #include <signal.h>
 #include <syslog.h>
 
-#include "catnet.h"
 #include "xmalloc.h"
+#include "unix.h"
 
-static int write_loop(int fd, char *buf, size_t size)
+int write_loop(int fd, char *buf, size_t size)
 {
     char *p;
     int n;
