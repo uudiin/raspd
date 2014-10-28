@@ -20,12 +20,12 @@ all: $(SUBDIR_RULES)
 CLEAN_SUBDIRS = $(patsubst %, clean_subdir-%, $(TARGET_DIRS))
 
 clean_subdir-%:
-	$(MAKE) -C $* clean
+	$(call quiet-command, $(MAKE) $(SUBDIR_MAKEFLAGS) -C $* V="$(V)" clean, )
 
 clean: $(CLEAN_SUBDIRS)
 
 # distclean
 # FIXME equal clean
 DC_SUBDIRS = $(patsubst %, dc_subdir-%, $(TARGET_DIRS))
-$(foreach D, $(TARGET_DIRS), $(eval dc_subdir-$(D): ; $(MAKE) -C $(D) clean))
+$(foreach D, $(TARGET_DIRS), $(eval dc_subdir-$(D): ; $(call quiet-command, $(MAKE) $(SUBDIR_MAKEFLAGS) -C $(D) V="$(V)" clean, )))
 distclean: $(DC_SUBDIRS)
