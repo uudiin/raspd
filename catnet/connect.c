@@ -13,7 +13,7 @@ int connect_stream(const char *hostname, unsigned short portno)
     union sockaddr_u addr;
     size_t ss_len;
     int fd;
-    fd_set readfds;
+    fd_set master_readfds;
     int maxfd;
     int err;
 
@@ -34,18 +34,20 @@ int connect_stream(const char *hostname, unsigned short portno)
 
     unblock_socket(fd);
 
-    FD_ZERO(&readfds);
-    FD_SET(fd, &readfds);
-    FD_SET(STDIN_FILENO, &readfds);
+    FD_ZERO(&master_readfds);
+    FD_SET(fd, &master_readfds);
+    FD_SET(STDIN_FILENO, &master_readfds);
     maxfd = STDIN_FILENO;
     if (maxfd < fd)
         maxfd = fd;
 
     while (1) {
+        fd_set readfds;
         char buffer[DEFAULT_TCP_BUFLEN];
         int nbytes, n;
         int ready;
 
+        readfds = master_readfds;
         ready = select(maxfd + 1, &readfds, NULL, NULL, NULL);
         if (ready == 0)
             continue;
