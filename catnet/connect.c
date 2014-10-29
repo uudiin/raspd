@@ -4,7 +4,8 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-#include "sock.h"
+#include <sock.h>
+
 #include "catnet.h"
 
 

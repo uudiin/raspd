@@ -6,11 +6,11 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "tree.h"
+#include <tree.h>
+#include <sock.h>
+#include <xmalloc.h>
 
-#include "sock.h"
 #include "catnet.h"
-#include "xmalloc.h"
 
 static fd_set master_readfds;
 

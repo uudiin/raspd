@@ -8,7 +8,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "utils.h"
+#include <utils.h>
 
 static int listen_mode;
 static int deamon;

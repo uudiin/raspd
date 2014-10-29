@@ -11,7 +11,7 @@ TARGET_DIRS = libbcm2835 lib catnet test
 SUBDIR_RULES = $(patsubst %, subdir-%, $(TARGET_DIRS))
 
 subdir-%:
-	$(call quiet-command, $(MAKE) $(SUBDIR_MAKEFLAGS) -C $* V="$(V)" all, )
+	$(call quiet-command, $(MAKE) $(SUBDIR_MAKEFLAGS) -C $* V="$(V)" TARGET_DIR="$*/" all, )
 
 all: $(SUBDIR_RULES)
 
