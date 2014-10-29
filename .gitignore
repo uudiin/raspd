@@ -16,3 +16,8 @@
 *.exe
 *.out
 *.app
+
+catnet/catnet
+test/blink_act
+test/breath_led
+test/motor
