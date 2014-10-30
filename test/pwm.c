@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <assert.h>
+#include <stdint.h>
+#include <getopt.h>
 #include <bcm2835.h>
 
 struct pwm_io_info {
@@ -38,6 +41,7 @@ int main(int argc, char *argv[])
 {
     static struct option options[] = {
         { "range", required_argument, NULL, 'r' },
+        { "skew",  required_argument, NULL, 's' },
         { "max",   required_argument, NULL, 'm' },
         { "delay", required_argument, NULL, 'd' },
         { "clock", required_argument, NULL, 'c' },
@@ -46,30 +50,39 @@ int main(int argc, char *argv[])
     int c;
     int opt_index;
     uint32_t range = 1024;
-    unsigned int max = 100;
+    uint32_t skewing = 100;
+    unsigned int max = 1024;
     unsigned int delay = 10;
-    uint32 clock = BCM2835_PWM_CLOCK_DIVIDER_16;
+    uint32_t clock = BCM2835_PWM_CLOCK_DIVIDER_16;
     int count = -1;
-    int direction = 1;
-    int direction1;
-    int data = 1;
-    int data1;
-    int channel = 0;
+    int direction0 = 0;
+    int direction1 = 0;
+    int data0 = 0;
+    int data1 = 0;
+    int phase_diff;
+    unsigned long channel = 0;
 
     if (!bcm2835_init())
         return 1;
     pwm_ios_map_init();
 
-    while ((c = getopt_long(argc, argv, "r:m:d:c:n:", options, &opt_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "r:s:m:d:c:n:", options, &opt_index)) != -1) {
         switch (c) {
         /* FIXME  use strtol */
         case 'r': range = atoi(optarg); break;
+        case 's': skewing = atoi(optarg); break;
         case 'm': max = atoi(optarg); break;
         case 'd': delay = atoi(optarg); break;
         case 'c': clock = atoi(optarg); break;
         case 'n': count = atoi(optarg); break;
         }
     }
+
+    if (max > range)
+        max = range;
+    /* check clock is equal 2^N */
+    if ((clock & (clock - 1)) || clock <= 1)
+        clock = BCM2835_PWM_CLOCK_DIVIDER_16;
 
     while (optind < argc) {
         unsigned int io = atoi(argv[optind]);
@@ -83,6 +96,8 @@ int main(int argc, char *argv[])
 
             bcm2835_pwm_set_mode(info->channel, 1, 1);
             bcm2835_pwm_set_range(info->channel, range);
+
+            channel |= (1 << info->channel);
         }
 
         optind++;
@@ -90,8 +105,40 @@ int main(int argc, char *argv[])
 
     bcm2835_pwm_set_clock(clock);
 
+    /* calc phase_difference */
+    phase_diff = max * skewing / 100;
+
+    direction0 = direction1 = 1;
+    data0 = data1 = 1;
+    if ((channel & 0b11) == 0b11) {
+        data1 = data0 - phase_diff;
+        if (data1 < 0) {
+            data1 = -data1;
+            direction1 = -1;
+        }
+    }
+
+#define UPDATE_DATA(n)               \
+    do {                             \
+        if (data ## n == 0)          \
+            direction ## n = 1;      \
+        else if (data ## n == max)   \
+            direction ## n = -1;     \
+        data ## n += direction ## n; \
+    } while (0)
+
     while (count--) {
-        /* FIXME */
+
+        if (channel & 0b01) {
+            bcm2835_pwm_set_data(0, data0);
+            UPDATE_DATA(0);
+        }
+        if (channel & 0b10) {
+            bcm2835_pwm_set_data(1, data1);
+            UPDATE_DATA(1);
+        }
+
+        bcm2835_delay(delay);
     }
 
     bcm2835_close();
