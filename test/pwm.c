@@ -84,6 +84,8 @@ int main(int argc, char *argv[])
     if ((clock & (clock - 1)) || clock <= 1)
         clock = BCM2835_PWM_CLOCK_DIVIDER_16;
 
+    bcm2835_pwm_set_clock(clock);
+
     while (optind < argc) {
         unsigned int io = atoi(argv[optind]);
 
@@ -102,8 +104,6 @@ int main(int argc, char *argv[])
 
         optind++;
     }
-
-    bcm2835_pwm_set_clock(clock);
 
     /* calc phase_difference */
     phase_diff = max * skewing / 100;
@@ -127,8 +127,8 @@ int main(int argc, char *argv[])
         data ## n += direction ## n; \
     } while (0)
 
+    count *= max;
     while (count--) {
-
         if (channel & 0b01) {
             bcm2835_pwm_set_data(0, data0);
             UPDATE_DATA(0);
