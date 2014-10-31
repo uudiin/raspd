@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
         { "delay", required_argument, NULL, 'd' },
         { "clock", required_argument, NULL, 'c' },
         { "count", required_argument, NULL, 'n' },
+        { 0, 0, 0, 0 }
     };
     int c;
     int opt_index;
