@@ -20,27 +20,17 @@ $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a))
 
 all: $(PROGS)
 
-blink_act: $(OBJS_blink_act)
-	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
+define PROG_template
+$(1): $$(OBJS_$(1))
+	$(call quiet-command, $$(LD) $$(LDFLAGS) -o $$@ $$^ $$(LIBS), "  LD    $$(TARGET_DIR)$$@")
+clean-$(1):
+	rm -f $(1) $$(SRCS_$(1):.c=.o) $$(SRCS_$(1):.c=.d)
+endef
 
-motor: $(OBJS_motor)
-	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
-
-breath_led: $(OBJS_breath_led)
-	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
-
-pwm: $(OBJS_pwm)
-	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
-
-#define PROG_template =
-#$(1): $$(OBJS_$(1)); $(call ...)
-#end
-#
-#$(foreach prog, $(PROGS), $(eval $(prog): $(OBJS_$(prog)); $(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")))
+$(foreach prog, $(PROGS), $(eval $(call PROG_template,$(prog))))
 
 ifneq ($(MAKECMDGOALS), clean)
 $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
 endif
 
-clean:
-	rm -f *.d $(OBJS_blink_act) $(OBJS_motor) $(OBJS_breath_led) $(OBJS_pwm) $(PROGS)
+clean: $(patsubst %, clean-%, $(PROGS))

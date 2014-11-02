@@ -128,7 +128,6 @@ int main(int argc, char *argv[])
     } while (0)
 
     while (count--) {
-
         if (channel & 0b01) {
             bcm2835_pwm_set_data(0, data0);
             UPDATE_DATA(0);
