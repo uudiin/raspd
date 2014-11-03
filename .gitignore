@@ -22,3 +22,4 @@ test/blink_act
 test/breath_led
 test/motor
 test/pwm
+test/l298n
