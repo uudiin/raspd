@@ -1,0 +1,13 @@
+diff --git a/arch/arm/boot/dts/bcm2835-rpi-b.dts b/arch/arm/boot/dts/bcm2835-rpi-b.dts
+index 2a3b1c1..dbcdf34 100644
+--- a/arch/arm/boot/dts/bcm2835-rpi-b.dts
++++ b/arch/arm/boot/dts/bcm2835-rpi-b.dts
+@@ -14,7 +14,7 @@
+ 
+ 		act {
+ 			label = "ACT";
+-			gpios = <&gpio 16 1>;
++			gpios = <&gpio 47 1>;
+ 			default-state = "keep";
+ 			linux,default-trigger = "heartbeat";
+ 		};

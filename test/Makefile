@@ -6,12 +6,13 @@ CFLAGS += -I ../lib -I ../libbcm2835
 LIBS =
 
 
-PROGS = blink_act motor breath_led pwm
+PROGS = blink_act motor breath_led pwm l298n
 
 SRCS_blink_act = blink_act.c
 SRCS_motor = motor.c
 SRCS_breath_led = breath_led.c
 SRCS_pwm = pwm.c
+SRCS_l298n = l298n.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a))
