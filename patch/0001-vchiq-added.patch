@@ -1307,7 +1307,7 @@ index e5269da..f100e8f 100644
  ccflags-y += -I$(srctree)/drivers/media/i2c
 diff --git a/drivers/media/platform/bcm2835/Kconfig b/drivers/media/platform/bcm2835/Kconfig
 new file mode 100644
-index 0000000..a8fd172
+index 0000000..e2f992c
 --- /dev/null
 +++ b/drivers/media/platform/bcm2835/Kconfig
 @@ -0,0 +1,25 @@
@@ -1315,7 +1315,7 @@ index 0000000..a8fd172
 +
 +config VIDEO_BCM2835
 +	bool "Broadcom BCM2835 camera interface driver"
-+	depends on VIDEO_V4L2 && ARCH_BCM2708
++	depends on VIDEO_V4L2 && ARCH_BCM2835
 +	---help---
 +	  Say Y here to enable camera host interface devices for
 +	  Broadcom BCM2835 SoC. This operates over the VCHIQ interface
@@ -1326,7 +1326,7 @@ index 0000000..a8fd172
 +
 +config VIDEO_BCM2835_MMAL
 +	tristate "Broadcom BM2835 MMAL camera interface driver"
-+	depends on BCM2708_VCHIQ
++	depends on BCM2835_VCHIQ
 +	select VIDEOBUF2_VMALLOC
 +	---help---
 +	  This is a V4L2 driver for the Broadcom BCM2835 MMAL camera host interface
@@ -4640,10 +4640,10 @@ index 0000000..3017b94
 +}
 diff --git a/drivers/media/platform/bcm2835/mmal-common.h b/drivers/media/platform/bcm2835/mmal-common.h
 new file mode 100644
-index 0000000..076f9a8
+index 0000000..35698c8
 --- /dev/null
 +++ b/drivers/media/platform/bcm2835/mmal-common.h
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,52 @@
 +/*
 + * Broadcom BM2835 V4L2 driver
 + *
