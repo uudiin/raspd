@@ -1138,12 +1138,14 @@ void bcm2835_pwm_set_data(uint8_t channel, uint32_t data)
 }
 
 // Allocate page-aligned memory.
+/*
 void *malloc_aligned(size_t size)
 {
     void *mem;
     errno = posix_memalign(&mem, BCM2835_PAGE_SIZE, size);
     return (errno ? NULL : mem);
 }
+*/
 
 // Map 'size' bytes starting at 'off' in file 'fd' to memory.
 // Return mapped address on success, MAP_FAILED otherwise.
