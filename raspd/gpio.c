@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 
 #include <bcm2835.h>
@@ -8,15 +9,15 @@
 /*
  * pin alt=[o|i|0|1|2|3|4|5] pull=[0|1] delay=N(ms)
  */
-static void gpio_event(const char *cmd)
+static void gpio_event(char *cmd)
 {
     unsigned char gpio = 0;
     char *str, *token, *saveptr;
+    int fsel = -1;
     char *v;
 
     for (str = cmd; token = strtok_r(str, " \t,", &saveptr); str = NULL) {
         if (gpio && (strncmp(token, "alt", 3) == 0)) {
-            int fsel = -1;
 
             v = strchr(token, '=');
             if (v == NULL)
@@ -76,7 +77,7 @@ static struct module gpio_mod = {
 
 static __init void gpio_init(void)
 {
-    rgeister_module(&gpio_mod);
+    register_module(&gpio_mod);
 }
 
 static __exit void gpio_exit(void)

@@ -3,6 +3,8 @@
 
 #include <queue.h>
 
+#include "module.h"
+
 static TAILQ_HEAD(module_list, module) list_head = TAILQ_HEAD_INITIALIZER(list_head);
 
 void register_module(struct module *m)
@@ -22,7 +24,7 @@ static struct module *find_module(const char *name)
     return NULL;
 }
 
-int invoke_event(const char *name, const char *cmd)
+int invoke_event(const char *name, char *cmd)
 {
     struct module *m;
 

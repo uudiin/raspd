@@ -5,7 +5,7 @@
 
 struct module {
     const char *name;
-    void (*event)(const char *cmd);
+    void (*event)(char *cmd);
     TAILQ_ENTRY(module) list;
 };
 
@@ -13,6 +13,6 @@ struct module {
 #define __exit  __attribute__((destructor))
 
 void register_module(struct module *m);
-int invoke_event(const char *name, const char *cmd);
+int invoke_event(const char *name, char *cmd);
 
 #endif /* __MODULE_H__ */
