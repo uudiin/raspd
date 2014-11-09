@@ -4,7 +4,7 @@ include rules.mak
 
 SUBDIR_MAKEFLAGS = $(if $(V), , --no-print-directory)
 
-TARGET_DIRS = libbcm2835 lib catnet raspd test
+TARGET_DIRS = libbcm2835 lib catnet raspd test client
 
 .PHONY: all clean distclean
 
