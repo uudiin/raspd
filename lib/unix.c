@@ -109,7 +109,7 @@ int daemonize(const char *cmd)
  * "ncat\\ -l -k" will be parsed as "ncat\", "-l", "-k"
  * See the test program, test/test-cmdline-split to see additional cases.
  */
-char **cmdline_split(const char *cmdexec)
+char **cmdline_split(const char *cmdexec, int *cmd_argv)
 {
     const char *ptr;
     char *cur_arg, **cmd_args;
@@ -170,11 +170,26 @@ char **cmdline_split(const char *cmdexec)
     }
 
     cmd_args[arg_idx] = NULL;
+    if (cmd_argv)
+        *cmd_argv = arg_idx;
 
     /* Clean up */
     free(cur_arg);
 
     return cmd_args;
+}
+
+void free_cmd_argv(char *cmd_argv[])
+{
+    int i;
+
+    if (cmd_argv == NULL)
+        return;
+
+    for (i = 0; cmd_argv[i]; i++)
+        free(cmd_argv[i]);
+
+    free(cmd_argv);
 }
 
 int netexec(int fd, const char *cmdexec)
@@ -204,7 +219,7 @@ int netexec(int fd, const char *cmdexec)
         dup2(child_stdin[0], STDIN_FILENO);
         dup2(child_stdout[1], STDOUT_FILENO);
 
-        cmdargs = cmdline_split(cmdexec);
+        cmdargs = cmdline_split(cmdexec, NULL);
         execv(cmdargs[0], cmdargs);
 
         return -1;
