@@ -2,7 +2,7 @@
 
 include ../rules.mak
 
-CFLAGS += -g -I../lib
+CFLAGS += -g -I../lib -I../libbcm2835
 LDFLAGS += -L ../lib
 LIBS =
 
