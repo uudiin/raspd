@@ -8,7 +8,7 @@ LIBS =
 
 PROGS = raspd
 
-SRCS_raspd = raspd.c module.c gpio.c
+SRCS_raspd = main.c server.c raspd.c module.c gpio.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
 
