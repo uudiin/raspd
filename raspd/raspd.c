@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <getopt.h>
 
@@ -11,8 +12,8 @@
 /*
  * protocol
  *
- *      name:xxx yyy zzz; name2:xxxfff
- *      name: yyy=xxx fff
+ *      name xxx yyy zzz; name2 xxxfff
+ *      name yyy=xxx fff
  */
 
 int main(int argc, char *argv[])
@@ -25,28 +26,13 @@ int main(int argc, char *argv[])
 
     /* main loop */
     while (fgets(buffer, sizeof(buffer), stdin) != NULL) {
-        char *str1, *name, *cmd, *saveptr;
+        char *str, *cmdexec, *saveptr;
 
-        for (str1 = buffer; ; str1 = NULL) {
-            name = strtok_r(str1, ";", &saveptr);
-            if (name == NULL)
-                break;
+        for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
 
-            /* skip space */
-            while (*name == ' ')
-                name++;
-
-            if (cmd = strchr(name, ':')) {
-                *cmd++ = '\0';
-                while (*cmd == ' ')
-                    cmd++;
-                if (*cmd == '\0')
-                    continue;
-
-                err = invoke_event(name, cmd);
-                if (err < 0)
-                    fprintf(stderr, "error invoke_event(), err = %d\n", err);
-            }
+            err = module_cmdexec(cmdexec);
+            if (err != 0)
+                fprintf(stderr, "module_cmdexec(%s), err = %d\n", cmdexec, err);
         }
     }
 

@@ -1,85 +1,81 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <getopt.h>
 
 #include <bcm2835.h>
 
 #include "module.h"
 
-/*
- * pin alt=[o|i|0|1|2|3|4|5] pull=[0|1] delay=N(ms)
- */
-static void gpio_event(char *cmd)
-{
-    unsigned char gpio = 0;
-    char *str, *token, *saveptr;
-    int fsel = -1;
-    char *v;
+#define NR_BCM2835_GPIO     54
 
-    for (str = cmd; token = strtok_r(str, " \t,", &saveptr); str = NULL) {
-        if (gpio && (strncmp(token, "alt", 3) == 0)) {
-
-            v = strchr(token, '=');
-            if (v == NULL)
-                continue;
-
-            switch (*++v) {
-            case 'o': fsel = BCM2835_GPIO_FSEL_OUTP; break;
-            case 'i': fsel = BCM2835_GPIO_FSEL_INPT; break;
-            case '0': fsel = BCM2835_GPIO_FSEL_ALT0; break;
-            case '1': fsel = BCM2835_GPIO_FSEL_ALT1; break;
-            case '2': fsel = BCM2835_GPIO_FSEL_ALT2; break;
-            case '3': fsel = BCM2835_GPIO_FSEL_ALT3; break;
-            case '4': fsel = BCM2835_GPIO_FSEL_ALT4; break;
-            case '5': fsel = BCM2835_GPIO_FSEL_ALT5; break;
-            }
-            bcm2835_gpio_fsel(gpio, fsel);
-
-        } else if (gpio && (strncmp(token, "pull", 4) == 0)) {
-            int value = 1;
-
-            if (fsel == -1)
-                bcm2835_gpio_fsel(gpio, BCM2835_GPIO_FSEL_OUTP);
-
-            if (fsel == BCM2835_GPIO_FSEL_OUTP || fsel == -1) {
-                v = strchr(token, '=');
-                if (v == NULL)
-                    continue;
-
-                switch (*++v) {
-                case '0': value = 0; break;
-                case '1': value = 1; break;
-                }
-
-                bcm2835_gpio_write(gpio, value);
-            }
-        } else if (strncmp(token, "delay", 5) == 0) {
-            int delay = 0;
-
-            v = strchr(token, '=');
-            if (v == NULL)
-                continue;
-
-            delay = atoi(++v);
-
-            if (delay)
-                bcm2835_delay(delay);
-        } else {
-            gpio = atoi(token);
-        }
-    }
-}
-
-static struct module gpio_mod = {
-    .name = "gpio",
-    .event = gpio_event
+struct gpio_info {
+    uint8_t alt_fun;
+    uint8_t level;
+    uint8_t initialized;
 };
 
-static __init void gpio_init(void)
+static struct gpio_info gpios[NR_BCM2835_GPIO];
+
+/*
+ * --pin 5,28 --alt [o|i|0|1|2|3|4|5] --pull [0|1]
+ */
+static int gpio_main(int argc, char *argv[])
 {
-    register_module(&gpio_mod);
+    static struct option options[] = {
+        { "pin",  required_argument, NULL, 'p' },
+        { "alt",  required_argument, NULL, 'a' },
+        { "pull", required_argument, NULL, 'u' },
+        { 0, 0, 0, 0 }
+    };
+    int c;
+    char *pins = NULL;
+    char *fsel = NULL;
+    int level = -1;
+    char *token, *saveptr;
+
+    while ((c = getopt_long(argc, argv, "p:a:u:", options, NULL)) != -1) {
+        switch (c) {
+        case 'p': pins = optarg; break;
+        case 'a': fsel = optarg; break;
+        case 'u': level = atoi(optarg); break;
+        }
+    }
+
+    if (pins == NULL)
+        return EINVAL;
+
+    for ( ; token = strtok_r(pins, ",", &saveptr); pins = NULL) {
+        int pin = atoi(token);
+
+        if (pin < 0 || pin > NR_BCM2835_GPIO)
+            continue;
+
+        if (fsel != NULL) {
+            switch (*fsel) {
+            case 'o': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_OUTP; break;
+            case 'i': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_INPT; break;
+            case '0': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_ALT0; break;
+            case '1': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_ALT1; break;
+            case '2': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_ALT2; break;
+            case '3': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_ALT3; break;
+            case '4': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_ALT4; break;
+            case '5': gpios[pin].alt_fun = BCM2835_GPIO_FSEL_ALT5; break;
+            }
+            gpios[pin].initialized = 1;
+            bcm2835_gpio_fsel(pin, gpios[pin].alt_fun);
+        }
+        if (level == 0 || level == 1) {
+            if (!gpios[pin].initialized) {
+                gpios[pin].alt_fun = BCM2835_GPIO_FSEL_OUTP;
+                gpios[pin].initialized = 1;
+                bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
+            }
+            bcm2835_gpio_write(pin, level);
+        }
+    }
+
+    return 0;
 }
 
-static __exit void gpio_exit(void)
-{
-}
+DEFINE_MODULE(gpio);

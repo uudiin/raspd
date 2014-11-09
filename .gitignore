@@ -18,6 +18,7 @@
 *.app
 
 catnet/catnet
+raspd/raspd
 test/blink_act
 test/breath_led
 test/motor
