@@ -99,11 +99,16 @@ static void do_speedup_right(int speed)
 	l298n_forward_reverse(speed, int3, int4, enb);
 }
 
-static void do_forward(void)
+static void do_forward(int speedup)
 {
 	int speed = max(left_speed, right_speed);
-	if (left_speed == right_speed) { 
-		(speed < max_speed) ? speed++ : speed;
+	if (speed == 0) speedup = 1;
+	if (speedup) {
+		if ((left_speed == right_speed)) {
+			(speed < max_speed) ? speed++ : speed;
+		}
+	} else {
+		speed = (speed < 0) ? -speed : speed;
 	}
 
 	left_speed = speed;
@@ -113,11 +118,16 @@ static void do_forward(void)
 	do_speedup_right(speed);
 }
 
-static void do_reverse(void)
+static void do_reverse(int speedup)
 {
 	int speed = min(left_speed, right_speed);
-	if (left_speed == right_speed) {
-		(speed > -max_speed) ? speed-- : speed;
+	if (speed == 0) speedup = 1;
+	if (speedup) {
+		if ((left_speed == right_speed)) {
+			(speed > -max_speed) ? speed-- : speed;
+		}
+	} else {
+		speed = (speed > 0) ? -speed : speed;
 	}
 
 	left_speed = speed;
@@ -127,6 +137,71 @@ static void do_reverse(void)
 	do_speedup_right(speed);
 }
 
+static void do_left(void)
+{
+	int speed = max(left_speed, right_speed);
+
+	left_speed = -speed;
+	right_speed = speed;
+
+	do_speedup_left(left_speed);
+	do_speedup_right(right_speed);
+}
+
+static void do_right(void)
+{
+	int speed = max(left_speed, right_speed);
+
+	left_speed = speed;
+	right_speed = -speed;
+
+	do_speedup_left(left_speed);
+	do_speedup_right(right_speed);
+}
+
+static void do_speedup(void)
+{
+	if (left_speed > 0) {
+		left_speed++;
+		(left_speed > max_speed) ? max_speed : left_speed;
+	} else if (left_speed < 0) {
+		left_speed--;
+		(left_speed < -max_speed) ? -max_speed : left_speed;
+	}	
+
+	if (right_speed > 0) {
+		right_speed++;
+		(right_speed > max_speed) ? max_speed : right_speed;
+	} else if (right_speed < 0) {
+		right_speed--;
+		(right_speed < -max_speed) ? -max_speed : right_speed;
+	}
+
+	do_speedup_left(left_speed);
+	do_speedup_right(right_speed);
+}
+
+static void do_speeddown(void)
+{
+	if (left_speed > 0) {
+		left_speed--;
+		(left_speed == 0) ? 0 : left_speed;
+	} else if (left_speed < 0) {
+		left_speed++;
+		(left_speed == 0) ? 0 : left_speed;
+	}	
+
+	if (right_speed > 0) {
+		right_speed--;
+		(right_speed == 0) ? 0 : right_speed;
+	} else if (right_speed < 0) {
+		right_speed++;
+		(right_speed == 0) ? 0 : right_speed;
+	}
+
+	do_speedup_left(left_speed);
+	do_speedup_right(right_speed);
+}
 static void do_brake(void)
 {
 	left_speed = 0;
@@ -264,10 +339,10 @@ int main(int argc, char *argv[])
 		inchar = getch_(0);
 		switch (inchar) {
 		case 'w': /* forward */
-			do_forward();
+			do_forward(1);
 			break;
 		case 's': /* reverse */
-			do_reverse();
+			do_reverse(1);
 			break;
 		case 'x': /* brake */
 			do_brake();
@@ -289,6 +364,24 @@ int main(int argc, char *argv[])
 			break;
 		case 'c': /* right brake */
 			do_brake_xx(right);
+			break;
+		case 65:
+			do_forward(0);
+			break;
+		case 66:
+			do_reverse(0);
+			break;
+		case 68:
+			do_left();
+			break;
+		case 67:
+			do_right();
+			break;
+		case 53:
+			do_speedup();
+			break;
+		case 54:
+			do_speeddown();
 			break;
 		}
 
