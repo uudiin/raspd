@@ -2,22 +2,30 @@
 
 include ../rules.mak
 LD = ld
-CFLAGS += -g -I../lib
-LDFLAGS = -L ../lib -shared -fpic
+CFLAGS += -g -I../lib -fPIC
+LDFLAGS = -L ../lib
 LIBS =
 
-PROGS = client.so
+PROGS = libclient.a libclient.so test
 
 SRCS_client = client.c
+OBJS_client = client.o
+OBJS_test = test.o
 
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
+#$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
 
 .PHONY: all clean
 
 all: $(PROGS)
 
-client.so: $(OBJS_client) ../lib/libraspberry.a
-	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
+libclient.so: $(OBJS_client)
+	$(call quiet-command, $(CC) $(LDFLAGS) -shared -fPIC -o $@ $^ $(LIBS), "  CC    $(TARGET_DIR)$@")
+
+libclient.a: $(OBJS_client)
+	$(call quiet-command, $(AR) cr $@ $^, "  AR    $(TARGET_DIR)$@")
+
+test: $(OBJS_test) libclient.a ../lib/libraspberry.a
+	$(call quiet-command, $(CC) $(LDFLAGS) -o $@ $^ $(LIBS), "  CC    $(TARGET_DIR)$@")
 
 ifneq ($(MAKECMDGOALS), clean)
 $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))

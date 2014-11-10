@@ -2,6 +2,7 @@
 
 include ../rules.mak
 
+CFLAGS += -fPIC
 LIBS = libraspberry.a
 
 SRCS_lib = sock.c unix.c utils.c xmalloc.c
