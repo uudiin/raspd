@@ -9,12 +9,6 @@
 #include "sock.h"
 
 
-#ifndef SUN_LEN
-/* Evaluate to actual length of the `sockaddr_un' structure.  */
-# define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)	      \
-		      + strlen ((ptr)->sun_path))
-#endif
-
 int resolve(const char *hostname, unsigned short port,
         struct sockaddr_storage *ss, size_t *sslen, int af, int addl_flags)
 {

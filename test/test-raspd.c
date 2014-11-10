@@ -1,18 +1,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <getopt.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <sock.h>
+
+#define BUF_SIZE    1024
+
 int main(int argc, char *argv[])
 {
     static struct option options[] = {
-        { "unix",    required_argument, NULL, 'u' },
+        { "unix", required_argument, NULL, 'u' },
         { 0, 0, 0, 0 }
     };
     int c;
-    char *unix = NULL;
+    char *unixsock = NULL;
     int fd;
     union sockaddr_u addr;
     socklen_t len;
@@ -21,24 +26,24 @@ int main(int argc, char *argv[])
 
     while ((c = getopt_long(argc, argv, "du:", options, NULL)) != -1) {
         switch (c) {
-        case 'u': unix = optarg; break;
+        case 'u': unixsock = optarg; break;
         }
     }
 
-    if (unix == NULL) {
-        fprintf(stderr, "must be set the unix socket file");
+    if (unixsock == NULL) {
+        fprintf(stderr, "must be set the unixsock socket file");
         return 1;
     }
 
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         return 1;
 
-    if (strlen(unix) >= sizeof(addr.un.sun_path))
+    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
         return 1;
 
     memset(&addr, 0, sizeof(addr));
     addr.un.sun_family = AF_UNIX;
-    strncpy(addr.un.sun_path, unix, sizeof(addr.un.sun_path));
+    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
     len = SUN_LEN(&addr.un);
     if (connect(fd, &addr.sockaddr, len) < 0)
         return 1;

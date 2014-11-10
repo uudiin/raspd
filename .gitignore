@@ -24,3 +24,4 @@ test/breath_led
 test/motor
 test/pwm
 test/l298n
+test/test-raspd

@@ -5,6 +5,12 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#ifndef SUN_LEN
+/* Evaluate to actual length of the `sockaddr_un' structure.  */
+# define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)	      \
+		      + strlen ((ptr)->sun_path))
+#endif
+
 union sockaddr_u {
     struct sockaddr_storage storage;
     struct sockaddr_un un;

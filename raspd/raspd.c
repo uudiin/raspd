@@ -3,30 +3,33 @@
 #include <errno.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/socket.h>
 
 #include <bcm2835.h>
 
 #include <unix.h>
+#include <sock.h>
 
 #include "module.h"
 
 #define BUF_SIZE    1024
 
-int unix_listen(const char *unix)
+int unix_listen(const char *unixsock)
 {
     union sockaddr_u addr, remoteaddr;
     socklen_t len = sizeof(remoteaddr);
     int fd, clifd;
     int err;
 
-    unlink(unix);
+    unlink(unixsock);
 
-    if (strlen(unix) >= sizeof(addr.un.sun_path))
+    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
         return -EINVAL;
 
     memset(&addr, 0, sizeof(addr));
     addr.un.sun_family = AF_UNIX;
-    strncpy(addr.un.sun_path, unix, sizeof(addr.un.sun_path));
+    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
 
     fd = do_listen(SOCK_STREAM, 0, &addr);
     if (fd < 0)
@@ -49,7 +52,7 @@ int unix_listen(const char *unix)
         break;
     }
 
-    clifd = accept(fd, &remoteaddr, &len);
+    clifd = accept(fd, &remoteaddr.sockaddr, &len);
     if (clifd < 0)
         return -EFAULT;
 
@@ -73,7 +76,7 @@ int main(int argc, char *argv[])
     };
     int c;
     int daemon = 0;
-    char *unix = NULL;
+    char *unixsock = NULL;
     char *logerr = NULL;
     char buffer[BUF_SIZE];
     int err;
@@ -81,7 +84,7 @@ int main(int argc, char *argv[])
     while ((c = getopt_long(argc, argv, "du:", options, NULL)) != -1) {
         switch (c) {
         case 'd': daemon = 1; break;
-        case 'u': unix = optarg; break;
+        case 'u': unixsock = optarg; break;
         case 'l': logerr = optarg; break;
         }
     }
@@ -98,22 +101,22 @@ int main(int argc, char *argv[])
         int logfd;
         logfd = open(logerr, O_RDWR);
         if (logfd) {
-            dup2(logfd, FILENO_STDERR);
+            dup2(logfd, STDERR_FILENO);
             close(logfd);
         }
     }
 
-    if (unix) {
+    if (unixsock) {
         int fd;
 
-        fd = unix_listen(unix);
+        fd = unix_listen(unixsock);
         if (fd < 0) {
-            fprintf(stderr, "unix_listen(%s), err = %d\n", unix, err);
+            fprintf(stderr, "unix_listen(%s), err = %d\n", unixsock, err);
             return 1;
         }
 
-        dup2(fd, FILENO_STDIN);
-        dup2(fd, FILENO_STDOUT);
+        dup2(fd, STDIN_FILENO);
+        dup2(fd, STDOUT_FILENO);
         close(fd);
 
         /* no buffer */
