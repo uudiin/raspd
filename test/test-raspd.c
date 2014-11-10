@@ -58,8 +58,10 @@ int main(int argc, char *argv[])
             fprintf(stderr, "send date error, err = %d\n", retval);
 
         retval = read(fd, buffer, sizeof(buffer));
-        if (retval)
+        if (retval) {
+            buffer[retval] = '\0';
             fprintf(stdout, "%s", buffer);
+        }
     }
 
     return 0;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
@@ -59,6 +60,22 @@ int unix_listen(const char *unixsock)
     return clifd;
 }
 
+static void usage(FILE *fp)
+{
+    fprintf(fp,
+        "usage:\n"
+        "  raspd [options]\n"
+        "\n"
+        "options:\n"
+        "  -d, --daemon         run process as a daemon\n"
+        "  -u, --unix <sock>    specify the unix socket file\n"
+        "  -l, --logerr <file>  specify the error log file\n"
+        "  -h, --help           display this help screen\n"
+        );
+
+    _exit(fp != stderr ? EXIT_SUCCESS : EXIT_FAILURE);
+}
+
 /*
  * protocol
  *
@@ -72,6 +89,7 @@ int main(int argc, char *argv[])
         { "daemon",  no_argument,       NULL, 'd' },
         { "unix",    required_argument, NULL, 'u' },
         { "logerr",  required_argument, NULL, 'l' },
+        { "help",    no_argument,       NULL, 'h' },
         { 0, 0, 0, 0 }
     };
     int c;
@@ -81,11 +99,12 @@ int main(int argc, char *argv[])
     char buffer[BUF_SIZE];
     int err;
 
-    while ((c = getopt_long(argc, argv, "du:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "du:l:h", options, NULL)) != -1) {
         switch (c) {
         case 'd': daemon = 1; break;
         case 'u': unixsock = optarg; break;
         case 'l': logerr = optarg; break;
+        case 'h': usage(stdout); break;
         }
     }
 
@@ -99,7 +118,7 @@ int main(int argc, char *argv[])
 
     if (logerr) {
         int logfd;
-        logfd = open(logerr, O_RDWR);
+        logfd = open(logerr, O_RDWR | O_CREAT | O_TRUNC, 0660);
         if (logfd) {
             dup2(logfd, STDERR_FILENO);
             close(logfd);
@@ -136,8 +155,6 @@ int main(int argc, char *argv[])
             err = module_cmdexec(cmdexec);
             if (err != 0)
                 fprintf(stderr, "module_cmdexec(%s), err = %d\n", cmdexec, err);
-            else
-                fprintf(stdout, "OK\n");
         }
     }
 
