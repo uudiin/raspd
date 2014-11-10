@@ -183,7 +183,7 @@ int listen_stream(unsigned short portno, const char *cmdexec)
     signal(SIGPIPE, SIG_IGN);
 
     fd_listen = do_listen(SOCK_STREAM, IPPROTO_TCP, &addr);
-    if (fd_listen == -1)
+    if (fd_listen < 0)
         return -1;
 
     unblock_socket(fd_listen);
