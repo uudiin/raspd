@@ -105,9 +105,12 @@ static void handle_connection(int fd_listen, const char *cmdexec)
     socklen_t ss_len;
     int fd;
 
+    ss_len = sizeof(remoteaddr);
     fd = accept(fd_listen, &remoteaddr.sockaddr, &ss_len);
-    if (fd < 0)
+    if (fd < 0) {
+        fprintf(stderr, "accept() error, err = %d\n", errno);
         return;
+    }
 
     unblock_socket(fd);
 
