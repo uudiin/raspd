@@ -16,12 +16,36 @@ static int listen_mode;
 static int daemon_mode;
 static int udp;
 
-/*
- * telecon [options] port
- *     --listen      listen mode
- *     --daemon      deamon
- *     --udp         use UDP instead of default TCP
- */
+static int unixsock_connect(const char *unixsock)
+{
+    union sockaddr_u addr;
+    socklen_t len;
+    int fd;
+
+    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
+        return -EINVAL;
+
+    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        return -EFAULT;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.un.sun_family = AF_UNIX;
+    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
+    len = SUN_LEN(&addr.un);
+    if (connect(fd, &addr.sockaddr, len) < 0) {
+        fprintf(stderr, "connect(), errno = %d\n", errno);
+        return -EPERM;
+    }
+
+    dup2(fd, STDIN_FILENO);
+    dup2(fd, STDOUT_FILENO);
+    close(fd);
+
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    return 0;
+}
 
 static void usage(FILE *fp)
 {
@@ -52,15 +76,16 @@ int main(int argc, char *argv[])
     static struct option options[] = {
         { "listen",  no_argument,       NULL,         'l' },
         { "exec",    required_argument, NULL,         'e' },
-        { "daemon",  no_argument,       &daemon_mode, 1   },
-        { "udp",     no_argument,       &udp,         1   },
+        { "daemon",  no_argument,       &daemon_mode,  1  },
+        { "udp",     no_argument,       &udp,          1  },
         { "unix",    required_argument, NULL,         'u' },
         { "help",    no_argument,       NULL,         'h' },
         { 0, 0, 0, 0 }
     };
 
-    while ((c = getopt_long(argc, argv, "le:u:vh", options, &opt_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "le:u:h", options, &opt_index)) != -1) {
         switch (c) {
+        case 0: break;
         case 'l': listen_mode = 1; break;
         case 'e': cmdexec = optarg; break;
         case 'u': unixsock = optarg; break;
@@ -80,8 +105,8 @@ int main(int argc, char *argv[])
     }
 
     if (unixsock) {
-        if (unixsock_std(unixsock) < 0)
-            err_exit(1, "unixsock_std() error\n");
+        if (unixsock_connect(unixsock) < 0)
+            err_exit(1, "unixsock_connect() error\n");
     }
 
     if (optind >= argc)

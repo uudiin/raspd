@@ -114,6 +114,8 @@ int do_connect(int type, const union sockaddr_u *dstaddr)
             return sock;
         else if (errno == EINPROGRESS || errno == EAGAIN)
             return sock;
+        else
+            fprintf(stderr, "connect() errno = %d\n", errno);
     }
 
     return -1;
@@ -160,6 +162,8 @@ int unixsock_std(const char *unixsock)
     if (clifd < 0)
         return -EFAULT;
 
+    /* FIXME close ? */
+    /*close(fd);*/
     /* overwrite stdin & stdout */
     dup2(clifd, STDIN_FILENO);
     dup2(clifd, STDOUT_FILENO);
