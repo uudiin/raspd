@@ -33,6 +33,8 @@ static int step = 0;
 static int range = RANGE_DEFAULT;
 static int pwm_div = PWMDIV_DEFAULT;
 
+static int reinit = 1;
+
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
@@ -104,7 +106,6 @@ static void l298n_forward_reverse(int speed, int intx, int inty, int enx)
 int l298n_main(int argc, char *argv[])
 {
 	int c;
-	int reinit = 0;
 	
         fprintf(stderr, "l298n_main start %d\n", argc);
 
@@ -182,6 +183,7 @@ int l298n_main(int argc, char *argv[])
 	if (reinit) {
 		bcm2835_init();
 		l298n_init();
+		reinit = 0;
 	}
 
         fprintf(stderr, "l298n_main end\n");
