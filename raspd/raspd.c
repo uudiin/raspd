@@ -16,6 +16,61 @@
 
 #define BUF_SIZE    1024
 
+static int unixsock_std(const char *unixsock)
+{
+    union sockaddr_u addr, remoteaddr;
+    socklen_t len = sizeof(remoteaddr);
+    int fd, clifd;
+    int err;
+
+    unlink(unixsock);
+
+    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
+        return -EINVAL;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.un.sun_family = AF_UNIX;
+    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
+
+    fd = do_listen(SOCK_STREAM, 0, &addr);
+    if (fd < 0)
+        return fd;
+
+    while (1) {
+        fd_set readfds;
+        int ready;
+
+        FD_ZERO(&readfds);
+        FD_SET(fd, &readfds);
+
+        ready = select(fd + 1, &readfds, NULL, NULL, NULL);
+        if (ready == 0)
+            continue;
+        if (!FD_ISSET(fd, &readfds))
+            continue;
+
+        /* XXX only one client */
+        break;
+    }
+
+    clifd = accept(fd, &remoteaddr.sockaddr, &len);
+    if (clifd < 0)
+        return -EFAULT;
+
+    /* FIXME close ? */
+    /*close(fd);*/
+    /* overwrite stdin & stdout */
+    dup2(clifd, STDIN_FILENO);
+    dup2(clifd, STDOUT_FILENO);
+    close(clifd);
+
+    /* no buffer */
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    return clifd;
+}
+
 static void usage(FILE *fp)
 {
     fprintf(fp,
