@@ -16,50 +16,6 @@
 
 #define BUF_SIZE    1024
 
-int unix_listen(const char *unixsock)
-{
-    union sockaddr_u addr, remoteaddr;
-    socklen_t len = sizeof(remoteaddr);
-    int fd, clifd;
-    int err;
-
-    unlink(unixsock);
-
-    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
-        return -EINVAL;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.un.sun_family = AF_UNIX;
-    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
-
-    fd = do_listen(SOCK_STREAM, 0, &addr);
-    if (fd < 0)
-        return fd;
-
-    while (1) {
-        fd_set readfds;
-        int ready;
-
-        FD_ZERO(&readfds);
-        FD_SET(fd, &readfds);
-
-        ready = select(fd + 1, &readfds, NULL, NULL, NULL);
-        if (ready == 0)
-            continue;
-        if (!FD_ISSET(fd, &readfds))
-            continue;
-
-        /* XXX only one client */
-        break;
-    }
-
-    clifd = accept(fd, &remoteaddr.sockaddr, &len);
-    if (clifd < 0)
-        return -EFAULT;
-
-    return clifd;
-}
-
 static void usage(FILE *fp)
 {
     fprintf(fp,
@@ -81,6 +37,7 @@ static void usage(FILE *fp)
  *
  *      name xxx yyy zzz; name2 xxxfff
  *      name yyy=xxx fff
+ *      cmd1; cmd2; cmd3; ...
  */
 
 int main(int argc, char *argv[])
@@ -128,23 +85,17 @@ int main(int argc, char *argv[])
     if (unixsock) {
         int fd;
 
-        fd = unix_listen(unixsock);
+        fd = unixsock_std(unixsock);
         if (fd < 0) {
-            fprintf(stderr, "unix_listen(%s), err = %d\n", unixsock, err);
+            fprintf(stderr, "unix_listen(%s), err = %d\n", unixsock, fd);
             return 1;
         }
-
-        dup2(fd, STDIN_FILENO);
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
-
-        /* no buffer */
-        setvbuf(stdin, NULL, _IONBF, 0);
-        setvbuf(stdout, NULL, _IONBF, 0);
     }
 
-    if (!bcm2835_init())
+    if (!bcm2835_init()) {
+        fprintf(stderr, "bcm2835_init() error\n");
         return 1;
+    }
 
     /* main loop */
     while (fgets(buffer, sizeof(buffer), stdin) != NULL) {

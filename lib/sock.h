@@ -26,5 +26,6 @@ int unblock_socket(int sd);
 int block_socket(int sd);
 int do_listen(int type, int proto, const union sockaddr_u *srcaddr);
 int do_connect(int type, const union sockaddr_u *dstaddr);
+int unixsock_std(const char *unixsock);
 
 #endif /* __SOCK_H__ */
