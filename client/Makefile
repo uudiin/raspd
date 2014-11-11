@@ -1,15 +1,14 @@
 # Makefile for client
 
 include ../rules.mak
-LD = ld
 CFLAGS += -g -I../lib -fPIC
 LDFLAGS = -L ../lib
 LIBS =
 
 PROGS = libclient.a libclient.so test
 
-SRCS_client = client.c
-OBJS_client = client.o
+SRCS_client = client.c l298n.c
+OBJS_client = client.o l298n.o
 OBJS_test = test.o
 
 #$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))

@@ -12,10 +12,12 @@ int main(int argc, char *argv[])
 		return err;
 	}
 
-	send_cmd("gpio: xxx", strlen("gpio: xxx"));
-
-	recv_response(buf, 1024);
-	printf("%s\n", buf);
+	speed_up();
+	speed_down();
+	up();
+	down();
+	left();
+	right();
 
 	return 0;
 }
