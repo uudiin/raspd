@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <errno.h>
+#include <time.h>
+#include <getopt.h>
 
 #include <bcm2835.h>
 
@@ -30,9 +32,9 @@ static int delay_main(int argc, char *argv[])
 {
     static struct option options[] = {
         { "second",   required_argument, NULL, 's' },
-        { "millisec", requirno_argument, NULL, 'm' },
-        { "microsec", requirno_argument, NULL, 'u' },
-        { "nanosec",  requirno_argument, NULL, 'n' },
+        { "millisec", required_argument, NULL, 'm' },
+        { "microsec", required_argument, NULL, 'u' },
+        { "nanosec",  required_argument, NULL, 'n' },
         { 0, 0, 0, 0 }
     };
     int c;

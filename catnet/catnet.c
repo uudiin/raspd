@@ -13,7 +13,7 @@
 #include <utils.h>
 
 static int listen_mode;
-static int daemon;
+static int daemon_mode;
 static int udp;
 
 /*
@@ -50,12 +50,12 @@ int main(int argc, char *argv[])
     int opt_index;
     int c;
     static struct option options[] = {
-        { "listen",  no_argument,       NULL,    'l' },
-        { "exec",    required_argument, NULL,    'e' },
-        { "daemon",  no_argument,       &daemon, 1   },
-        { "udp",     no_argument,       &udp,    1   },
-        { "unix",    required_argument, NULL,    'u' },
-        { "help",    no_argument,       NULL,    'h' },
+        { "listen",  no_argument,       NULL,         'l' },
+        { "exec",    required_argument, NULL,         'e' },
+        { "daemon",  no_argument,       &daemon_mode, 1   },
+        { "udp",     no_argument,       &udp,         1   },
+        { "unix",    required_argument, NULL,         'u' },
+        { "help",    no_argument,       NULL,         'h' },
         { 0, 0, 0, 0 }
     };
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (daemon) {
+    if (daemon_mode) {
         if (daemonize("catnet") < 0)
             err_exit(1, "daemonize() error\n");
     }
