@@ -39,11 +39,13 @@ static int gpio_main(int argc, char *argv[])
         case 'p': pins = optarg; break;
         case 'a': fsel = optarg; break;
         case 'u': level = atoi(optarg); break;
+        default:
+            return 1;
         }
     }
 
     if (pins == NULL)
-        return EINVAL;
+        return 1;
 
     for ( ; token = strtok_r(pins, ",", &saveptr); pins = NULL) {
         int pin = atoi(token);

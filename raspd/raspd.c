@@ -153,8 +153,11 @@ int main(int argc, char *argv[])
         for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
 
             err = module_cmdexec(cmdexec);
-            if (err != 0)
-                fprintf(stderr, "module_cmdexec(%s), err = %d\n", cmdexec, err);
+            /* must reply */
+            if (err == 0)
+                fprintf(stdout, "OK\n");
+            else
+                fprintf(stdout, "ERR %d\n", err);
         }
     }
 
