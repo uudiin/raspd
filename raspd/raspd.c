@@ -16,10 +16,10 @@
 
 #define BUF_SIZE    1024
 
-static int unixsock_std(const char *unixsock)
+static int unixsock_listen(const char *unixsock)
 {
     union sockaddr_u addr, remoteaddr;
-    socklen_t len = sizeof(remoteaddr);
+    socklen_t len;
     int fd, clifd;
     int err;
 
@@ -39,6 +39,7 @@ static int unixsock_std(const char *unixsock)
     while (1) {
         fd_set readfds;
         int ready;
+        pid_t pid;
 
         FD_ZERO(&readfds);
         FD_SET(fd, &readfds);
@@ -49,16 +50,29 @@ static int unixsock_std(const char *unixsock)
         if (!FD_ISSET(fd, &readfds))
             continue;
 
-        /* XXX only one client */
+        len = sizeof(remoteaddr);
+        clifd = accept(fd, &remoteaddr.sockaddr, &len);
+        if (clifd < 0) {
+            fprintf(stderr, "accept() error, errno = %d\n", errno);
+            continue;
+        }
+
+        if ((pid = fork()) < 0) {
+            fprintf(stderr, "fork() error, errno= %d\n", errno);
+            close(clifd);
+            continue;
+        } else if (pid > 0) {
+            /* parent */
+            continue;
+        }
+
+        /* child */
         break;
     }
 
-    clifd = accept(fd, &remoteaddr.sockaddr, &len);
-    if (clifd < 0)
-        return -EFAULT;
-
     /* FIXME close ? */
     /*close(fd);*/
+
     /* overwrite stdin & stdout */
     dup2(clifd, STDIN_FILENO);
     dup2(clifd, STDOUT_FILENO);
@@ -140,7 +154,7 @@ int main(int argc, char *argv[])
     if (unixsock) {
         int fd;
 
-        fd = unixsock_std(unixsock);
+        fd = unixsock_listen(unixsock);
         if (fd < 0) {
             fprintf(stderr, "unix_listen(%s), err = %d\n", unixsock, fd);
             return 1;

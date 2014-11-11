@@ -2,6 +2,8 @@
 
 include ../rules.mak
 
+CFLAGS += -Wno-pointer-to-int-cast
+
 LIBS = libbcm2835.a
 
 SRCS_lib = bcm2835.c
