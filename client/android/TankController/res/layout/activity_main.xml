@@ -1,0 +1,210 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0099cc"
+    tools:context=".MainActivity" >
+
+    <!--
+         The primary full-screen view. This can be replaced with whatever view
+         is needed to present your content, e.g. VideoView, SurfaceView,
+         TextureView, etc.
+    -->
+
+    <TextView
+        android:id="@+id/fullscreen_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:keepScreenOn="true"
+        android:text="@string/dummy_content"
+        android:textColor="#33b5e5"
+        android:textSize="50sp"
+        android:textStyle="bold" />
+
+    <!--
+         This FrameLayout insets its children based on system windows using
+         android:fitsSystemWindows.
+    -->
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true" >
+
+        <LinearLayout
+            android:id="@+id/fullscreen_content_controls"
+            style="?buttonBarStyle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="bottom|center_horizontal"
+            android:background="@color/black_overlay"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:gravity="center"
+            tools:ignore="UselessParent" >
+            <LinearLayout 
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:layout_marginTop="40dp"
+                android:layout_weight="1">
+                <EditText 
+                  android:id="@+id/edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    />
+                <Button
+                    android:id="@+id/connect"
+                    style="?buttonBarButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_weight="2"
+                    android:text="Connect" />
+            </LinearLayout>
+			<LinearLayout 
+			    android:layout_width="match_parent"
+			    android:layout_height="match_parent"
+			    android:orientation="horizontal"
+			    android:layout_marginTop="40dp"
+			    android:layout_weight="1">
+                <Button
+	                android:id="@+id/unknow1"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:visibility="invisible"
+	                android:text="@string/dummy_button" />
+                <Button
+	                android:id="@+id/unknow2"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:visibility="invisible"
+	                android:text="@string/dummy_button" />
+                <Button
+	                android:id="@+id/sup"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="SUP" />
+			</LinearLayout>
+			<LinearLayout 
+			    android:layout_width="match_parent"
+			    android:layout_height="match_parent"
+			    android:orientation="horizontal"
+			    android:layout_weight="1">
+                <Button
+	                android:id="@+id/unknow3"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:visibility="invisible"
+	                android:text="@string/dummy_button" />
+                <Button
+	                android:id="@+id/unknow4"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:visibility="invisible"
+	                android:text="@string/dummy_button" />
+                <Button
+	                android:id="@+id/sdown"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="SDOWN" />
+			</LinearLayout>
+			<LinearLayout 
+			    android:layout_width="match_parent"
+			    android:layout_height="match_parent"
+			    android:orientation="horizontal"
+			    android:layout_weight="1">
+                <Button
+	                android:id="@+id/unknow5"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:visibility="invisible"
+	                android:text="@string/dummy_button" />
+                <Button
+	                android:id="@+id/up"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="UP" />
+                <Button
+	                android:id="@+id/unknow6"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:visibility="invisible"
+	                android:text="@string/dummy_button" />
+			</LinearLayout>
+			<LinearLayout 
+			    android:layout_width="match_parent"
+			    android:layout_height="match_parent"
+			    android:orientation="horizontal"
+			    android:layout_weight="1">
+                <Button
+	                android:id="@+id/left"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="LEFT" />
+                <Button
+	                android:id="@+id/down"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="DOWN" />
+                <Button
+	                android:id="@+id/right"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="RIGHT" />
+			</LinearLayout>
+			<LinearLayout 
+			    android:layout_width="match_parent"
+			    android:layout_height="match_parent"
+			    android:orientation="horizontal"
+			    android:layout_weight="1">
+                <Button
+	                android:id="@+id/l"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="L" />
+                <Button
+	                android:id="@+id/breakid"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="BREAK" />
+                <Button
+	                android:id="@+id/r"
+	                style="?buttonBarButtonStyle"
+	                android:layout_width="0dp"
+	                android:layout_height="wrap_content"
+	                android:layout_weight="1"
+	                android:text="R" />
+			</LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>
