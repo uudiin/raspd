@@ -8,7 +8,7 @@ LIBS =
 
 PROGS = raspd
 
-SRCS_raspd = raspd.c module.c gpio.c delay.c
+SRCS_raspd = raspd.c module.c gpio.c pwm.c delay.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
 
@@ -24,4 +24,4 @@ $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
 endif
 
 clean:
-	rm -f *.d $(OBJS_raspd) $(PROGS)
+	rm -f $(SRCS_raspd:.c=.d) $(OBJS_raspd) $(PROGS)
