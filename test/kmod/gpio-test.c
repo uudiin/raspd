@@ -1,14 +1,18 @@
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/init.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
 
-static irq_number;
+static int gpio = 25;
+module_param(gpio, int, S_IRUGO);
+
+static int irq_number;
 
 static irqreturn_t gpio_reset_interrupt(int irq, void *dev_id)
 {
-    printk(KERN_ERR "gpio0 IRQ %d event\n", irq_number);
+    printk(KERN_ERR "gpio %d IRQ %d event, irq = %d\n", gpio, irq_number, irq);
     return IRQ_HANDLED;
 }
 
@@ -16,7 +20,12 @@ static int __init gpio_init(void)
 {
     int err;
 
-    irq_number = gpio_to_irq(25);
+    if (gpio < 0 || gpio > 54) {
+        printk(KERN_ERR "GPIO_RESET: invalid gpio number, gpio = %d\n", gpio);
+        return -EINVAL;
+    }
+
+    irq_number = gpio_to_irq(gpio);
     err = request_irq(irq_number, gpio_reset_interrupt,
             IRQF_TRIGGER_FALLING | IRQF_ONESHOT, "gpio_reset", NULL);
     if (err) {
