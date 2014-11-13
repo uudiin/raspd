@@ -8,53 +8,105 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include <unix.h>
+#include <sock.h>
 #include <utils.h>
 
 static int listen_mode;
-static int deamon;
+static int daemon_mode;
 static int udp;
 
-/*
- * telecon [options] port
- *     --listen      listen mode
- *     --daemon      deamon
- *     --udp         use UDP instead of default TCP
- */
+static int unixsock_connect(const char *unixsock)
+{
+    union sockaddr_u addr;
+    socklen_t len;
+    int fd;
+
+    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
+        return -EINVAL;
+
+    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        return -EFAULT;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.un.sun_family = AF_UNIX;
+    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
+    len = SUN_LEN(&addr.un);
+    if (connect(fd, &addr.sockaddr, len) < 0) {
+        fprintf(stderr, "connect(), errno = %d\n", errno);
+        return -EPERM;
+    }
+
+    dup2(fd, STDIN_FILENO);
+    dup2(fd, STDOUT_FILENO);
+    close(fd);
+
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    return 0;
+}
+
+static void usage(FILE *fp)
+{
+    fprintf(fp,
+        "usage:\n"
+        "  catnet [options] <host> <port>\n"
+        "\n"
+        "options:\n"
+        "  -l, --listen         run process as a server mode\n"
+        "  -e, --exec <file>    specify the real server exec\n"
+        "      --daemon         run process as a daemon\n"
+        "      --udp            use UDP protocol, default is TCP\n"
+        "  -u, --unix <sock>    specify the unix socket file\n"
+        "  -h, --help           display this help screen\n"
+        );
+
+    _exit(fp != stderr ? EXIT_SUCCESS : EXIT_FAILURE);
+}
 
 int main(int argc, char *argv[])
 {
     char *hostname = NULL;
     long long_port = 0;
-    char *cmdexec = 0;
+    char *cmdexec = NULL;
+    char *unixsock = NULL;
     int opt_index;
     int c;
     static struct option options[] = {
-        { "listen",  no_argument,       NULL,    'l' },
-        { "exec",    required_argument, NULL,    'e' },
-        { "daemon",  no_argument,       &deamon, 1   },
-        { "udp",     no_argument,       &udp,    1   },
-        { "version", no_argument,       NULL,    'v' },
-        { "help",    no_argument,       NULL,    'h' },
+        { "listen",  no_argument,       NULL,         'l' },
+        { "exec",    required_argument, NULL,         'e' },
+        { "daemon",  no_argument,       &daemon_mode,  1  },
+        { "udp",     no_argument,       &udp,          1  },
+        { "unix",    required_argument, NULL,         'u' },
+        { "help",    no_argument,       NULL,         'h' },
         { 0, 0, 0, 0 }
     };
 
-    while ((c = getopt_long(argc, argv, "le:vh", options, &opt_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "le:u:h", options, &opt_index)) != -1) {
         switch (c) {
-        case 'l':
-            listen_mode = 1;
-            break;
-        case 'e':
-            cmdexec = optarg;
-            break;
-        case 'v':
-            break;
+        case 0: break;
+        case 'l': listen_mode = 1; break;
+        case 'e': cmdexec = optarg; break;
+        case 'u': unixsock = optarg; break;
         case 'h':
+            usage(stdout);
             break;
         case '?':
             err_exit(1, "Try '--help' for more information.\n");
         default:
             err_exit(2, "Unrecognised option.\n");
         }
+    }
+
+    if (daemon_mode) {
+        if (daemonize("catnet") < 0)
+            err_exit(1, "daemonize() error\n");
+    }
+
+    if (unixsock) {
+        if (unixsock_connect(unixsock) < 0)
+            err_exit(1, "unixsock_connect() error\n");
     }
 
     if (optind >= argc)
@@ -67,16 +119,14 @@ int main(int argc, char *argv[])
             if (long_port <= 0 || long_port > 65535)
                 err_exit(4, "Invalid port number.\n");
         } else {
-            /* use regex to detect URL or IP */
+            /* TODO use regex to detect URL or IP */
             hostname = argv[optind];
         }
         optind++;
     }
 
     if (listen_mode)
-        listen_stream((unsigned short)long_port, cmdexec);
+        return listen_stream((unsigned short)long_port, cmdexec);
     else
-        connect_stream(hostname, (unsigned short)long_port);
-
-    return 0;
+        return connect_stream(hostname, (unsigned short)long_port);
 }
