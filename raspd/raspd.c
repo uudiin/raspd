@@ -117,11 +117,11 @@ static void usage(FILE *fp)
         "  raspd [options]\n"
         "\n"
         "options:\n"
-        "  -d, --daemon         run process as a daemon\n"
-        "  -s, --listen <port>  listen on port use TCP\n"
-        "  -u, --unix <sock>    specify the unix socket file\n"
-        "  -l, --logerr <file>  specify the error log file\n"
-        "  -h, --help           display this help screen\n"
+        "  -d, --daemon              run process as a daemon\n"
+        "  -l, --listen <port>       listen on port use TCP\n"
+        "  -u, --unix-listen <sock>  listen on the unix socket file\n"
+        "  -e, --logerr <file>       specify the error log file\n"
+        "  -h, --help                display this help screen\n"
         );
 
     _exit(fp != stderr ? EXIT_SUCCESS : EXIT_FAILURE);
@@ -138,27 +138,27 @@ static void usage(FILE *fp)
 int main(int argc, char *argv[])
 {
     static struct option options[] = {
-        { "daemon",  no_argument,       NULL, 'd' },
-        { "listen",  required_argument, NULL, 's' },
-        { "unix",    required_argument, NULL, 'u' },
-        { "logerr",  required_argument, NULL, 'l' },
-        { "help",    no_argument,       NULL, 'h' },
+        { "daemon",      no_argument,       NULL, 'd' },
+        { "listen",      required_argument, NULL, 'l' },
+        { "unix-listen", required_argument, NULL, 'u' },
+        { "logerr",      required_argument, NULL, 'e' },
+        { "help",        no_argument,       NULL, 'h' },
         { 0, 0, 0, 0 }
     };
     int c;
     int daemon = 0;
-    char *unixsock = NULL;
+    char *unixlisten = NULL;
     char *logerr = NULL;
     long listen_port = 0;
     char buffer[BUF_SIZE];
     int err;
 
-    while ((c = getopt_long(argc, argv, "ds:u:l:h", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "dl:u:e:h", options, NULL)) != -1) {
         switch (c) {
         case 'd': daemon = 1; break;
-        case 's': listen_port = strtol(optarg, NULL, 10); break;
-        case 'u': unixsock = optarg; break;
-        case 'l': logerr = optarg; break;
+        case 'l': listen_port = strtol(optarg, NULL, 10); break;
+        case 'u': unixlisten = optarg; break;
+        case 'e': logerr = optarg; break;
         case 'h': usage(stdout); break;
         default:
             usage(stderr);
@@ -186,12 +186,12 @@ int main(int argc, char *argv[])
     err = 0;
     if (listen_port > 0 && listen_port < 65535)
         err = stream_listen((unsigned short)listen_port);
-    else if (unixsock)
-        err = unixsock_listen(unixsock);
+    else if (unixlisten)
+        err = unixsock_listen(unixlisten);
 
     if (err < 0) {
-        fprintf(stderr, "listen error, unixsock = %s, port = %d, errno = %d\n",
-                    unixsock ? unixsock : "NULL", (int)listen_port, errno);
+        fprintf(stderr, "listen error, unixlisten = %s, port = %d, errno = %d\n",
+                    unixlisten ? unixlisten : "NULL", (int)listen_port, errno);
         return 1;
     }
 
