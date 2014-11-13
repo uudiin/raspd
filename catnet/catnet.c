@@ -16,37 +16,6 @@ static int listen_mode;
 static int daemon_mode;
 static int udp;
 
-static int unixsock_connect(const char *unixsock)
-{
-    union sockaddr_u addr;
-    socklen_t len;
-    int fd;
-
-    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
-        return -EINVAL;
-
-    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-        return -EFAULT;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.un.sun_family = AF_UNIX;
-    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
-    len = SUN_LEN(&addr.un);
-    if (connect(fd, &addr.sockaddr, len) < 0) {
-        fprintf(stderr, "connect(), errno = %d\n", errno);
-        return -EPERM;
-    }
-
-    dup2(fd, STDIN_FILENO);
-    dup2(fd, STDOUT_FILENO);
-    close(fd);
-
-    setvbuf(stdin, NULL, _IONBF, 0);
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    return 0;
-}
-
 static void usage(FILE *fp)
 {
     fprintf(fp,
@@ -73,6 +42,7 @@ int main(int argc, char *argv[])
     char *cmdexec = NULL;
     char *unixsock = NULL;
     char *unixlisten = NULL;
+    int err;
     int opt_index;
     int c;
     static struct option options[] = {
@@ -103,14 +73,22 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (unixsock && unixlisten)
+        err_exit(1, "error: unix & unix-listen are specified at same time\n");
+
     if (daemon_mode) {
-        if (daemonize("catnet") < 0)
-            err_exit(1, "daemonize() error\n");
+        if ((err = daemonize("catnet")) < 0)
+            err_exit(1, "daemonize(), err = %d\n", err);
     }
 
     if (unixsock) {
-        if (unixsock_connect(unixsock) < 0)
-            err_exit(1, "unixsock_connect() error\n");
+        if ((err = unixsock_connect(unixsock)) < 0)
+            err_exit(1, "unixsock_connect(), err = %d\n", err);
+    }
+
+    if (unixlisten) {
+        if ((err = unixsock_listen(unixlisten)) < 0)
+            err_exit(1, "unixsock_listen(), err = %d\n", err);
     }
 
     if (optind >= argc)
