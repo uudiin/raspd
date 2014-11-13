@@ -15,7 +15,7 @@ SRCS_pwm = pwm.c
 SRCS_l298n = l298n.c
 SRCS_test-raspd = test-raspd.c
 
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a))
 
 .PHONY: all clean
