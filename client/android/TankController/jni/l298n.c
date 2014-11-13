@@ -33,6 +33,14 @@ void right(void)
 	send_cmd(cmd2, strlen(cmd2));
 } 
 
+void brake(void)
+{
+	char cmd[] = "l298n --lbrake;";
+	char cmd2[] = "l298n --rbrake;";
+	send_cmd(cmd, strlen(cmd));
+	send_cmd(cmd2, strlen(cmd2));
+}
+
 static speed = 0;
 void speed_up(void)
 {

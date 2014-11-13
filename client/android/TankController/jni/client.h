@@ -9,6 +9,7 @@ void up(void);
 void down(void);
 void left(void);
 void right(void);
+void brake(void);
 void speed_up(void);
 void speed_down(void);
 

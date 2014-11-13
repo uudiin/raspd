@@ -9,6 +9,7 @@ public class TankNative {
 	public static native void down();
 	public static native void left();
 	public static native void right();
+	public static native void brake();
 	public static native void speedup();
 	public static native void speeddown();
 	public static native int connect(String host, int port);

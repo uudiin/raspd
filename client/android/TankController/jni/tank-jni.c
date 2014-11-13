@@ -47,6 +47,10 @@ void Java_com_tank_nativef_TankNative_right(JNIEnv* env, jobject thiz) {
 	right();
 }
 
+void Java_com_tank_nativef_TankNative_brake(JNIEnv* env, jobject thiz) {
+	brake();
+}
+
 void Java_com_tank_nativef_TankNative_speedup(JNIEnv* env, jobject thiz) {
 	speed_up();
 }
