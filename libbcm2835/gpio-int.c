@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sys/select.h>
 
+#include "bcm2835.h"
 #include "gpio-int.h"
 
 #define NR_GPIOS    54
@@ -68,7 +69,7 @@ static gpio_int_export_unexport(unsigned int gpio, int unexport)
 
     if (write(unexport ? fd_unexport : fd_export, buf, len) < 0) {
         perror("write (un)export");
-        return err;
+        return -EIO;
     }
     return 0;
 }
@@ -112,7 +113,7 @@ int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
         if ((err = gpio_int_set_edge(pin, edge)) < 0)
             break;
         err = -EIO;
-        if ((fd = open_value(gpio)) < 0)
+        if ((fd = open_value(pin)) < 0)
             break;
         FD_SET(fd, &master_fds);
 
@@ -160,15 +161,16 @@ static void *signal_thread(void *arg)
 {
     struct async_int *ai;
     int value = 0;
+    int err;
 
     ai = (struct async_int *)arg;
-    err = bcm2835_gpio_poll(ai->pin, edge_both, NULL &value);
+    err = bcm2835_gpio_poll(ai->pin, edge_both, NULL, &value);
     if (err < 0)
-        return 1;
+        return (void *)1;
 
     ai->callback(value, ai->opaque);
     free(ai);
-    return 0;
+    return NULL;
 }
 
 int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,

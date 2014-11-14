@@ -1,6 +1,9 @@
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <unistd.h>
+#include <getopt.h>
 
 #include <gpio-int.h>
 
@@ -15,7 +18,7 @@ int main(int argc, char *argv[])
 {
     static struct option options[] = {
         { "edge",    required_argument, NULL, 'e' },
-        { "signal",  no_augument,       NULL, 's' },
+        { "signal",  no_argument,       NULL, 's' },
         { "timeout", required_argument, NULL, 't' },
         { 0, 0, 0, 0 }
     };
