@@ -204,8 +204,9 @@ int bcm2835_gpio_int_init(void)
     if (fd_export < 0 || fd_unexport < 0) {
         bcm2835_gpio_int_exit();
         perror("open export");
-        return 0;
+        return -EPERM;
     }
+    return 0;
 }
 
 void bcm2835_gpio_int_exit(void)
