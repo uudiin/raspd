@@ -10,7 +10,7 @@ PROGS = raspd
 
 SRCS_raspd = raspd.c module.c gpio.c pwm.c delay.c l298n.c
 
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 
 .PHONY: all clean
 

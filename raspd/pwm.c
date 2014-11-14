@@ -83,12 +83,13 @@ static pwm_main(int argc, char *argv[])
         step = _step;
 
     while (optind < argc) {
+        int i;
         unsigned int io = atoi(argv[optind]);
 
         for (i = 0; i < NR_PWM_IO; i++) {
             if (io == pwm_ios[i].gpio) {
                 int v = 0;
-                int n = pwm_ios[i].n;
+                int n = pwm_ios[i].channel;
 
                 if (!pwm_ios[i].initialized) {
                     pwm_ios[i].initialized = 1;

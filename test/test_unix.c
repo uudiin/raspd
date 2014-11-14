@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     char buffer[BUF_SIZE];
     int err;
 
-    while ((c = getopt_long(argc, argv, "du:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "u:", options, NULL)) != -1) {
         switch (c) {
         case 'u': unixsock = optarg; break;
         }

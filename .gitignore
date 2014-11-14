@@ -41,4 +41,5 @@ test/motor
 test/pwm
 test/l298n
 test/test-raspd
+test/test_unix
 client/test

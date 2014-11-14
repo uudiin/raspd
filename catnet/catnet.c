@@ -16,37 +16,6 @@ static int listen_mode;
 static int daemon_mode;
 static int udp;
 
-static int unixsock_connect(const char *unixsock)
-{
-    union sockaddr_u addr;
-    socklen_t len;
-    int fd;
-
-    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
-        return -EINVAL;
-
-    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-        return -EFAULT;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.un.sun_family = AF_UNIX;
-    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
-    len = SUN_LEN(&addr.un);
-    if (connect(fd, &addr.sockaddr, len) < 0) {
-        fprintf(stderr, "connect(), errno = %d\n", errno);
-        return -EPERM;
-    }
-
-    dup2(fd, STDIN_FILENO);
-    dup2(fd, STDOUT_FILENO);
-    close(fd);
-
-    setvbuf(stdin, NULL, _IONBF, 0);
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    return 0;
-}
-
 static void usage(FILE *fp)
 {
     fprintf(fp,
@@ -54,12 +23,13 @@ static void usage(FILE *fp)
         "  catnet [options] <host> <port>\n"
         "\n"
         "options:\n"
-        "  -l, --listen         run process as a server mode\n"
-        "  -e, --exec <file>    specify the real server exec\n"
-        "      --daemon         run process as a daemon\n"
-        "      --udp            use UDP protocol, default is TCP\n"
-        "  -u, --unix <sock>    specify the unix socket file\n"
-        "  -h, --help           display this help screen\n"
+        "  -l, --listen              run process as a server mode\n"
+        "  -x, --exec <file>         specify the real server exec\n"
+        "      --daemon              run process as a daemon\n"
+        "      --udp                 use UDP protocol, default is TCP\n"
+        "  -s, --unix <sock>         specify the unix socket file for connect\n"
+        "  -u, --unix-listen <sock>  listen on the unix socket file\n"
+        "  -h, --help                display this help screen\n"
         );
 
     _exit(fp != stderr ? EXIT_SUCCESS : EXIT_FAILURE);
@@ -71,24 +41,28 @@ int main(int argc, char *argv[])
     long long_port = 0;
     char *cmdexec = NULL;
     char *unixsock = NULL;
+    char *unixlisten = NULL;
+    int err;
     int opt_index;
     int c;
     static struct option options[] = {
-        { "listen",  no_argument,       NULL,         'l' },
-        { "exec",    required_argument, NULL,         'e' },
-        { "daemon",  no_argument,       &daemon_mode,  1  },
-        { "udp",     no_argument,       &udp,          1  },
-        { "unix",    required_argument, NULL,         'u' },
-        { "help",    no_argument,       NULL,         'h' },
+        { "listen",      no_argument,       NULL,         'l' },
+        { "exec",        required_argument, NULL,         'x' },
+        { "daemon",      no_argument,       &daemon_mode,  1  },
+        { "udp",         no_argument,       &udp,          1  },
+        { "unix",        required_argument, NULL,         's' },
+        { "unix-listen", required_argument, NULL,         'u' },
+        { "help",        no_argument,       NULL,         'h' },
         { 0, 0, 0, 0 }
     };
 
-    while ((c = getopt_long(argc, argv, "le:u:h", options, &opt_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "lx:s:u:h", options, &opt_index)) != -1) {
         switch (c) {
         case 0: break;
         case 'l': listen_mode = 1; break;
-        case 'e': cmdexec = optarg; break;
-        case 'u': unixsock = optarg; break;
+        case 'x': cmdexec = optarg; break;
+        case 's': unixsock = optarg; break;
+        case 'u': unixlisten = optarg; break;
         case 'h':
             usage(stdout);
             break;
@@ -99,14 +73,22 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (unixsock && unixlisten)
+        err_exit(1, "error: unix & unix-listen are specified at same time\n");
+
     if (daemon_mode) {
-        if (daemonize("catnet") < 0)
-            err_exit(1, "daemonize() error\n");
+        if ((err = daemonize("catnet")) < 0)
+            err_exit(1, "daemonize(), err = %d\n", err);
     }
 
     if (unixsock) {
-        if (unixsock_connect(unixsock) < 0)
-            err_exit(1, "unixsock_connect() error\n");
+        if ((err = unixsock_connect(unixsock)) < 0)
+            err_exit(1, "unixsock_connect(), err = %d\n", err);
+    }
+
+    if (unixlisten) {
+        if ((err = unixsock_listen(unixlisten)) < 0)
+            err_exit(1, "unixsock_listen(), err = %d\n", err);
     }
 
     if (optind >= argc)

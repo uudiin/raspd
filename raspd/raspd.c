@@ -16,100 +16,6 @@
 
 #define BUF_SIZE    1024
 
-static int listen_fork_loop(union sockaddr_u *addr)
-{
-    union sockaddr_u remoteaddr;
-    socklen_t len;
-    int fd, clifd;
-    int err;
-
-    fd = do_listen(SOCK_STREAM, IPPROTO_TCP/* XXX 0 */, addr);
-    if (fd < 0)
-        return fd;
-
-    while (1) {
-        fd_set readfds;
-        int ready;
-        pid_t pid;
-
-        FD_ZERO(&readfds);
-        FD_SET(fd, &readfds);
-
-        ready = select(fd + 1, &readfds, NULL, NULL, NULL);
-        if (ready == 0)
-            continue;
-        if (!FD_ISSET(fd, &readfds))
-            continue;
-
-        len = sizeof(remoteaddr);
-        clifd = accept(fd, &remoteaddr.sockaddr, &len);
-        if (clifd < 0) {
-            fprintf(stderr, "accept() error, errno = %d\n", errno);
-            continue;
-        }
-
-        if ((pid = fork()) < 0) {
-            fprintf(stderr, "fork() error, errno= %d\n", errno);
-            close(clifd);
-            continue;
-        } else if (pid > 0) {
-            /* parent */
-            /* FIXME  need? */
-            /*close(clifd);*/
-            continue;
-        }
-
-        /* child */
-        break;
-    }
-
-    /* FIXME close ? */
-    /*close(fd);*/
-
-    /* overwrite stdin & stdout */
-    dup2(clifd, STDIN_FILENO);
-    dup2(clifd, STDOUT_FILENO);
-    close(clifd);
-
-    /* no buffer */
-    setvbuf(stdin, NULL, _IONBF, 0);
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    return 0;
-}
-
-static int stream_listen(unsigned short portno)
-{
-    union sockaddr_u addr;
-    size_t ss_len;
-    int err;
-
-    ss_len = sizeof(addr);
-    err = resolve("0.0.0.0", portno, &addr.storage, &ss_len, AF_INET, 0);
-    if (err < 0)
-        return err;
-
-    return listen_fork_loop(&addr);
-}
-
-static int unixsock_listen(const char *unixsock)
-{
-    union sockaddr_u addr;
-    socklen_t len;
-    int err;
-
-    unlink(unixsock);
-
-    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
-        return -EINVAL;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.un.sun_family = AF_UNIX;
-    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
-
-    return listen_fork_loop(&addr);
-}
-
 static void usage(FILE *fp)
 {
     fprintf(fp,
@@ -117,11 +23,11 @@ static void usage(FILE *fp)
         "  raspd [options]\n"
         "\n"
         "options:\n"
-        "  -d, --daemon         run process as a daemon\n"
-        "  -s, --listen <port>  listen on port use TCP\n"
-        "  -u, --unix <sock>    specify the unix socket file\n"
-        "  -l, --logerr <file>  specify the error log file\n"
-        "  -h, --help           display this help screen\n"
+        "  -d, --daemon              run process as a daemon\n"
+        "  -l, --listen <port>       listen on port use TCP\n"
+        "  -u, --unix-listen <sock>  listen on the unix socket file\n"
+        "  -e, --logerr <file>       specify the error log file\n"
+        "  -h, --help                display this help screen\n"
         );
 
     _exit(fp != stderr ? EXIT_SUCCESS : EXIT_FAILURE);
@@ -138,27 +44,27 @@ static void usage(FILE *fp)
 int main(int argc, char *argv[])
 {
     static struct option options[] = {
-        { "daemon",  no_argument,       NULL, 'd' },
-        { "listen",  required_argument, NULL, 's' },
-        { "unix",    required_argument, NULL, 'u' },
-        { "logerr",  required_argument, NULL, 'l' },
-        { "help",    no_argument,       NULL, 'h' },
+        { "daemon",      no_argument,       NULL, 'd' },
+        { "listen",      required_argument, NULL, 'l' },
+        { "unix-listen", required_argument, NULL, 'u' },
+        { "logerr",      required_argument, NULL, 'e' },
+        { "help",        no_argument,       NULL, 'h' },
         { 0, 0, 0, 0 }
     };
     int c;
     int daemon = 0;
-    char *unixsock = NULL;
+    char *unixlisten = NULL;
     char *logerr = NULL;
     long listen_port = 0;
     char buffer[BUF_SIZE];
     int err;
 
-    while ((c = getopt_long(argc, argv, "ds:u:l:h", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "dl:u:e:h", options, NULL)) != -1) {
         switch (c) {
         case 'd': daemon = 1; break;
-        case 's': listen_port = strtol(optarg, NULL, 10); break;
-        case 'u': unixsock = optarg; break;
-        case 'l': logerr = optarg; break;
+        case 'l': listen_port = strtol(optarg, NULL, 10); break;
+        case 'u': unixlisten = optarg; break;
+        case 'e': logerr = optarg; break;
         case 'h': usage(stdout); break;
         default:
             usage(stderr);
@@ -184,14 +90,15 @@ int main(int argc, char *argv[])
     }
 
     err = 0;
-    if (listen_port > 0 && listen_port < 65535)
+    if (listen_port > 0 && listen_port < 65535) {
         err = stream_listen((unsigned short)listen_port);
-    else if (unixsock)
-        err = unixsock_listen(unixsock);
+    } else if (unixlisten) {
+        err = unixsock_listen(unixlisten);
+    }
 
     if (err < 0) {
-        fprintf(stderr, "listen error, unixsock = %s, port = %d, errno = %d\n",
-                    unixsock ? unixsock : "NULL", (int)listen_port, errno);
+        fprintf(stderr, "listen error, unixlisten = %s, port = %d, errno = %d\n",
+                    unixlisten ? unixlisten : "NULL", (int)listen_port, errno);
         return 1;
     }
 
