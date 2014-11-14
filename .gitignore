@@ -25,3 +25,4 @@ test/motor
 test/pwm
 test/l298n
 test/test_unix
+test/test_gpioint

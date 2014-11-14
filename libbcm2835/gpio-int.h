@@ -1,8 +1,6 @@
 #ifndef __GPIO_INT_H__
 #define __GPIO_INT_H__
 
-#include <sys/time.h>
-
 enum trigger_edge {
     edge_none,
     edge_rising,
@@ -11,7 +9,7 @@ enum trigger_edge {
 };
 
 int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
-                            struct timeval *timeout, int *valuep);
+                                        int timeout, int *valuep);
 
 int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
                 int (*callback)(int value, void *opaque), void *opaque);

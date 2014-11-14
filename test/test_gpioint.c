@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include <gpio-int.h>
+#include <bcm2835.h>
 
 static int gpio_interrupt(int value, void *opaque)
 {
@@ -25,14 +25,13 @@ int main(int argc, char *argv[])
     int c;
     char *edge = "both";
     int signal = 0;
-    int timeout = 0;    /* ms */
-    struct timeval tv;
+    int timeout = -1;    /* ms */
     enum trigger_edge te;
     unsigned int pin;
     int value;
     int err;
 
-    if (bcm2835_gpio_int_init() < 0)
+    if (bcm2835_init() < 0)
         return 1;
 
     while ((c = getopt_long(argc, argv, "e:st:", options, NULL)) != -1) {
@@ -56,11 +55,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (timeout) {
-        tv.tv_sec = timeout / 1000;
-        tv.tv_usec = (timeout % 1000) * 1000;
-    }
-
     if (optind >= argc) {
         fprintf(stderr, "must specify a pin\n");
         return 1;
@@ -76,10 +70,12 @@ int main(int argc, char *argv[])
         err = bcm2835_gpio_signal(pin, te, gpio_interrupt, (void *)pin);
         sleep(9999);
     } else {
-        err = bcm2835_gpio_poll(pin, te, timeout ? &tv : NULL, &value);
-        assert(err = 0);
+        err = bcm2835_gpio_poll(pin, te, timeout, &value);
+        assert(err >= 0);
         printf("value = %d\n", value);
     }
+
+    bcm2835_close();
 
     return 0;
 }

@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <sys/select.h>
+#include <poll.h>
 
 #include "bcm2835.h"
 #include "gpio-int.h"
@@ -53,15 +53,28 @@ static int gpio_sysfs_open(unsigned int gpio, const char *file)
 #define open_edge(x)        gpio_sysfs_open((x), "edge")
 #define open_value(x)       gpio_sysfs_open((x), "value")
 
-static gpio_int_export_unexport(unsigned int gpio, int unexport)
+static int gpio_int_export_unexport(unsigned int gpio, int unexport)
 {
     char buf[128];
     int len;
+    int err;
 
     if (fd_export < 0 || fd_export < 0)
         return -EPERM;
     if (gpio >= NR_GPIOS)
         return -ERANGE;
+
+    /* in case the gpio already exported or not */
+    len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "gpio%d/edge",
+                    GPIO2EXPORT(gpio));
+    if (len <= 0)
+        return -EINVAL;
+
+    err = access(buf, W_OK);
+    if (unexport && err < 0)
+        return EINVAL;
+    else if (!unexport && err == 0)
+        return EEXIST;
 
     len = snprintf(buf, sizeof(buf), "%d", GPIO2EXPORT(gpio));
     if (len <= 0)
@@ -98,13 +111,11 @@ static int gpio_int_set_edge(unsigned int gpio, enum trigger_edge edge)
 }
 
 int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
-                            struct timeval *timeout, int *valuep)
+                                        int timeout, int *valuep)
 {
-    fd_set master_fds;
+    struct pollfd pfd[1];
     int fd;
     int err;
-
-    FD_ZERO(&master_fds);
 
     do {
         if ((err = gpio_int_export(pin)) < 0)
@@ -115,20 +126,21 @@ int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
         err = -EIO;
         if ((fd = open_value(pin)) < 0)
             break;
-        FD_SET(fd, &master_fds);
+        pfd[0].fd = fd;
+        pfd[0].events = POLLPRI;
 
         while (1) {
-            fd_set fds;
             int ready;
 
             err = -EBADF;
-            fds = master_fds;
-            ready = select(fd + 1, NULL, NULL, &fds, timeout);
+            ready = poll(pfd, 1, timeout);
             if (ready < 0) {
                 if (errno == EINTR)
                     continue;
                 else
                     break;
+            } else if (ready > 0 && !(pfd[0].revents & POLLPRI)) {
+                continue;
             }
 
             if (ready && valuep) {
@@ -164,7 +176,7 @@ static void *signal_thread(void *arg)
     int err;
 
     ai = (struct async_int *)arg;
-    err = bcm2835_gpio_poll(ai->pin, edge_both, NULL, &value);
+    err = bcm2835_gpio_poll(ai->pin, edge_both, -1, &value);
     if (err < 0)
         return (void *)1;
 
