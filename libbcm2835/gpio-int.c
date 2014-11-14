@@ -113,8 +113,9 @@ static int gpio_int_set_edge(unsigned int gpio, enum trigger_edge edge)
 int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
                                         int timeout, int *valuep)
 {
-    struct pollfd pfd[1];
+    struct pollfd pfd;
     int fd;
+    char buf[8];
     int err;
 
     do {
@@ -126,25 +127,30 @@ int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
         err = -EIO;
         if ((fd = open_value(pin)) < 0)
             break;
-        pfd[0].fd = fd;
-        pfd[0].events = POLLPRI;
+
+        err = -EPERM;
+        if (read(fd, buf, sizeof(buf)) < 0)
+            break;
+        pfd.fd = fd;
+        pfd.events = POLLPRI;
 
         while (1) {
             int ready;
 
             err = -EBADF;
-            ready = poll(pfd, 1, timeout);
+            ready = poll(&pfd, 1, timeout);
             if (ready < 0) {
                 if (errno == EINTR)
                     continue;
                 else
                     break;
-            } else if (ready > 0 && !(pfd[0].revents & POLLPRI)) {
+            } else if (ready > 0 && !(pfd.revents & POLLPRI)) {
                 continue;
             }
 
             if (ready && valuep) {
-                char buf[2];
+                /* XXX: delay 100ms */
+                bcm2835_delay(100);
                 lseek(fd, 0, SEEK_SET);
                 if (read(fd, buf, sizeof(buf))) {
                     buf[1] = '\0';
