@@ -1,282 +1,217 @@
-/* Copyright (c) 2011, RidgeRun
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the RidgeRun.
- * 4. Neither the name of the RidgeRun nor the
- *    names of its contributors may be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY RIDGERUN ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL RIDGERUN BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <poll.h>
+#include <pthread.h>
+#include <sys/select.h>
 
- /****************************************************************
- * Constants
- ****************************************************************/
- 
-#define SYSFS_GPIO_DIR "/sys/class/gpio"
-#define POLL_TIMEOUT (3 * 1000) /* 3 seconds */
-#define MAX_BUF 64
+#include "gpio-int.h"
 
-#define GPIO_BASE   (256 - 54)  /* 202 */
+#define NR_GPIOS    54
+#define SYSFS_GPIO_DIR  "/sys/class/gpio/"
 
-/****************************************************************
- * gpio_export
- ****************************************************************/
-int gpio_export(unsigned int gpio)
+#define GPIO_BASE       (256 - 54)  /* 202 */
+#define GPIO2EXPORT(x)  ((x) + GPIO_BASE)
+
+static char *edge_str[4] = {
+    "none",
+    "rising",
+    "falling",
+    "both"
+};
+
+static int fd_export = -1;
+static int fd_unexport = -1;
+
+static int gpio_sysfs_open(unsigned int gpio, const char *file)
 {
-	int fd, len;
-	char buf[MAX_BUF];
- 
-	fd = open(SYSFS_GPIO_DIR "/export", O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/export");
-		return fd;
-	}
- 
-	len = snprintf(buf, sizeof(buf), "%d", gpio + GPIO_BASE);
-	write(fd, buf, len);
-	close(fd);
- 
-	return 0;
+    char buf[128];
+    int len;
+    int fd;
+
+    if (gpio >= NR_GPIOS)
+        return -ERANGE;
+
+    len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "gpio%d/%s",
+                            GPIO2EXPORT(gpio), file);
+    if (len <= 0)
+        return -EINVAL;
+
+    fd = open(buf, O_RDWR);
+    if (fd < 0) {
+        perror(buf);
+        return -EIO;
+    }
+    return fd;
 }
 
-/****************************************************************
- * gpio_unexport
- ****************************************************************/
-int gpio_unexport(unsigned int gpio)
+#define open_active_low(x)  gpio_sysfs_open((x), "active_low")
+#define open_direction(x)   gpio_sysfs_open((x), "direction")
+#define open_edge(x)        gpio_sysfs_open((x), "edge")
+#define open_value(x)       gpio_sysfs_open((x), "value")
+
+static gpio_int_export_unexport(unsigned int gpio, int unexport)
 {
-	int fd, len;
-	char buf[MAX_BUF];
- 
-	fd = open(SYSFS_GPIO_DIR "/unexport", O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/export");
-		return fd;
-	}
- 
-	len = snprintf(buf, sizeof(buf), "%d", gpio + GPIO_BASE);
-	write(fd, buf, len);
-	close(fd);
-	return 0;
+    char buf[128];
+    int len;
+
+    if (fd_export < 0 || fd_export < 0)
+        return -EPERM;
+    if (gpio >= NR_GPIOS)
+        return -ERANGE;
+
+    len = snprintf(buf, sizeof(buf), "%d", GPIO2EXPORT(gpio));
+    if (len <= 0)
+        return -EINVAL;
+
+    if (write(unexport ? fd_unexport : fd_export, buf, len) < 0) {
+        perror("write (un)export");
+        return err;
+    }
+    return 0;
 }
 
-/****************************************************************
- * gpio_set_dir
- ****************************************************************/
-int gpio_set_dir(unsigned int gpio, unsigned int out_flag)
+#define gpio_int_export(x)    gpio_int_export_unexport((x), 0)
+#define gpio_int_unexport(x)  gpio_int_export_unexport((x), 1)
+
+static int gpio_int_set_edge(unsigned int gpio, enum trigger_edge edge)
 {
-	int fd, len;
-	char buf[MAX_BUF];
- 
-	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR  "/gpio%d/direction", gpio + GPIO_BASE);
- 
-	fd = open(buf, O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/direction");
-		return fd;
-	}
- 
-	if (out_flag)
-		write(fd, "out", 4);
-	else
-		write(fd, "in", 3);
- 
-	close(fd);
-	return 0;
+    int fd;
+    int err;
+
+    fd = open_edge(gpio);
+    if (fd < 0) {
+        perror("open_edge");
+        return fd;
+    }
+
+    err = write(fd, edge_str[edge], strlen(edge_str[edge]));
+    close(fd);
+    if (err < 0) {
+        perror("write edge");
+        return -1;
+    }
+    return 0;
 }
 
-/****************************************************************
- * gpio_set_value
- ****************************************************************/
-int gpio_set_value(unsigned int gpio, unsigned int value)
+int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
+                            struct timeval *timeout, int *valuep)
 {
-	int fd, len;
-	char buf[MAX_BUF];
- 
-	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio + GPIO_BASE);
- 
-	fd = open(buf, O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/set-value");
-		return fd;
-	}
- 
-	if (value)
-		write(fd, "1", 2);
-	else
-		write(fd, "0", 2);
- 
-	close(fd);
-	return 0;
+    fd_set master_fds;
+    int fd;
+    int err;
+
+    FD_ZERO(&master_fds);
+
+    do {
+        if ((err = gpio_int_export(pin)) < 0)
+            break;
+        bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
+        if ((err = gpio_int_set_edge(pin, edge)) < 0)
+            break;
+        err = -EIO;
+        if ((fd = open_value(gpio)) < 0)
+            break;
+        FD_SET(fd, &master_fds);
+
+        while (1) {
+            fd_set fds;
+            int ready;
+
+            err = -EBADF;
+            fds = master_fds;
+            ready = select(fd + 1, NULL, NULL, &fds, timeout);
+            if (ready < 0) {
+                if (errno == EINTR)
+                    continue;
+                else
+                    break;
+            }
+
+            if (ready && valuep) {
+                char buf[2];
+                lseek(fd, 0, SEEK_SET);
+                if (read(fd, buf, sizeof(buf))) {
+                    buf[1] = '\0';
+                    *valuep = atoi(buf);
+                }
+            }
+
+            close(fd);
+
+            err = ready;
+            break;
+        }
+    } while (0);
+
+    return err;
 }
 
-/****************************************************************
- * gpio_get_value
- ****************************************************************/
-int gpio_get_value(unsigned int gpio, unsigned int *value)
+struct async_int {
+    unsigned int pin;
+    enum trigger_edge edge;
+    int (*callback)(int value, void *opaque);
+    void *opaque;
+};
+
+static void *signal_thread(void *arg)
 {
-	int fd, len;
-	char buf[MAX_BUF];
-	char ch;
+    struct async_int *ai;
+    int value = 0;
 
-	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio + GPIO_BASE);
- 
-	fd = open(buf, O_RDONLY);
-	if (fd < 0) {
-		perror("gpio/get-value");
-		return fd;
-	}
- 
-	read(fd, &ch, 1);
+    ai = (struct async_int *)arg;
+    err = bcm2835_gpio_poll(ai->pin, edge_both, NULL &value);
+    if (err < 0)
+        return 1;
 
-	if (ch != '0') {
-		*value = 1;
-	} else {
-		*value = 0;
-	}
- 
-	close(fd);
-	return 0;
+    ai->callback(value, ai->opaque);
+    free(ai);
+    return 0;
 }
 
-
-/****************************************************************
- * gpio_set_edge
- ****************************************************************/
-
-int gpio_set_edge(unsigned int gpio, char *edge)
+int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
+                int (*callback)(int value, void *opaque), void *opaque)
 {
-	int fd, len;
-	char buf[MAX_BUF];
+    pthread_t tid;
+    struct async_int *ai;
+    int err;
 
-	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/edge", gpio + GPIO_BASE);
- 
-	fd = open(buf, O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/set-edge");
-		return fd;
-	}
- 
-	write(fd, edge, strlen(edge) + 1); 
-	close(fd);
-	return 0;
+    ai = malloc(sizeof(*ai));
+    if (ai == NULL)
+        return -ENOMEM;
+
+    memset(ai, 0, sizeof(*ai));
+    ai->pin = pin;
+    ai->edge = edge;
+    ai->callback = callback;
+    ai->opaque = opaque;
+
+    err = pthread_create(&tid, NULL, signal_thread, ai);
+    if (err != 0) {
+        free(ai);
+        return -ECHILD;
+    }
+
+    return 0;
 }
 
-/****************************************************************
- * gpio_fd_open
- ****************************************************************/
-
-int gpio_fd_open(unsigned int gpio)
+int bcm2835_gpio_int_init(void)
 {
-	int fd, len;
-	char buf[MAX_BUF];
-
-	len = snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio + GPIO_BASE);
- 
-	fd = open(buf, O_RDONLY | O_NONBLOCK );
-	if (fd < 0) {
-		perror("gpio/fd_open");
-	}
-	return fd;
+    fd_export = open(SYSFS_GPIO_DIR "export", O_WRONLY);
+    fd_unexport = open(SYSFS_GPIO_DIR "unexport", O_WRONLY);
+    if (fd_export < 0 || fd_unexport < 0) {
+        bcm2835_gpio_int_exit();
+        perror("open export");
+        return 0;
+    }
 }
 
-/****************************************************************
- * gpio_fd_close
- ****************************************************************/
-
-int gpio_fd_close(int fd)
+void bcm2835_gpio_int_exit(void)
 {
-	return close(fd);
-}
-
-/****************************************************************
- * Main
- ****************************************************************/
-int main(int argc, char **argv, char **envp)
-{
-	struct pollfd fdset[2];
-	int nfds = 2;
-	int gpio_fd, timeout, rc;
-	char *buf[MAX_BUF];
-	unsigned int gpio;
-	int len;
-
-
-
-	if (argc < 2) {
-		printf("Usage: gpio-int <gpio-pin>\n\n");
-		printf("Waits for a change in the GPIO pin voltage level or input on stdin\n");
-		exit(-1);
-	}
-
-	gpio = atoi(argv[1]);
-
-	gpio_export(gpio);
-	gpio_set_dir(gpio, 0);
-	gpio_set_edge(gpio, "rising");
-	gpio_fd = gpio_fd_open(gpio);
-
-	timeout = POLL_TIMEOUT;
- 
-	while (1) {
-		memset((void*)fdset, 0, sizeof(fdset));
-
-		fdset[0].fd = STDIN_FILENO;
-		fdset[0].events = POLLIN;
-      
-		fdset[1].fd = gpio_fd;
-		fdset[1].events = POLLPRI;
-
-		rc = poll(fdset, nfds, timeout);      
-
-		if (rc < 0) {
-			printf("\npoll() failed!\n");
-			return -1;
-		}
-      
-		if (rc == 0) {
-			printf(".");
-		}
-            
-		if (fdset[1].revents & POLLPRI) {
-			len = read(fdset[1].fd, buf, MAX_BUF);
-			printf("\npoll() GPIO %d interrupt occurred\n", gpio);
-		}
-
-		if (fdset[0].revents & POLLIN) {
-			(void)read(fdset[0].fd, buf, 1);
-			printf("\npoll() stdin read 0x%2.2X\n", (unsigned int) buf[0]);
-		}
-
-		fflush(stdout);
-	}
-
-	gpio_fd_close(gpio_fd);
-	return 0;
+    if (fd_export)
+        close(fd_export);
+    if (fd_unexport)
+        close(fd_unexport);
 }
