@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -8,12 +10,6 @@
 
 #include "sock.h"
 
-
-#ifndef SUN_LEN
-/* Evaluate to actual length of the `sockaddr_un' structure.  */
-# define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)	      \
-		      + strlen ((ptr)->sun_path))
-#endif
 
 int resolve(const char *hostname, unsigned short port,
         struct sockaddr_storage *ss, size_t *sslen, int af, int addl_flags)
@@ -118,7 +114,134 @@ int do_connect(int type, const union sockaddr_u *dstaddr)
             return sock;
         else if (errno == EINPROGRESS || errno == EAGAIN)
             return sock;
+        else
+            fprintf(stderr, "connect() errno = %d\n", errno);
     }
 
     return -1;
+}
+
+static int listen_fork_loop(union sockaddr_u *addr)
+{
+    union sockaddr_u remoteaddr;
+    socklen_t len;
+    int fd, clifd;
+    int err;
+
+    fd = do_listen(SOCK_STREAM, IPPROTO_TCP/* XXX 0 */, addr);
+    if (fd < 0)
+        return fd;
+
+    while (1) {
+        fd_set readfds;
+        int ready;
+        pid_t pid;
+
+        FD_ZERO(&readfds);
+        FD_SET(fd, &readfds);
+
+        ready = select(fd + 1, &readfds, NULL, NULL, NULL);
+        if (ready == 0)
+            continue;
+        if (!FD_ISSET(fd, &readfds))
+            continue;
+
+        len = sizeof(remoteaddr);
+        clifd = accept(fd, &remoteaddr.sockaddr, &len);
+        if (clifd < 0) {
+            fprintf(stderr, "accept() error, errno = %d\n", errno);
+            continue;
+        }
+
+        if ((pid = fork()) < 0) {
+            fprintf(stderr, "fork() error, errno= %d\n", errno);
+            close(clifd);
+            continue;
+        } else if (pid > 0) {
+            /* parent */
+            /* FIXME  need? */
+            /*close(clifd);*/
+            continue;
+        }
+
+        /* child */
+        break;
+    }
+
+    /* FIXME close ? */
+    /*close(fd);*/
+
+    /* overwrite stdin & stdout */
+    dup2(clifd, STDIN_FILENO);
+    dup2(clifd, STDOUT_FILENO);
+    close(clifd);
+
+    /* no buffer */
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    return 0;
+}
+
+int stream_listen(unsigned short portno)
+{
+    union sockaddr_u addr;
+    size_t ss_len;
+    int err;
+
+    ss_len = sizeof(addr);
+    err = resolve("0.0.0.0", portno, &addr.storage, &ss_len, AF_INET, 0);
+    if (err < 0)
+        return err;
+
+    return listen_fork_loop(&addr);
+}
+
+int unixsock_listen(const char *unixsock)
+{
+    union sockaddr_u addr;
+    socklen_t len;
+    int err;
+
+    unlink(unixsock);
+
+    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
+        return -EINVAL;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.un.sun_family = AF_UNIX;
+    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
+
+    return listen_fork_loop(&addr);
+}
+
+int unixsock_connect(const char *unixsock)
+{
+    union sockaddr_u addr;
+    socklen_t len;
+    int fd;
+
+    if (strlen(unixsock) >= sizeof(addr.un.sun_path))
+        return -EINVAL;
+
+    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        return -EFAULT;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.un.sun_family = AF_UNIX;
+    strncpy(addr.un.sun_path, unixsock, sizeof(addr.un.sun_path));
+    len = SUN_LEN(&addr.un);
+    if (connect(fd, &addr.sockaddr, len) < 0) {
+        fprintf(stderr, "connect(), errno = %d\n", errno);
+        return -EPERM;
+    }
+
+    dup2(fd, STDIN_FILENO);
+    dup2(fd, STDOUT_FILENO);
+    close(fd);
+
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    return 0;
 }

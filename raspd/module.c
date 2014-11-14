@@ -36,7 +36,9 @@ int module_execv(int argc, char *argv[])
     if ((m = find_module(argv[0])) == NULL)
         return -ENOENT;
 
-    optind = 0; /* FIXME  needed? */
+    /* FIXME  needed? */
+    optind = 1;
+
     return m->main(argc, argv);
 }
 

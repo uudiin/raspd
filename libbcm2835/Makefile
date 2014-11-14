@@ -2,11 +2,13 @@
 
 include ../rules.mak
 
+CFLAGS += -Wno-pointer-to-int-cast
+
 LIBS = libbcm2835.a
 
 SRCS_lib = bcm2835.c
 
-OBJS_lib = $(SRCS_lib:%.c=%.o)
+OBJS_lib = $(SRCS_lib:.c=.o)
 
 .PHONY: all clean
 
@@ -15,4 +17,4 @@ all: $(LIBS)
 $(LIBS): $(OBJS_lib)
 
 clean:
-	rm -f $(OBJS_lib) $(SRCS_lib:%.c=%.d) $(LIBS)
+	rm -f $(OBJS_lib) $(SRCS_lib:.c=.d) $(LIBS)

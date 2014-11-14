@@ -5,6 +5,12 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#ifndef SUN_LEN
+/* Evaluate to actual length of the `sockaddr_un' structure.  */
+# define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)	      \
+		      + strlen ((ptr)->sun_path))
+#endif
+
 union sockaddr_u {
     struct sockaddr_storage storage;
     struct sockaddr_un un;
@@ -20,5 +26,8 @@ int unblock_socket(int sd);
 int block_socket(int sd);
 int do_listen(int type, int proto, const union sockaddr_u *srcaddr);
 int do_connect(int type, const union sockaddr_u *dstaddr);
+int stream_listen(unsigned short portno);
+int unixsock_listen(const char *unixsock);
+int unixsock_connect(const char *unixsock);
 
 #endif /* __SOCK_H__ */
