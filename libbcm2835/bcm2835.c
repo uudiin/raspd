@@ -1219,6 +1219,10 @@ int bcm2835_init(void)
     bcm2835_st = (volatile uint32_t *)mapmem("st", BCM2835_BLOCK_SIZE, memfd, BCM2835_ST_BASE);
     if (bcm2835_st == MAP_FAILED) goto exit;
 
+    /* initialize gpio-int */
+    if (bcm2835_gpio_int_init() < 0)
+        goto exit;
+
     ok = 1;
 
 exit:
@@ -1235,6 +1239,7 @@ exit:
 int bcm2835_close(void)
 {
     if (debug) return 1; // Success
+    bcm2835_gpio_int_exit();
     unmapmem((void**) &bcm2835_gpio, BCM2835_BLOCK_SIZE);
     unmapmem((void**) &bcm2835_pwm,  BCM2835_BLOCK_SIZE);
     unmapmem((void**) &bcm2835_clk,  BCM2835_BLOCK_SIZE);

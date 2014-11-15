@@ -33,6 +33,7 @@ tags
 BuildConfig.java
 R.java
 
+client/test
 catnet/catnet
 raspd/raspd
 test/blink_act
@@ -42,4 +43,4 @@ test/pwm
 test/l298n
 test/test-raspd
 test/test_unix
-client/test
+test/test_gpioint

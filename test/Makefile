@@ -3,10 +3,10 @@
 include ../rules.mak
 
 CFLAGS += -I ../lib -I ../libbcm2835
-LIBS =
+LIBS = -lpthread
 
 
-PROGS = blink_act motor breath_led pwm l298n test_unix
+PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
