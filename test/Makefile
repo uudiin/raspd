@@ -6,7 +6,7 @@ CFLAGS += -I ../lib -I ../libbcm2835
 LIBS = -lpthread
 
 
-PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint
+PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint hcsr04
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
