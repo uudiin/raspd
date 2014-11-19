@@ -45,3 +45,4 @@ test/test-raspd
 test/test_unix
 test/test_gpioint
 test/hcsr04
+test/rf24_test

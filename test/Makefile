@@ -2,15 +2,15 @@
 
 include ../rules.mak
 
-CFLAGS += -I ../lib -I ../libbcm2835
+CFLAGS += -I ../lib -I ../libbcm2835 -I ../librf24
 LIBS = -lpthread
 
 
-PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint hcsr04
+PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint hcsr04 rf24_test
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a))
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../librf24/librf24.a ../libbcm2835/libbcm2835.a))
 
 .PHONY: all clean
 
