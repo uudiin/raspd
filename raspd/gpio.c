@@ -18,25 +18,23 @@ struct gpio_info {
 static struct gpio_info gpios[NR_BCM2835_GPIO];
 
 /*
- * --pin 5,28 --alt [o|i|0|1|2|3|4|5] --pull [0|1]
+ * usage:
+ *   gpio --alt [o|i|0|1|2|3|4|5] --pull [0|1] 18 25
  */
 static int gpio_main(int argc, char *argv[])
 {
     static struct option options[] = {
-        { "pin",  required_argument, NULL, 'p' },
         { "alt",  required_argument, NULL, 'a' },
         { "pull", required_argument, NULL, 'u' },
         { 0, 0, 0, 0 }
     };
     int c;
-    char *pins = NULL;
     char *fsel = NULL;
     int level = -1;
     char *token, *saveptr;
 
-    while ((c = getopt_long(argc, argv, "p:a:u:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "a:u:", options, NULL)) != -1) {
         switch (c) {
-        case 'p': pins = optarg; break;
         case 'a': fsel = optarg; break;
         case 'u': level = atoi(optarg); break;
         default:
@@ -44,11 +42,11 @@ static int gpio_main(int argc, char *argv[])
         }
     }
 
-    if (pins == NULL)
+    if (optind >= argc)
         return 1;
 
-    for ( ; token = strtok_r(pins, ",", &saveptr); pins = NULL) {
-        int pin = atoi(token);
+    for ( ; optind < argc; optind++) {
+        int pin = atoi(argv[optind]);
 
         if (pin < 0 || pin > NR_BCM2835_GPIO)
             continue;
