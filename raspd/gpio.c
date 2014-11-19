@@ -17,6 +17,26 @@ struct gpio_info {
 
 static struct gpio_info gpios[NR_BCM2835_GPIO];
 
+struct blink {
+    int count;
+    int counted;
+    int interval;
+    struct event *ev;
+    int nr;
+    int gpio[NR_BCM2835_GPIO];
+};
+
+static cb_blink(int fd, short what, void *arg)
+{
+    struct blink *bl = arg;
+
+    if (bl->counted++ >= bl->count) {
+        event_del(bl->ev);
+        free(bl);
+        return;
+    }
+}
+
 /*
  * usage:
  *   gpio --alt [o|i|0|1|2|3|4|5] --pull [0|1] 18 25
@@ -24,19 +44,25 @@ static struct gpio_info gpios[NR_BCM2835_GPIO];
 static int gpio_main(int argc, char *argv[])
 {
     static struct option options[] = {
-        { "alt",  required_argument, NULL, 'a' },
-        { "pull", required_argument, NULL, 'u' },
+        { "alt",      required_argument, NULL, 'a' },
+        { "pull",     required_argument, NULL, 'u' },
+        { "count",    required_argument, NULL, 'n' },
+        { "interval", required_argument, NULL, 't' },
         { 0, 0, 0, 0 }
     };
     int c;
     char *fsel = NULL;
     int level = -1;
-    char *token, *saveptr;
+    int count = -1;
+    int interval = -1;  /* millisecond */
+    int i;
 
-    while ((c = getopt_long(argc, argv, "a:u:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "a:u:n:t:", options, NULL)) != -1) {
         switch (c) {
         case 'a': fsel = optarg; break;
         case 'u': level = atoi(optarg); break;
+        case 'n': count = atoi(optarg); break;
+        case 't': interval = atoi(optarg); break;
         default:
             return 1;
         }
@@ -45,8 +71,8 @@ static int gpio_main(int argc, char *argv[])
     if (optind >= argc)
         return 1;
 
-    for ( ; optind < argc; optind++) {
-        int pin = atoi(argv[optind]);
+    for (i = optind; i < argc; i++) {
+        int pin = atoi(argv[i]);
 
         if (pin < 0 || pin > NR_BCM2835_GPIO)
             continue;
@@ -72,6 +98,44 @@ static int gpio_main(int argc, char *argv[])
                 bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
             }
             bcm2835_gpio_write(pin, level);
+        }
+    }
+
+    if (count != -1 && interval != -1) {
+        struct blink *bl;
+        struct timeval timeout;
+        struct event *ev;
+        int err = -EFAULT;
+
+        do {
+            bl = xmalloc(sizeof(*bl));
+            memset(bl, 0, sizeof(*bl));
+            bl->count = count;
+            bl->interval = interval;
+            i = 0;
+            for ( ; optind < argc; i++)
+                bl->gpio[i] = atoi(argv[optind]);
+            bl->nr = i;
+            timeout.tv_sec = interval / 1000;
+            timeout.tv_usec = (interval % 1000) * 1000000;
+
+            err = -EIO;
+            /*if ((ev = evtimer_new(base, do_blink, bl)) == NULL)*/
+            if ((ev = event_new(base, -1, EV_PERSIST, cb_blink, bl)) == NULL)
+                break;
+
+            err = -EPERM;
+            if (evtimer_add(ev, &timeout) < 0)
+                break;
+
+            err = 0;
+        } while (0);
+
+        if (err != 0) {
+            if (ev)
+                event_free(ev);
+            if (bl)
+                free(bl);
         }
     }
 
