@@ -6,8 +6,10 @@
 #include <bcm2835.h>
 
 #include "module.h"
+#include "event.h"
 
 #define NR_BCM2835_GPIO     54
+#define INVALID_PIN(x)      ((x) < 0 || (x) >= NR_BCM2835_GPIO)
 
 struct gpio_info {
     uint8_t alt_fun;
@@ -21,19 +23,28 @@ struct blink {
     int count;
     int counted;
     int interval;
-    struct event *ev;
+    struct event *timer;
     int nr;
     int gpio[NR_BCM2835_GPIO];
 };
 
-static cb_blink(int fd, short what, void *arg)
+static cb_timer(int fd, short what, void *arg)
 {
     struct blink *bl = arg;
 
     if (bl->counted++ >= bl->count) {
-        event_del(bl->ev);
+        eventfd_del(bl->timer);
         free(bl);
         return;
+    }
+
+    for (i = 0; i < bl->nr; i++) {
+        int pin = bl->gpio[i];
+
+        if (INVALID_PIN(pin))
+            continue;
+        gpios[pin].level ^= 1;
+        bcm2835_gpio_write(pin, gpios[bin].level);
     }
 }
 
@@ -97,6 +108,7 @@ static int gpio_main(int argc, char *argv[])
                 gpios[pin].initialized = 1;
                 bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
             }
+            gpios[pin].level = level;
             bcm2835_gpio_write(pin, level);
         }
     }
@@ -104,7 +116,6 @@ static int gpio_main(int argc, char *argv[])
     if (count != -1 && interval != -1) {
         struct blink *bl;
         struct timeval timeout;
-        struct event *ev;
         int err = -EFAULT;
 
         do {
@@ -112,30 +123,24 @@ static int gpio_main(int argc, char *argv[])
             memset(bl, 0, sizeof(*bl));
             bl->count = count;
             bl->interval = interval;
-            i = 0;
-            for ( ; optind < argc; i++)
+            for (i = 0; optind < argc && i < NR_BCM2835_GPIO; optind++, i++)
                 bl->gpio[i] = atoi(argv[optind]);
             bl->nr = i;
             timeout.tv_sec = interval / 1000;
             timeout.tv_usec = (interval % 1000) * 1000000;
 
             err = -EIO;
-            /*if ((ev = evtimer_new(base, do_blink, bl)) == NULL)*/
-            if ((ev = event_new(base, -1, EV_PERSIST, cb_blink, bl)) == NULL)
-                break;
-
-            err = -EPERM;
-            if (evtimer_add(ev, &timeout) < 0)
+            if (register_timer(EV_PERSIST, &timeout, cb_timer, bl, &bl->timer) < 0)
                 break;
 
             err = 0;
         } while (0);
 
         if (err != 0) {
-            if (ev)
-                event_free(ev);
             if (bl)
                 free(bl);
+
+            return 1;
         }
     }
 

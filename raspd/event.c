@@ -4,10 +4,12 @@
 
 #include <event2/event.h>
 
+#include "event.h"
+
 static struct event_base *base;
 
-static int eventfd_add(int fd, short flags, struct timeval *timeout,
-                event_callback_fn cb, void *opaque, struct event **eventp)
+int eventfd_add(int fd, short flags, struct timeval *timeout,
+        event_callback_fn cb, void *opaque, struct event **eventp)
 {
     struct event *ev;
 
@@ -26,7 +28,7 @@ static int eventfd_add(int fd, short flags, struct timeval *timeout,
     return 0;
 }
 
-static void eventfd_del(struct event *ev)
+void eventfd_del(struct event *ev)
 {
     if (ev) {
         event_del(ev);
@@ -34,14 +36,21 @@ static void eventfd_del(struct event *ev)
     }
 }
 
-static int __register_timer(struct timeval *timeout,
-                int once, event_callback_fn cb, void *opaque)
+int register_timer(short flags, struct timeval *timeout,
+        event_callback_fn cb, void *opaque, struct event **eventp)
 {
-    //
+    return eventfd_add(-1, flags, timeout, cb, opaque, eventp);
 }
 
-int event_loop(event_base *base)
+int register_signal(int signum, event_callback_fn cb, void *opaque)
 {
+    return eventfd_add(signum, EV_SIGNAL | EV_PERSIST,
+                                NULL, cb, opaque, NULL);
+}
+
+int do_event_loop(void)
+{
+    return event_base_dispatch(base);
 }
 
 int event_init(void)
