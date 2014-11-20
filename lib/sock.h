@@ -30,4 +30,7 @@ int stream_listen(unsigned short portno);
 int unixsock_listen(const char *unixsock);
 int unixsock_connect(const char *unixsock);
 
+#define unblock_fd(x)   unblock_socket(x)
+#define block_fd(x)     block_socket(x)
+
 #endif /* __SOCK_H__ */

@@ -8,10 +8,11 @@
 #include <sys/socket.h>
 #include <event2/event.h>
 
-#include <bcm2835.h>
-
+#include <xmalloc.h>
 #include <unix.h>
 #include <sock.h>
+
+#include <bcm2835.h>
 
 #include "module.h"
 #include "event.h"
@@ -89,7 +90,7 @@ static void cb_listen(int fd, short what, void *arg)
         return;
     }
 
-    info = (struct client_info *)xmalloc(sizeof(*info));
+    info = xmalloc(sizeof(*info));
     info->fd = fd_cli;
 
     err = eventfd_add(fd_cli, EV_READ | EV_PERSIST,
@@ -248,6 +249,9 @@ int main(int argc, char *argv[])
 
     /* main loop */
     do_event_loop();
+
+    if (fd != -1)
+        close(fd);
 
     bcm2835_close();
     event_exit();

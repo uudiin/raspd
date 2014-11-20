@@ -6,12 +6,13 @@
 #include <getopt.h>
 
 #include <bcm2835.h>
+#include "../raspd/gpiolib.h"
 
-static int gpio_interrupt(int value, void *opaque)
+static int gpio_interrupt(int nr, int value, void *opaque)
 {
     unsigned int pin = (unsigned int)opaque;
-    printf("pin = %d, value = %d\n", pin, value);
-    _exit(0);
+    printf("pin = %d, value = %d, nr = %d\n", pin, value, nr);
+    return 0;
 }
 
 int main(int argc, char *argv[])

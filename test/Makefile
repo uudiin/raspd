@@ -2,13 +2,17 @@
 
 include ../rules.mak
 
+CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
 CFLAGS += -I ../lib -I ../libbcm2835
-LIBS = -lpthread
+LIBS = -lpthread -levent
 
 
 PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
+
+SRCS_test_gpioint += ../raspd/event.c ../raspd/gpiolib.c ../lib/xmalloc.c
+
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a))
 

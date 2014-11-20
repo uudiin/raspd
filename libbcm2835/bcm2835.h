@@ -1294,8 +1294,6 @@ extern "C" {
 
     /// @} 
 
-#include "gpio-int.h"
-
 #ifdef __cplusplus
 }
 #endif

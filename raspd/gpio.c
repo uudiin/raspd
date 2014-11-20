@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <getopt.h>
 
+#include <xmalloc.h>
 #include <bcm2835.h>
 
 #include "module.h"
@@ -121,7 +122,7 @@ static int gpio_main(int argc, char *argv[])
         int err = -EFAULT;
 
         do {
-            bl = (struct blink *)xmalloc(sizeof(*bl));
+            bl = xmalloc(sizeof(*bl));
             memset(bl, 0, sizeof(*bl));
             bl->count = count;
             bl->interval = interval;

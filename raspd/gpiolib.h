@@ -8,13 +8,10 @@ enum trigger_edge {
     edge_both
 };
 
-int bcm2835_gpio_poll(unsigned int pin, enum trigger_edge edge,
-                                        int timeout, int *valuep);
+int bcm2835_gpio_poll(unsigned int pin,
+        enum trigger_edge edge, int timeout, int *valuep);
 
 int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
-                int (*callback)(int value, void *opaque), void *opaque);
-
-int bcm2835_gpio_int_init(void);
-void bcm2835_gpio_int_exit(void);
+        int (*callback)(int nr, int value, void *opaque), void *opaque);
 
 #endif /* __GPIO_INT_H__ */

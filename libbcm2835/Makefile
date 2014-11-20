@@ -6,7 +6,7 @@ CFLAGS += -Wno-pointer-to-int-cast
 
 LIBS = libbcm2835.a
 
-SRCS_lib = bcm2835.c gpio-int.c
+SRCS_lib = bcm2835.c
 
 OBJS_lib = $(SRCS_lib:.c=.o)
 

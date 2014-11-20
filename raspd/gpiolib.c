@@ -7,7 +7,9 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <poll.h>
+#include <event2/event.h>
 
+#include <xmalloc.h>
 #include <bcm2835.h>
 
 #include "module.h"
@@ -173,48 +175,6 @@ struct async_int {
     struct event *ev;
 };
 
-static void *signal_thread(void *arg)
-{
-    struct async_int *ai;
-    int value = 0;
-    int err;
-
-    ai = (struct async_int *)arg;
-    err = bcm2835_gpio_poll(ai->pin, edge_both, -1, &value);
-    if (err < 0)
-        return (void *)1;
-
-    ai->callback(value, ai->opaque);
-    free(ai);
-    return NULL;
-}
-
-int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
-                int (*callback)(int value, void *opaque), void *opaque)
-{
-    pthread_t tid;
-    struct async_int *ai;
-    int err;
-
-    ai = malloc(sizeof(*ai));
-    if (ai == NULL)
-        return -ENOMEM;
-
-    memset(ai, 0, sizeof(*ai));
-    ai->pin = pin;
-    ai->edge = edge;
-    ai->callback = callback;
-    ai->opaque = opaque;
-
-    err = pthread_create(&tid, NULL, signal_thread, ai);
-    if (err != 0) {
-        free(ai);
-        return -ECHILD;
-    }
-
-    return 0;
-}
-
 static void cb_gpiolib_cb(int fd, short what, void *arg)
 {
     struct async_int *ai = arg;
@@ -226,17 +186,17 @@ static void cb_gpiolib_cb(int fd, short what, void *arg)
     ai->nr++;
     if (err < 0) {
         eventfd_del(ai->ev);
+        close(fd);
         free(ai);
     }
 }
 
 int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
-            int (*callback)(int nr, int value, void *opaque), void *opaque)
+        int (*callback)(int nr, int value, void *opaque), void *opaque)
 {
-    struct pollfd pfd;
-    int fd;
     char buf[8];
     struct async_int *ai;
+    int fd;
     int err;
 
     do {
@@ -249,7 +209,9 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
         if ((fd = open_value(pin)) < 0)
             break;
 
+        /* FIXME  unblock it ? */
         /*
+         * FIXME  need ?
         err = -EPERM;
         if (read(fd, buf, sizeof(buf)) < 0)
             break;
@@ -285,8 +247,8 @@ static __init void gpiolib_init(void)
 
 static __exit void gpiolib_exit(void)
 {
-    if (fd_export)
+    if (fd_export != -1)
         close(fd_export);
-    if (fd_unexport)
+    if (fd_unexport != -1)
         close(fd_unexport);
 }
