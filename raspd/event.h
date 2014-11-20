@@ -4,6 +4,8 @@
 #include <sys/time.h>
 #include <event2/event.h>
 
+#define PRIORITY_MAXIMUM    10
+
 int eventfd_add(int fd, short flags, struct timeval *timeout,
         event_callback_fn cb, void *opaque, struct event **eventp);
 

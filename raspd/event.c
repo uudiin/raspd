@@ -59,6 +59,7 @@ int event_init(void)
     if (base == NULL)
         return -ENOMEM;
 
+    event_base_priority_init(base, PRIORITY_MAXIMUM);
     return 0;
 }
 
