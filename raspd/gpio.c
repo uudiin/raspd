@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
@@ -28,9 +29,10 @@ struct blink {
     int gpio[NR_BCM2835_GPIO];
 };
 
-static cb_timer(int fd, short what, void *arg)
+static void cb_timer(int fd, short what, void *arg)
 {
     struct blink *bl = arg;
+    int i;
 
     if (bl->counted++ >= bl->count) {
         eventfd_del(bl->timer);
@@ -44,7 +46,7 @@ static cb_timer(int fd, short what, void *arg)
         if (INVALID_PIN(pin))
             continue;
         gpios[pin].level ^= 1;
-        bcm2835_gpio_write(pin, gpios[bin].level);
+        bcm2835_gpio_write(pin, gpios[pin].level);
     }
 }
 
@@ -119,7 +121,7 @@ static int gpio_main(int argc, char *argv[])
         int err = -EFAULT;
 
         do {
-            bl = xmalloc(sizeof(*bl));
+            bl = (struct blink *)xmalloc(sizeof(*bl));
             memset(bl, 0, sizeof(*bl));
             bl->count = count;
             bl->interval = interval;

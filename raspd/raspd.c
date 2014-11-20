@@ -18,41 +18,62 @@
 
 #define BUF_SIZE    1024
 
+struct client_info {
+    int fd;
+    struct event *ev;
+};
 
 static int read_cmdexec(int fd)
 {
     char buffer[BUF_SIZE];
-    int err;
+    int size;
 
-    err = read(fd, buffer, sizeof(buffer));
-    if (err > 0) {
+    size = read(fd, buffer, sizeof(buffer));
+    if (size > 0) {
         char *str, *cmdexec, *saveptr;
 
-        for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
+        if (size == sizeof(buffer))
+            buffer[BUF_SIZE - 1] = '\0';
+        else
+            buffer[size] = '\0';
 
-            err = module_cmdexec(cmdexec);
+        for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
+            int retval;
+
+            retval = module_cmdexec(cmdexec);
             /* must reply */
-            if (err == 0)
+            if (retval == 0)
                 fprintf(stdout, "OK\n");
             else
-                fprintf(stdout, "ERR %d\n", err);
+                fprintf(stdout, "ERR %d\n", retval);
         }
     }
-    return err;
+    return size;
 }
 
 static void cb_read(int fd, short what, void *arg)
 {
-    struct event *ev = arg;
+    struct event *ev = *(void **)arg;
 
     if (read_cmdexec(fd) < 0)
         eventfd_del(ev);
+}
+
+static void cb_recv(int fd, short what, void *arg)
+{
+    struct client_info *info = arg;
+
+    if (read_cmdexec(fd) < 0) {
+        eventfd_del(info->ev);
+        free(info);
+    }
 }
 
 static void cb_listen(int fd, short what, void *arg)
 {
     union sockaddr_u remoteaddr;
     socklen_t ss_len;
+    struct client_info *info;
     int fd_cli;
     int err;
 
@@ -67,10 +88,15 @@ static void cb_listen(int fd, short what, void *arg)
         close(fd_cli);
         return;
     }
+
+    info = (struct client_info *)xmalloc(sizeof(*info));
+    info->fd = fd_cli;
+
     err = eventfd_add(fd_cli, EV_READ | EV_PERSIST,
-                NULL, cb_read, event_self_cbarg(), NULL);
+                NULL, cb_recv, info, &info->ev);
     if (err < 0) {
         fprintf(stderr, "eventfd_add(), err = %d\n", err);
+        free(info);
         close(fd_cli);
         return;
     }
@@ -116,7 +142,7 @@ int main(int argc, char *argv[])
     char *unixlisten = NULL;
     char *logerr = NULL;
     long listen_port = 0;
-    struct sockaddr_u addr;
+    union sockaddr_u addr;
     int fd = -1;
     int err;
 
@@ -150,8 +176,9 @@ int main(int argc, char *argv[])
 
     /* if not daemon, get data from stdin */
     if (!daemon) {
+        static struct event *ev_stdin;
         err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
-                        NULL, cb_read, event_self_cbarg(), NULL);
+                        NULL, cb_read, (void *)&ev_stdin, &ev_stdin);
         if (err < 0) {
             fprintf(stderr, "eventfd_add(STDIN_FILENO), err = %d\n", err);
             return 1;
@@ -204,9 +231,10 @@ int main(int argc, char *argv[])
     }
 
     if (fd >= 0) {
+        static struct event *ev_listen;
         unblock_socket(fd);
         err = eventfd_add(fd, EV_READ | EV_PERSIST,
-                    NULL, cb_listen, event_self_cbarg(), NULL);
+                    NULL, cb_listen,(void *)&ev_listen, &ev_listen);
         if (err < 0) {
             perror("eventfd_add()\n");
             return 1;
