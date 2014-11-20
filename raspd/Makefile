@@ -4,11 +4,11 @@ include ../rules.mak
 
 CFLAGS += -g -I../lib -I../libbcm2835
 LDFLAGS += -L ../lib
-LIBS = -lpthread
+LIBS = -lpthread -levent
 
 PROGS = raspd
 
-SRCS_raspd = raspd.c module.c gpio.c pwm.c delay.c
+SRCS_raspd = raspd.c module.c event.c gpio.c pwm.c delay.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 

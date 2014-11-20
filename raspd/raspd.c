@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <event2/event.h>
 
 #include <bcm2835.h>
 
@@ -17,14 +18,63 @@
 
 #define BUF_SIZE    1024
 
-struct raspd_struct {
-    int listen_fd;
-    int unix_listen_fd;
-    struct event *listen_ev;
-    struct event *unix_listen_ev;
-};
 
-static struct raspd_struct raspd;
+static int read_cmdexec(int fd)
+{
+    char buffer[BUF_SIZE];
+    int err;
+
+    err = read(fd, buffer, sizeof(buffer));
+    if (err > 0) {
+        char *str, *cmdexec, *saveptr;
+
+        for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
+
+            err = module_cmdexec(cmdexec);
+            /* must reply */
+            if (err == 0)
+                fprintf(stdout, "OK\n");
+            else
+                fprintf(stdout, "ERR %d\n", err);
+        }
+    }
+    return err;
+}
+
+static void cb_read(int fd, short what, void *arg)
+{
+    struct event *ev = arg;
+
+    if (read_cmdexec(fd) < 0)
+        eventfd_del(ev);
+}
+
+static void cb_listen(int fd, short what, void *arg)
+{
+    union sockaddr_u remoteaddr;
+    socklen_t ss_len;
+    int fd_cli;
+    int err;
+
+    ss_len = sizeof(remoteaddr);
+    fd_cli = accept(fd, &remoteaddr.sockaddr, &ss_len);
+    if (fd_cli < 0) {
+        fprintf(stderr, "accept(), errno = %d\n", errno);
+        return;
+    }
+
+    if (unblock_socket(fd_cli) < 0) {
+        close(fd_cli);
+        return;
+    }
+    err = eventfd_add(fd_cli, EV_READ | EV_PERSIST,
+                NULL, cb_read, event_self_cbarg(), NULL);
+    if (err < 0) {
+        fprintf(stderr, "eventfd_add(), err = %d\n", err);
+        close(fd_cli);
+        return;
+    }
+}
 
 static void usage(FILE *fp)
 {
@@ -42,28 +92,6 @@ static void usage(FILE *fp)
 
     _exit(fp != stderr ? EXIT_SUCCESS : EXIT_FAILURE);
 }
-
-static void cb_read_stdin(int fd, short what, void *arg)
-{
-    /* FIXME */
-    read(STDIN_FILENO
-}
-
-static void cb_listen(int fd, short what, void *arg)
-{
-    /* FIXME */
-    accept
-}
-
-static void cb_conn_read(struct bufferevent *bev, void *arg)
-{ }
-static void cb_conn_write(struct bufferevent *bev, void *arg)
-{ }
-static void cb_conn_event(struct bufferevent *bev, short events, void *arg)
-{ }
-static void cb_listener(struct evconnlistener *listener, int fd,
-                        struct sockaddr *sa, int socklen, void *arg)
-{ }
 
 /*
  * protocol
@@ -88,7 +116,8 @@ int main(int argc, char *argv[])
     char *unixlisten = NULL;
     char *logerr = NULL;
     long listen_port = 0;
-    char buffer[BUF_SIZE];
+    struct sockaddr_u addr;
+    int fd = -1;
     int err;
 
     while ((c = getopt_long(argc, argv, "dl:u:e:h", options, NULL)) != -1) {
@@ -122,7 +151,7 @@ int main(int argc, char *argv[])
     /* if not daemon, get data from stdin */
     if (!daemon) {
         err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
-                        NULL, cb_read_stdin, event_self_cbarg(), NULL);
+                        NULL, cb_read, event_self_cbarg(), NULL);
         if (err < 0) {
             fprintf(stderr, "eventfd_add(STDIN_FILENO), err = %d\n", err);
             return 1;
@@ -139,37 +168,49 @@ int main(int argc, char *argv[])
         }
     }
 
-    err = 0;
     if (listen_port > 0 && listen_port < 65535) {
-        /*err = stream_listen((unsigned short)listen_port);*/
-        struct sockaddr_u addr;
         size_t ss_len;
 
         ss_len = sizeof(addr);
         err = resolve("0.0.0.0", (unsigned short)listen_port,
                             &addr.storage, &ss_len, AF_INET, 0);
         if (err < 0) {
-            /*XXX*/
+            perror("resolve()\n");
             return 1;
         }
 
         fd = do_listen(AF_INET, SOCK_STREAM, &addr);
         if (fd < 0) {
-            /*XXX*/
+            perror("do_listen()\n");
             return 1;
         }
+    } else if (unixlisten) {
+        /*err = unixsock_listen(unixlisten);*/
+        unlink(unixlisten);
+        if (strlen(unixlisten) >= sizeof(addr.un.sun_path)) {
+            perror("invalid unix socket\n");
+            return 1;
+        }
+
+        memset(&addr, 0, sizeof(addr));
+        addr.un.sun_family = AF_UNIX;
+        strncpy(addr.un.sun_path, unixlisten, sizeof(addr.un.sun_path));
+
+        fd = do_listen(AF_UNIX, SOCK_STREAM, &addr);
+        if (fd < 0) {
+            perror("do_listen()\n");
+            return 1;
+        }
+    }
+
+    if (fd >= 0) {
         unblock_socket(fd);
         err = eventfd_add(fd, EV_READ | EV_PERSIST,
                     NULL, cb_listen, event_self_cbarg(), NULL);
-        /* FIXME */
-    } else if (unixlisten) {
-        err = unixsock_listen(unixlisten);
-    }
-
-    if (err < 0) {
-        fprintf(stderr, "listen error, unixlisten = %s, port = %d, errno = %d\n",
-                    unixlisten ? unixlisten : "NULL", (int)listen_port, errno);
-        return 1;
+        if (err < 0) {
+            perror("eventfd_add()\n");
+            return 1;
+        }
     }
 
     if (!bcm2835_init()) {
@@ -178,21 +219,10 @@ int main(int argc, char *argv[])
     }
 
     /* main loop */
-    while (fgets(buffer, sizeof(buffer), stdin) != NULL) {
-        char *str, *cmdexec, *saveptr;
-
-        for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
-
-            err = module_cmdexec(cmdexec);
-            /* must reply */
-            if (err == 0)
-                fprintf(stdout, "OK\n");
-            else
-                fprintf(stdout, "ERR %d\n", err);
-        }
-    }
+    do_event_loop();
 
     bcm2835_close();
+    event_exit();
 
     return 0;
 }
