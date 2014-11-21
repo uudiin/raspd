@@ -71,9 +71,12 @@ int main(int argc, char *argv[])
         err = bcm2835_gpio_signal(pin, te, gpio_interrupt, (void *)pin);
         sleep(9999);
     } else {
-        err = bcm2835_gpio_poll(pin, te, timeout, &value);
-        assert(err >= 0);
-        printf("value = %d\n", value);
+        while (1) {
+            err = bcm2835_gpio_poll(pin, te, timeout, &value);
+            if (err < 0)
+                break;
+            printf("value = %d\n", value);
+        }
     }
 
     bcm2835_close();
