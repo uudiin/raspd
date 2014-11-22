@@ -2,9 +2,9 @@
 
 include ../rules.mak
 
-CFLAGS += -g -I../lib -I../libbcm2835
+CFLAGS += -g -I../lib -I../libbcm2835 -I../libevent/include
 LDFLAGS += -L ../lib
-LIBS = -lpthread -levent
+LIBS = -lpthread
 
 PROGS = raspd
 
@@ -16,7 +16,7 @@ $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 
 all: $(PROGS)
 
-raspd: $(OBJS_raspd) ../lib/libraspberry.a ../libbcm2835/libbcm2835.a
+raspd: $(OBJS_raspd) ../lib/libraspberry.a ../libbcm2835/libbcm2835.a ../libevent/libevent.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
 
 ifneq ($(MAKECMDGOALS), clean)

@@ -48,12 +48,12 @@ int register_signal(int signum, event_callback_fn cb, void *opaque)
                                 NULL, cb, opaque, NULL);
 }
 
-int do_event_loop(void)
+int rasp_event_loop(void)
 {
     return event_base_dispatch(base);
 }
 
-int event_init(void)
+int rasp_event_init(void)
 {
     base = event_base_new();
     if (base == NULL)
@@ -63,7 +63,7 @@ int event_init(void)
     return 0;
 }
 
-void event_exit(void)
+void rasp_event_exit(void)
 {
     /* FIXME */
 }

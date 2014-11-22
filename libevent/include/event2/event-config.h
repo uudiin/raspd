@@ -157,10 +157,10 @@
 #define _EVENT_HAVE_PIPE 1
 
 /* Define to 1 if you have the `poll' function. */
-#define _EVENT_HAVE_POLL 1
+/*#define _EVENT_HAVE_POLL 1*/
 
 /* Define to 1 if you have the <poll.h> header file. */
-#define _EVENT_HAVE_POLL_H 1
+/*#define _EVENT_HAVE_POLL_H 1*/
 
 /* Define to 1 if you have the `port_create' function. */
 /* #undef _EVENT_HAVE_PORT_CREATE */
@@ -181,7 +181,7 @@
 #define _EVENT_HAVE_SA_FAMILY_T 1
 
 /* Define to 1 if you have the `select' function. */
-#define _EVENT_HAVE_SELECT 1
+/*#define _EVENT_HAVE_SELECT 1*/
 
 /* Define to 1 if you have the `sendfile' function. */
 #define _EVENT_HAVE_SENDFILE 1
@@ -289,7 +289,7 @@
 #define _EVENT_HAVE_SYS_QUEUE_H 1
 
 /* Define to 1 if you have the <sys/select.h> header file. */
-#define _EVENT_HAVE_SYS_SELECT_H 1
+/*#define _EVENT_HAVE_SYS_SELECT_H 1*/
 
 /* Define to 1 if you have the <sys/sendfile.h> header file. */
 #define _EVENT_HAVE_SYS_SENDFILE_H 1
