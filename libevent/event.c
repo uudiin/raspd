@@ -64,7 +64,6 @@
 #include "event2/util.h"
 #include "log-internal.h"
 #include "evmap-internal.h"
-#include "iocp-internal.h"
 #include "changelist-internal.h"
 #include "ht-internal.h"
 #include "util-internal.h"
