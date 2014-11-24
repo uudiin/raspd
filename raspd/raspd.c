@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
     }
 
     /* initialize event base */
-    if (event_init() < 0) {
+    if (rasp_event_init() < 0) {
         fprintf(stderr, "event_init(), err = %d\n", err);
         return 1;
     }
@@ -248,13 +248,13 @@ int main(int argc, char *argv[])
     }
 
     /* main loop */
-    do_event_loop();
+    rasp_event_loop();
 
     if (fd != -1)
         close(fd);
 
     bcm2835_close();
-    event_exit();
+    rasp_event_exit();
 
     return 0;
 }
