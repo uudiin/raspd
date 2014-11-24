@@ -32,6 +32,28 @@ static int pwm_div = PWMDIV_DEFAULT;
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
+#define speed_inc(_speed_) \
+	(_speed_) = ((_speed_) >= max_speed) ? max_speed : ((_speed_) + 1);
+	
+#define speed_dec(_speed_) \
+	(_speed_) = ((_speed_) <= -max_speed) ? -max_speed : ((_speed_) - 1);
+
+#define speed_up(_speed_) { \
+		if ((_speed_) > 0) { \
+			speed_inc((_speed_)); \
+		} else if ((_speed_) < 0) { \
+			speed_dec((_speed_)); \
+		} \
+	}
+
+#define speed_down(_speed_) { \
+		if ((_speed_) > 0) { \
+			speed_dec((_speed_)); \
+		} else if ((_speed_) < 0) { \
+			speed_inc((_speed_)); \
+		} \
+	}
+
 struct pwm_io_info {
 	uint8_t channel;
 	uint8_t alt_fun;
@@ -87,44 +109,78 @@ static void l298n_forward_reverse(int speed, int intx, int inty, int enx)
 	l298n_speedup_xx(enx);
 }
 
-static void do_speedup_left(int speed)
-{
-	left_speed = speed;
-	l298n_forward_reverse(speed, int1, int2, ena);
-}
+#define do_speedup_left() \
+	l298n_forward_reverse(left_speed, int1, int2, ena);
 
-static void do_speedup_right(int speed)
-{
-	right_speed = speed;
-	l298n_forward_reverse(speed, int3, int4, enb);
-}
+#define do_speedup_right() \
+	l298n_forward_reverse(right_speed, int3, int4, enb);
 
-static void do_forward(void)
+static void do_forward_reverse(int speedup, int forward)
 {
 	int speed = max(left_speed, right_speed);
-	if (left_speed == right_speed) { 
-		(speed < max_speed) ? speed++ : speed;
+	if (speed == 0) speedup = 1;
+	if (speedup) {
+		if ((left_speed == right_speed)) {
+			if (forward) {
+				speed_inc(speed)
+			} else {
+				speed_dec(speed);
+			}
+		}
+	} else {
+		speed = (forward && (speed < 0)) ? -speed : speed;
+		if (forward) {
+			speed = (speed < 0) ? -speed : speed;
+		} else {
+			speed = (speed > 0) ? -speed : speed;
+		}
 	}
 
 	left_speed = speed;
 	right_speed = speed;
 
-	do_speedup_left(speed);
-	do_speedup_right(speed);
+	do_speedup_left();
+	do_speedup_right();
 }
 
-static void do_reverse(void)
+static void do_left(void)
 {
-	int speed = min(left_speed, right_speed);
-	if (left_speed == right_speed) {
-		(speed > -max_speed) ? speed-- : speed;
-	}
+	int speed = max(left_speed, right_speed);
 
-	left_speed = speed;
+	left_speed = -speed;
 	right_speed = speed;
 
-	do_speedup_left(speed);
-	do_speedup_right(speed);
+	do_speedup_left();
+	do_speedup_right();
+}
+
+static void do_right(void)
+{
+	int speed = max(left_speed, right_speed);
+
+	left_speed = speed;
+	right_speed = -speed;
+
+	do_speedup_left();
+	do_speedup_right();
+}
+
+static void do_speedup(void)
+{
+	speed_up(left_speed);
+	speed_up(right_speed);
+
+	do_speedup_left();
+	do_speedup_right();
+}
+
+static void do_speeddown(void)
+{
+	speed_down(left_speed);
+	speed_down(right_speed);
+
+	do_speedup_left();
+	do_speedup_right();
 }
 
 static void do_brake(void)
@@ -132,28 +188,28 @@ static void do_brake(void)
 	left_speed = 0;
 	right_speed = 0;
 
-	do_speedup_left(0);
-	do_speedup_right(0);
+	do_speedup_left();
+	do_speedup_right();
 }
 
 #define do_forward_xx(_r_) \
 	{ \
-		int speed = (_r_ ## _speed < max_speed) ? \
+		_r_ ## _speed = (_r_ ## _speed < max_speed) ? \
 				(_r_ ## _speed + 1) : _r_ ## _speed; \
-		do_speedup_ ## _r_ (speed); \
+		do_speedup_ ## _r_ (); \
 	}
 
 #define do_reverse_xx(_r_) \
 	{ \
-		int speed = (_r_ ## _speed > -max_speed) ? \
+		_r_ ## _speed = (_r_ ## _speed > -max_speed) ? \
 				(_r_ ## _speed - 1) : _r_ ## _speed; \
-		do_speedup_ ## _r_ (speed); \
+		do_speedup_ ## _r_ (); \
 	}
 
 #define do_brake_xx(_r_) \
 	{ \
 		_r_ ## _speed = 0; \
-		do_speedup_ ## _r_ (0); \
+		do_speedup_ ## _r_ (); \
 	}
 
 static void usage(void)
@@ -264,10 +320,10 @@ int main(int argc, char *argv[])
 		inchar = getch_(0);
 		switch (inchar) {
 		case 'w': /* forward */
-			do_forward();
+			do_forward_reverse(1, 1);
 			break;
 		case 's': /* reverse */
-			do_reverse();
+			do_forward_reverse(1, 0);
 			break;
 		case 'x': /* brake */
 			do_brake();
@@ -289,6 +345,24 @@ int main(int argc, char *argv[])
 			break;
 		case 'c': /* right brake */
 			do_brake_xx(right);
+			break;
+		case 65: /* up */
+			do_forward_reverse(0, 1);
+			break;
+		case 66: /* down */
+			do_forward_reverse(0, 0);
+			break;
+		case 68: /* left */
+			do_left();
+			break;
+		case 67: /* right */
+			do_right();
+			break;
+		case 53: /* speedup */
+			do_speedup();
+			break;
+		case 54: /* speeddown */
+			do_speeddown();
 			break;
 		}
 

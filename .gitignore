@@ -2,6 +2,13 @@
 *.o
 *.d
 
+# Android
+*.class
+*.apk
+*.ap_
+*.dex
+bin/
+
 # Libraries
 *.lib
 *.a
@@ -17,6 +24,16 @@
 *.out
 *.app
 
+# Other
+*.swp
+
+# Tags
+tags
+
+BuildConfig.java
+R.java
+
+client/test
 catnet/catnet
 raspd/raspd
 test/blink_act
@@ -24,5 +41,8 @@ test/breath_led
 test/motor
 test/pwm
 test/l298n
+test/test-raspd
 test/test_unix
 test/test_gpioint
+test/hcsr04
+test/rf24_test

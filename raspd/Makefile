@@ -8,7 +8,7 @@ LIBS = -lpthread
 
 PROGS = raspd
 
-SRCS_raspd = raspd.c module.c event.c gpiolib.c gpio.c pwm.c
+SRCS_raspd = raspd.c module.c event.c gpiolib.c gpio.c pwm.c l298n.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 
