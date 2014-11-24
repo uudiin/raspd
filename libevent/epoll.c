@@ -449,7 +449,7 @@ epoll_dispatch(struct event_base *base, struct timeval *tv)
 		short ev = 0;
 
 		if (what & (EPOLLHUP|EPOLLERR)) {
-			ev = EV_READ | EV_WRITE;
+			ev = EV_READ | EV_WRITE | EV_PRI;
 		} else {
 			if (what & EPOLLIN)
 				ev |= EV_READ;
