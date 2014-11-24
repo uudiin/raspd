@@ -226,7 +226,7 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
         ai->callback = callback;
         ai->opaque = opaque;
 
-        err = eventfd_add(fd, EV_PRI | EV_PERSIST,
+        err = eventfd_add(fd, EV_PRI | EV_ET | EV_PERSIST,
                     NULL, cb_gpiolib, ai, &ai->ev);
         if (err < 0) {
             close(fd);
