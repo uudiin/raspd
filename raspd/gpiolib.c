@@ -10,6 +10,7 @@
 #include <event2/event.h>
 
 #include <xmalloc.h>
+#include <unix.h>
 #include <bcm2835.h>
 
 #include "module.h"
@@ -64,7 +65,7 @@ static int gpio_export_unexport(unsigned int gpio, int unexport)
     int len;
     int err;
 
-    if (fd_export < 0 || fd_export < 0)
+    if (fd_export < 0 || fd_unexport < 0)
         return -EPERM;
     if (gpio >= NR_GPIOS)
         return -ERANGE;
@@ -175,7 +176,7 @@ struct async_int {
     struct event *ev;
 };
 
-static void cb_gpiolib_cb(int fd, short what, void *arg)
+static void cb_gpiolib(int fd, short what, void *arg)
 {
     struct async_int *ai = arg;
     int value;
@@ -210,14 +211,13 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
             break;
 
         /* FIXME  unblock it ? */
+        unblock_socket(fd);
         /*
          * FIXME  need ?
+         */
         err = -EPERM;
         if (read(fd, buf, sizeof(buf)) < 0)
             break;
-        pfd.fd = fd;
-        pfd.events = POLLPRI;
-        */
 
         ai = xmalloc(sizeof(*ai));
         memset(ai, 0, sizeof(*ai));
@@ -227,7 +227,7 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
         ai->opaque = opaque;
 
         err = eventfd_add(fd, EV_PRI | EV_PERSIST,
-                    NULL, cb_gpiolib_cb, ai, &ai->ev);
+                    NULL, cb_gpiolib, ai, &ai->ev);
         if (err < 0) {
             close(fd);
             free(ai);

@@ -6,6 +6,7 @@
 #include <getopt.h>
 
 #include <bcm2835.h>
+#include "../raspd/event.h"
 #include "../raspd/gpiolib.h"
 
 static int gpio_interrupt(int nr, int value, void *opaque)
@@ -68,8 +69,16 @@ int main(int argc, char *argv[])
     }
 
     if (signal) {
+        err = rasp_event_init();
+        assert(err >= 0);
+
         err = bcm2835_gpio_signal(pin, te, gpio_interrupt, (void *)pin);
-        sleep(9999);
+        assert(err == 0);
+
+        err = rasp_event_loop();
+        assert(err == 0);
+
+        rasp_event_exit();
     } else {
         while (1) {
             err = bcm2835_gpio_poll(pin, te, timeout, &value);
