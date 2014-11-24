@@ -2,20 +2,19 @@
 
 include ../rules.mak
 
-CFLAGS += -I ../lib -I ../libbcm2835
-LIBS =
+CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
+CFLAGS += -I ../lib -I ../libbcm2835 -I ../librf24
+LIBS = -lpthread
 
 
-PROGS = blink_act motor breath_led pwm l298n
+PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint hcsr04 rf24_test
 
-SRCS_blink_act = blink_act.c
-SRCS_motor = motor.c
-SRCS_breath_led = breath_led.c
-SRCS_pwm = pwm.c
-SRCS_l298n = l298n.c
+$(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a))
+SRCS_test_gpioint += ../raspd/event.c ../raspd/gpiolib.c
+
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a))
 
 .PHONY: all clean
 

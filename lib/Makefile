@@ -2,11 +2,12 @@
 
 include ../rules.mak
 
+CFLAGS += -fPIC
 LIBS = libraspberry.a
 
 SRCS_lib = sock.c unix.c utils.c xmalloc.c
 
-OBJS_lib = $(SRCS_lib:%.c=%.o)
+OBJS_lib = $(SRCS_lib:.c=.o)
 
 .PHONY: all clean
 
@@ -15,4 +16,4 @@ all: $(LIBS)
 $(LIBS): $(OBJS_lib)
 
 clean:
-	rm -f $(OBJS_lib) $(SRCS_lib:%.c=%.d) $(LIBS)
+	rm -f $(OBJS_lib) $(SRCS_lib:.c=.d) $(LIBS)

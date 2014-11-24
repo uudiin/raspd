@@ -1293,6 +1293,7 @@ extern "C" {
     extern void bcm2835_pwm_set_data(uint8_t channel, uint32_t data);
 
     /// @} 
+
 #ifdef __cplusplus
 }
 #endif

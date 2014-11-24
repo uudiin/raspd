@@ -10,7 +10,7 @@ PROGS = catnet
 
 SRCS_catnet = catnet.c listen.c connect.c
 
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 
 .PHONY: all clean
 
@@ -24,4 +24,4 @@ $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
 endif
 
 clean:
-	rm -f *.d $(OBJS_catnet) $(PROGS)
+	rm -f $(OBJS_catnet) $(SRCS_catnet:.c=.d) $(PROGS)

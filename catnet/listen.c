@@ -105,9 +105,12 @@ static void handle_connection(int fd_listen, const char *cmdexec)
     socklen_t ss_len;
     int fd;
 
+    ss_len = sizeof(remoteaddr);
     fd = accept(fd_listen, &remoteaddr.sockaddr, &ss_len);
-    if (fd < 0)
+    if (fd < 0) {
+        fprintf(stderr, "accept() error, err = %d\n", errno);
         return;
+    }
 
     unblock_socket(fd);
 
@@ -183,7 +186,7 @@ int listen_stream(unsigned short portno, const char *cmdexec)
     signal(SIGPIPE, SIG_IGN);
 
     fd_listen = do_listen(SOCK_STREAM, IPPROTO_TCP, &addr);
-    if (fd_listen == -1)
+    if (fd_listen < 0)
         return -1;
 
     unblock_socket(fd_listen);
