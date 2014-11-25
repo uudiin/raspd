@@ -130,7 +130,7 @@ static int gpio_main(int wfd, int argc, char *argv[])
                 bl->gpio[i] = atoi(argv[optind]);
             bl->nr = i;
             timeout.tv_sec = interval / 1000;
-            timeout.tv_usec = (interval % 1000) * 1000000;
+            timeout.tv_usec = (interval % 1000) * 1000;
 
             err = -EIO;
             if (register_timer(EV_PERSIST, &timeout, cb_timer, bl, &bl->timer) < 0)
