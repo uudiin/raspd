@@ -29,7 +29,7 @@ static struct module *find_module(const char *name)
     return NULL;
 }
 
-int module_execv(int argc, char *argv[])
+int module_execv(int wfd, int argc, char *argv[])
 {
     struct module *m;
 
@@ -39,10 +39,10 @@ int module_execv(int argc, char *argv[])
     /* FIXME  needed? */
     optind = 1;
 
-    return m->main(argc, argv);
+    return m->main(wfd, argc, argv);
 }
 
-int module_execl(const char *modname, /*const char *arg0, ..., 0,*/ ...)
+int module_execl(int wfd, const char *modname, /*const char *arg0, ..., 0,*/ ...)
 {
     va_list ap;
     char *p;
@@ -64,13 +64,13 @@ int module_execl(const char *modname, /*const char *arg0, ..., 0,*/ ...)
 
     va_end(ap);
 
-    err = module_execv(argc, argv);
+    err = module_execv(wfd, argc, argv);
 
     free(argv);
     return err;
 }
 
-int module_cmdexec(const char *cmdexec)
+int module_cmdexec(int wfd, const char *cmdexec)
 {
     char **cmd_argv;
     int cmd_argc = 0;
@@ -80,7 +80,7 @@ int module_cmdexec(const char *cmdexec)
     if (cmd_argv == NULL || cmd_argc == 0)
         return -EINVAL;
 
-    err = module_execv(cmd_argc, cmd_argv);
+    err = module_execv(wfd, cmd_argc, cmd_argv);
 
     free_cmd_argv(cmd_argv);
     return err;

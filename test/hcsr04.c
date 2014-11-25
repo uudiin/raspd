@@ -4,6 +4,7 @@
 #include <pthread.h>
 
 #include <bcm2835.h>
+#include "../raspd/gpiolib.h"
 
 #define ECHO	23
 #define TRIG	18
@@ -15,13 +16,13 @@ static void *signal_thread(void *arg)
 	unsigned long long start, stop;
 	float dis;
 
-	err = bcm2835_gpio_poll(ECHO, edge_both, -1, NULL);
+	err = bcm2835_gpio_poll(ECHO, EDGE_both, -1, NULL);
 	assert(err >= 0);
 	gettimeofday(&tv, NULL);
 	start = tv.tv_sec * 1000000 + tv.tv_usec;
 	printf("start = %lu\n", start);
 	
-	err = bcm2835_gpio_poll(ECHO, edge_both, -1, NULL);
+	err = bcm2835_gpio_poll(ECHO, EDGE_both, -1, NULL);
 	assert(err >= 0);
 	gettimeofday(&tv, NULL);
 	stop = tv.tv_sec * 1000000 + tv.tv_usec;

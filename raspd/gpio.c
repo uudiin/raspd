@@ -55,7 +55,7 @@ static void cb_timer(int fd, short what, void *arg)
  * usage:
  *   gpio --alt [o|i|0|1|2|3|4|5] --pull [0|1] 18 25
  */
-static int gpio_main(int argc, char *argv[])
+static int gpio_main(int wfd, int argc, char *argv[])
 {
     static struct option options[] = {
         { "alt",      required_argument, NULL, 'a' },

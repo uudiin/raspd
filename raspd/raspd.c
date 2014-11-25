@@ -24,7 +24,7 @@ struct client_info {
     struct event *ev;
 };
 
-static int read_cmdexec(int fd)
+static int read_cmdexec(int fd, int wfd)
 {
     char buffer[BUF_SIZE];
     int size;
@@ -41,12 +41,12 @@ static int read_cmdexec(int fd)
         for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
             int retval;
 
-            retval = module_cmdexec(cmdexec);
+            retval = module_cmdexec(wfd, cmdexec);
             /* must reply */
             if (retval == 0)
-                fprintf(stdout, "OK\n");
+                fprintf(wfd, "OK\n");
             else
-                fprintf(stdout, "ERR %d\n", retval);
+                fprintf(wfd, "ERR %d\n", retval);
         }
     }
     return size;
@@ -56,7 +56,7 @@ static void cb_read(int fd, short what, void *arg)
 {
     struct event *ev = *(void **)arg;
 
-    if (read_cmdexec(fd) < 0)
+    if (read_cmdexec(fd, STDOUT_FILENO) < 0)
         eventfd_del(ev);
 }
 
@@ -64,7 +64,7 @@ static void cb_recv(int fd, short what, void *arg)
 {
     struct client_info *info = arg;
 
-    if (read_cmdexec(fd) < 0) {
+    if (read_cmdexec(fd, fd) < 0) {
         eventfd_del(info->ev);
         free(info);
     }

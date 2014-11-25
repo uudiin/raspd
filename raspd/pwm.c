@@ -38,7 +38,7 @@ static struct pwm_io_info pwm_ios[NR_PWM_IO] = {
 static uint32_t clock;
 static uint32_t step;
 
-static pwm_main(int argc, char *argv[])
+static pwm_main(int wfd, int argc, char *argv[])
 {
     static struct option options[] = {
         { "range", required_argument, NULL, 'r' },

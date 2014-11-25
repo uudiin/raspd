@@ -103,7 +103,7 @@ static void l298n_forward_reverse(int speed, int intx, int inty, int enx)
 		l298n_forward_reverse(speed, int3, int4, enb); \
 	}
 
-int l298n_main(int argc, char *argv[])
+int l298n_main(int wfd, int argc, char *argv[])
 {
 	int c;
 	

@@ -13,7 +13,6 @@
 #include <unix.h>
 #include <bcm2835.h>
 
-#include "module.h"
 #include "gpiolib.h"
 
 #define NR_GPIOS    54
@@ -227,7 +226,7 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
         ai->opaque = opaque;
 
         err = eventfd_add(fd, EV_PRI | EV_ET | EV_PERSIST,
-                    NULL, cb_gpiolib, ai, &ai->ev);
+                                NULL, cb_gpiolib, ai, &ai->ev);
         if (err < 0) {
             close(fd);
             free(ai);

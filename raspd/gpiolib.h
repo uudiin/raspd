@@ -2,10 +2,10 @@
 #define __GPIO_INT_H__
 
 enum trigger_edge {
-    edge_none,
-    edge_rising,
-    edge_falling,
-    edge_both
+    EDGE_none,
+    EDGE_rising,
+    EDGE_falling,
+    EDGE_both
 };
 
 int bcm2835_gpio_poll(unsigned int pin,
