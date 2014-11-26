@@ -40,13 +40,17 @@ static int read_cmdexec(int fd, int wfd)
 
         for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
             int retval;
+            char errmsg[32];
+            size_t len;
 
             retval = module_cmdexec(wfd, cmdexec);
             /* must reply */
-            if (retval == 0)
-                fprintf(wfd, "OK\n");
-            else
-                fprintf(wfd, "ERR %d\n", retval);
+            if (retval == 0) {
+                write(wfd, "OK\n", 3);
+            } else {
+                len = snprintf(errmsg, sizeof(errmsg), "ERR %d\n", retval);
+                write(wfd, errmsg, len);
+            }
         }
     }
     return size;

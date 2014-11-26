@@ -13,6 +13,7 @@
 #include <unix.h>
 #include <bcm2835.h>
 
+#include "module.h"
 #include "gpiolib.h"
 
 #define NR_GPIOS    54
