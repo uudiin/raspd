@@ -166,36 +166,11 @@ int bcm2835_gpio_poll(unsigned int pin,
     return err;
 }
 
-struct async_int {
-    unsigned int pin;
-    enum trigger_edge edge;
-    int (*callback)(int nr, int value, void *opaque);
-    int nr;
-    void *opaque;
-    struct event *ev;
-};
-
-static void cb_gpiolib(int fd, short what, void *arg)
-{
-    struct async_int *ai = arg;
-    int value;
-    int err;
-
-    value = (int)bcm2835_gpio_lev(ai->pin);
-    err = ai->callback(ai->nr, value, ai->opaque);
-    ai->nr++;
-    if (err < 0) {
-        eventfd_del(ai->ev);
-        close(fd);
-        free(ai);
-    }
-}
-
 int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
-        int (*callback)(int nr, int value, void *opaque), void *opaque)
+                event_callback_fn cb, void *opaque, struct event **ev)
 {
     char buf[8];
-    struct async_int *ai;
+    struct event *evt;
     int fd;
     int err;
 
@@ -218,20 +193,15 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
         if (read(fd, buf, sizeof(buf)) < 0)
             break;
 
-        ai = xmalloc(sizeof(*ai));
-        memset(ai, 0, sizeof(*ai));
-        ai->pin = pin;
-        ai->edge = edge;
-        ai->callback = callback;
-        ai->opaque = opaque;
-
         err = eventfd_add(fd, EV_PRI | EV_ET | EV_PERSIST,
-                                NULL, cb_gpiolib, ai, &ai->ev);
+                                    NULL, cb, opaque, &evt);
         if (err < 0) {
             close(fd);
-            free(ai);
             break;
         }
+
+        if (ev)
+            *ev = evt;
 
         err = 0;
     } while (0);

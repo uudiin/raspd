@@ -6,7 +6,7 @@
 
 #include "event.h"
 
-static struct event_base *base;
+struct event_base *base;
 
 int eventfd_add(int fd, short flags, struct timeval *timeout,
         event_callback_fn cb, void *opaque, struct event **eventp)
