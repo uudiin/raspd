@@ -1,14 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <getopt.h>
+#include <time.h>
 #include <unistd.h>
 #include <event2/event.h>
 
+#include <xmalloc.h>
 #include <bcm2835.h>
 
 #include "module.h"
 #include "event.h"
+#include "gpiolib.h"
 
 #define PIN_TRIG    20
 #define PIN_ECHO    21
@@ -75,7 +79,7 @@ static void cb_echo(int fd, short what, void *arg)
 
     env->nr_echo++;
     clock_gettime(CLOCK_MONOTONIC, &tp);
-    value = (int)bcm2835_gpio_lev(env->echo);
+    value = (int)bcm2835_gpio_lev(env->pin_echo);
     if (value) {
         env->echo_tp = tp;
     } else {
@@ -87,7 +91,6 @@ static void cb_echo(int fd, short what, void *arg)
                 "ultrasonic: distance = %0.2f cm\n", distance);
         write(env->wfd, buffer, len);
     }
-    return 0;
 }
 
 static void cb_over_trig(int fd, short what, void *arg)
