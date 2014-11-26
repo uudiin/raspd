@@ -23,9 +23,10 @@
  *   15 degree: 340 m/s
  *   25 degree: 346 m/s
  *
- * 340 m/s = (340 * 100) / 1000000000 cm/ns = 34 / 1000000 cm/ns
+ * 340 m/s = (340 * 100) / 1000000 cm/us = 34 / 1000 cm/us
  */
-#define VELOCITY_VOICE  ((double)(34 / 1000000))
+#define VELOCITY_VOICE  ((double)346 / 10000)
+#define US2VELOCITY(x)  ((double)x * VELOCITY_VOICE / 2)
 
 #define timespec_sub(tvp, uvp, vvp)                       \
     do {                                                  \
@@ -71,7 +72,7 @@ static void cb_echo(int fd, short what, void *arg)
 {
     struct ultrasonic_env *env = arg;
     struct timespec tp, elapse;
-    unsigned long long nanosec;
+    unsigned long microsec;
     double distance;
     char buffer[128];
     size_t len;
@@ -80,15 +81,20 @@ static void cb_echo(int fd, short what, void *arg)
     env->nr_echo++;
     clock_gettime(CLOCK_MONOTONIC, &tp);
     value = (int)bcm2835_gpio_lev(env->pin_echo);
+    /*
+    fprintf(stderr, "nr = %d, value = %d, sec = %d, nsec = %d\n",
+                        env->nr_echo, value, tp.tv_sec, tp.tv_nsec);
+    */
     if (value) {
         env->echo_tp = tp;
     } else {
         timespec_sub(&tp, &env->echo_tp, &elapse);
-        nanosec = elapse.tv_sec * 1000000000 + elapse.tv_nsec;
-        distance = nanosec * VELOCITY_VOICE;
+        microsec = elapse.tv_sec * 1000000 + elapse.tv_nsec / 1000;
+        distance = (double)microsec * VELOCITY_VOICE / 2;
+        distance = US2VELOCITY(microsec);
 
         len = snprintf(buffer, sizeof(buffer),
-                "ultrasonic: distance = %0.2f cm\n", distance);
+                "ultrasonic: distance = %.3f cm\n", distance);
         write(env->wfd, buffer, len);
     }
 }
@@ -173,9 +179,10 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
             return 1;
         }
 
+        bcm2835_gpio_fsel(env->pin_trig, BCM2835_GPIO_FSEL_OUTP);
+        bcm2835_gpio_write(env->pin_trig, LOW);
         tv.tv_sec = interval / 1000;
         tv.tv_usec = (interval % 1000) * 1000000;
-
         if (register_timer(EV_PERSIST, &tv,
                     cb_timer, env, &env->ev_timer) < 0) {
             free_env(env);
