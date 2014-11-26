@@ -63,7 +63,7 @@ static free_env(struct ultrasonic_env *env)
     free(env);
 }
 
-static int cb_echo(int fd, short what, void *arg)
+static void cb_echo(int fd, short what, void *arg)
 {
     struct ultrasonic_env *env = arg;
     struct timespec tp, elapse;
