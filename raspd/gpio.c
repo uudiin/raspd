@@ -55,7 +55,7 @@ static void cb_timer(int fd, short what, void *arg)
  * usage:
  *   gpio --alt [o|i|0|1|2|3|4|5] --pull [0|1] 18 25
  */
-static int gpio_main(int argc, char *argv[])
+static int gpio_main(int wfd, int argc, char *argv[])
 {
     static struct option options[] = {
         { "alt",      required_argument, NULL, 'a' },
@@ -130,7 +130,7 @@ static int gpio_main(int argc, char *argv[])
                 bl->gpio[i] = atoi(argv[optind]);
             bl->nr = i;
             timeout.tv_sec = interval / 1000;
-            timeout.tv_usec = (interval % 1000) * 1000000;
+            timeout.tv_usec = (interval % 1000) * 1000;
 
             err = -EIO;
             if (register_timer(EV_PERSIST, &timeout, cb_timer, bl, &bl->timer) < 0)

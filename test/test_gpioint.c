@@ -9,11 +9,12 @@
 #include "../raspd/event.h"
 #include "../raspd/gpiolib.h"
 
-static int gpio_interrupt(int nr, int value, void *opaque)
+static void gpio_interrupt(int fd, short what, void *arg)
 {
-    unsigned int pin = (unsigned int)opaque;
-    printf("pin = %d, value = %d, nr = %d\n", pin, value, nr);
-    return 0;
+    static int nr;
+    unsigned int pin = (unsigned int)arg;
+    int value = (int)bcm2835_gpio_lev(pin);
+    printf("pin = %d, value = %d, nr = %d\n", pin, value, ++nr);
 }
 
 int main(int argc, char *argv[])
@@ -47,11 +48,11 @@ int main(int argc, char *argv[])
     }
 
     if (strcmp(edge, "rising") == 0) {
-        te = edge_rising;
+        te = EDGE_rising;
     } else if (strcmp(edge, "falling") == 0) {
-        te = edge_falling;
+        te = EDGE_falling;
     } else if (strcmp(edge, "both") == 0) {
-        te = edge_both;
+        te = EDGE_both;
     } else {
         fprintf(stderr, "invalid edge %s\n", edge);
         return 1;
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
         err = rasp_event_init();
         assert(err >= 0);
 
-        err = bcm2835_gpio_signal(pin, te, gpio_interrupt, (void *)pin);
+        err = bcm2835_gpio_signal(pin, te, gpio_interrupt, (void *)pin, NULL);
         assert(err == 0);
 
         err = rasp_event_loop();

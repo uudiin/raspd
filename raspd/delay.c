@@ -28,7 +28,7 @@ void delay_millisec(unsigned long millisec)
     nanosleep(&t, NULL);
 }
 
-static int delay_main(int argc, char *argv[])
+static int delay_main(int wfd, int argc, char *argv[])
 {
     static struct option options[] = {
         { "second",   required_argument, NULL, 's' },

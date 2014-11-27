@@ -5,7 +5,7 @@
 
 struct module {
     const char *name;
-    int (*main)(int argc, char *argv[]);
+    int (*main)(int wfd, int argc, char *argv[]);
     TAILQ_ENTRY(module) list;
 };
 
@@ -13,9 +13,9 @@ struct module {
 #define __exit  __attribute__((destructor))
 
 void register_module(struct module *m);
-int module_execv(int argc, char *argv[]);
-int module_execl(const char *modname, /*const char *arg0, ..., 0,*/ ...);
-int module_cmdexec(const char *cmdexec);
+int module_execv(int wfd, int argc, char *argv[]);
+int module_execl(int wfd, const char *modname, /*const char *arg0, ..., 0,*/ ...);
+int module_cmdexec(int wfd, const char *cmdexec);
 
 #define DEFINE_MODULE(mod)                          \
     static struct module __module_ ## mod = {       \
