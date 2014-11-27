@@ -7,7 +7,7 @@ CFLAGS += -I ../lib -I ../libbcm2835 -I ../librf24
 LIBS = -lpthread
 
 
-PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint hcsr04
+PROGS = blink_act motor breath_led pwm l298n test_unix rt_ssh
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
