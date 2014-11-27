@@ -4,7 +4,7 @@ include ../rules.mak
 
 CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
 CFLAGS += -I ../lib -I ../libbcm2835 -I ../librf24
-LIBS = -lpthread
+LIBS = -lpthread -lrt
 
 
 PROGS = blink_act motor breath_led pwm l298n test_unix test_gpioint hcsr04
