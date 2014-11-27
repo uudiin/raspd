@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        fd = do_listen(AF_INET, SOCK_STREAM, &addr);
+        fd = do_listen(SOCK_STREAM, IPPROTO_TCP, &addr);
         if (fd < 0) {
             perror("do_listen()\n");
             return 1;
@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
         addr.un.sun_family = AF_UNIX;
         strncpy(addr.un.sun_path, unixlisten, sizeof(addr.un.sun_path));
 
-        fd = do_listen(AF_UNIX, SOCK_STREAM, &addr);
+        fd = do_listen(SOCK_STREAM, IPPROTO_TCP, &addr);
         if (fd < 0) {
             perror("do_listen()\n");
             return 1;
