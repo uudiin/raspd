@@ -9,6 +9,10 @@
 *.dex
 bin/
 
+# eclipse
+.cproject
+.project
+
 # Libraries
 *.lib
 *.a
