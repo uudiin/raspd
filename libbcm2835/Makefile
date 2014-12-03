@@ -16,5 +16,9 @@ all: $(LIBS)
 
 $(LIBS): $(OBJS_lib)
 
+ifneq ($(MAKECMDGOALS), clean)
+-include $(SRCS_lib:.c=.d)
+endif
+
 clean:
 	rm -f $(OBJS_lib) $(SRCS_lib:.c=.d) $(LIBS)
