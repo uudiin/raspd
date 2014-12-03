@@ -1,8 +1,8 @@
 # Makefile for client
 
 include ../rules.mak
-CFLAGS += -g -I../lib -fPIC
-LDFLAGS = -L ../lib
+CFLAGS += -g -I../lib -I../libevent/include -fPIC
+LDFLAGS = -L ../lib -pthread
 LIBS =
 
 PROGS = libclient.a libclient.so test
@@ -23,7 +23,7 @@ libclient.so: $(OBJS_client)
 libclient.a: $(OBJS_client)
 	$(call quiet-command, $(AR) cr $@ $^, "  AR    $(TARGET_DIR)$@")
 
-test: $(OBJS_test) libclient.a ../lib/libraspberry.a
+test: $(OBJS_test) libclient.a ../lib/libraspberry.a ../libevent/libevent.a
 	$(call quiet-command, $(CC) $(LDFLAGS) -o $@ $^ $(LIBS), "  CC    $(TARGET_DIR)$@")
 
 ifneq ($(MAKECMDGOALS), clean)

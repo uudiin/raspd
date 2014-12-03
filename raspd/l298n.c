@@ -33,8 +33,6 @@ static int step = 0;
 static int range = RANGE_DEFAULT;
 static int pwm_div = PWMDIV_DEFAULT;
 
-static int reinit = 1;
-
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
@@ -103,11 +101,107 @@ static void l298n_forward_reverse(int speed, int intx, int inty, int enx)
 		l298n_forward_reverse(speed, int3, int4, enb); \
 	}
 
-int l298n_main(int wfd, int argc, char *argv[])
+int l298n_lup_main(int wfd, int argc, char *argv[])
+{
+	left_forward = 1;
+	do_speedup_left();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_lup);
+
+int l298n_ldown_main(int wfd, int argc, char *argv[])
+{
+	left_forward = 0;
+	do_speedup_left();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_ldown);
+
+int l298n_lbrake_main(int wfd, int argc, char *argv[])
+{
+	left_speed = 0;
+	do_speedup_left();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_lbrake);
+
+int l298n_lspeedup_main(int wfd, int argc, char *argv[])
+{
+	left_speed++;
+	left_speed = min(max_speed, left_speed);
+	do_speedup_left();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_lspeedup);
+
+int l298n_lspeeddown_main(int wfd, int argc, char *argv[])
+{
+	left_speed--;
+	left_speed = max(0, left_speed);
+	do_speedup_left();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_lspeeddown);
+
+int l298n_rup_main(int wfd, int argc, char *argv[])
+{
+	right_forward = 1;
+	do_speedup_right();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_rup);
+
+int l298n_rdown_main(int wfd, int argc, char *argv[])
+{
+	right_forward = 0;
+	do_speedup_right();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_rdown);
+
+int l298n_rbrake_main(int wfd, int argc, char *argv[])
+{
+	right_speed = 0;
+	do_speedup_right();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_rbrake);
+
+int l298n_rspeedup_main(int wfd, int argc, char *argv[])
+{
+	right_speed++;
+	right_speed = min(max_speed, right_speed);
+	do_speedup_right();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_rspeedup);
+
+int l298n_rspeeddown_main(int wfd, int argc, char *argv[])
+{
+	right_speed--;
+	right_speed = max(0, right_speed);
+	do_speedup_right();
+	return 0;
+}
+
+DEFINE_MODULE(l298n_rspeeddown);
+
+int l298n_init_main(int wfd, int argc, char *argv[])
 {
 	int c;
-	
-        fprintf(stderr, "l298n_main start %d\n", argc);
+	FILE *fd = fdopen(wfd, "wb");	
+
+	setvbuf(fd, NULL, _IONBF, 0);
+        fprintf(fd, "l298n_main start %d\n", argc);
 
 	static struct option opts[] = {
 		{ "int1",	required_argument, NULL, 'a' },
@@ -119,14 +213,6 @@ int l298n_main(int wfd, int argc, char *argv[])
 		{ "range",	required_argument, NULL, 'g' },
 		{ "maxspeed",	required_argument, NULL, 'h' },
 		{ "pwmdiv",	required_argument, NULL, 'i' },
-		{ "lup",	required_argument, NULL, 'j' },
-		{ "ldown",	required_argument, NULL, 'k' },
-		{ "lbrake",	required_argument, NULL, 'l' },
-		{ "lspeed",	required_argument, NULL, 'm' },
-		{ "rup",	required_argument, NULL, 'n' },
-		{ "rdown",	required_argument, NULL, 'o' },
-		{ "rbrake",	required_argument, NULL, 'p' },
-		{ "rspeed",	required_argument, NULL, 'q' },
 		{ 0, 0, 0, 0 } };
 
 	for (;;) {
@@ -134,60 +220,23 @@ int l298n_main(int wfd, int argc, char *argv[])
 		if (c < 0) break;
 
 		switch (c) {
-		case 'a': int1 = atoi(optarg); reinit = 1; break;
-		case 'b': int2 = atoi(optarg); reinit = 1; break;
-		case 'c': int3 = atoi(optarg); reinit = 1; break;
-		case 'd': int4 = atoi(optarg); reinit = 1; break;
-		case 'e': ena = atoi(optarg); reinit = 1; break;
-		case 'f': enb = atoi(optarg); reinit = 1; break;
-		case 'g': range = atoi(optarg); reinit = 1; break;
-		case 'h': max_speed = atoi(optarg); reinit = 1; break;
-		case 'i': pwm_div = atoi(optarg); reinit = 1; break;
-		case 'j': /* lup */
-			left_forward = 1;
-			do_speedup_left();
-			break;
-		case 'k': /* ldown */
-			left_forward = 0;
-			do_speedup_left();
-			break;
-		case 'l': /* lbrake */
-			left_speed = 0;
-			do_speedup_left();
-			break;
-		case 'm': /* lspeed */
-			left_speed = atoi(optarg);
-			left_speed = min(max_speed, left_speed);
-			do_speedup_left();
-			break;
-		case 'n': /* rup */
-			right_forward = 1;
-			do_speedup_right();
-			break;
-		case 'o': /* rdown */
-			right_forward = 0;
-			do_speedup_right();
-			break;
-		case 'p': /* rbrake */
-			right_speed = 0;
-			do_speedup_right();
-			break;
-		case 'q': /* rspeed */
-			right_speed = atoi(optarg);
-			right_speed = min(max_speed, right_speed);
-			do_speedup_right();
-			break;
+		case 'a': int1 = atoi(optarg); break;
+		case 'b': int2 = atoi(optarg); break;
+		case 'c': int3 = atoi(optarg); break;
+		case 'd': int4 = atoi(optarg); break;
+		case 'e': ena = atoi(optarg); break;
+		case 'f': enb = atoi(optarg); break;
+		case 'g': range = atoi(optarg); break;
+		case 'h': max_speed = atoi(optarg); break;
+		case 'i': pwm_div = atoi(optarg); break;
 		}
 	}
 
-	if (reinit) {
-		bcm2835_init();
-		l298n_init();
-		reinit = 0;
-	}
+	bcm2835_init();
+	l298n_init();
 
-        fprintf(stderr, "l298n_main end\n");
+        fprintf(fd, "l298n_main end\n");
 	return 0;
 }
 
-DEFINE_MODULE(l298n);
+DEFINE_MODULE(l298n_init);
