@@ -4,7 +4,7 @@ include ../rules.mak
 
 CFLAGS += -g -I../lib -I../libbcm2835 -I../libevent/include
 LDFLAGS += -L ../lib
-LIBS = -lpthread -lrt
+LIBS =
 
 PROGS = raspd
 

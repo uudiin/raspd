@@ -66,6 +66,9 @@ int main(int argc, char **argv)
 	int g,rep,i;
 	char inchar;
 
+	if (!bcm2835_init())
+		return 1;
+
 	bcm2835_gpio_fsel(PIN, BCM2835_GPIO_FSEL_OUTP);
 	bcm2835_gpio_write(PIN, LOW);
 
@@ -146,6 +149,8 @@ int main(int argc, char **argv)
 	for (i = 0; i < 40; i++) {
 		sendCode(idle);
 	}
+
+	bcm2835_close();
 
 	return 0;
 }

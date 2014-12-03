@@ -31,4 +31,4 @@ $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
 endif
 
 clean:
-	rm -f *.d $(OBJS_client) $(PROGS)
+	rm -f *.d $(OBJS_client) $(OBJS_test) $(PROGS)
