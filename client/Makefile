@@ -18,10 +18,8 @@ OBJS_test = test.o
 all: $(PROGS)
 
 libclient.so: $(OBJS_client)
-	$(call quiet-command, $(CC) $(LDFLAGS) -shared -fPIC -o $@ $^ $(LIBS), "  CC    $(TARGET_DIR)$@")
 
 libclient.a: $(OBJS_client)
-	$(call quiet-command, $(AR) cr $@ $^, "  AR    $(TARGET_DIR)$@")
 
 test: $(OBJS_test) libclient.a ../lib/libraspberry.a ../libevent/libevent.a
 	$(call quiet-command, $(CC) $(LDFLAGS) -o $@ $^ $(LIBS), "  CC    $(TARGET_DIR)$@")

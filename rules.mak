@@ -21,4 +21,7 @@ DGFLAGS = -MMD -MP -MT $@ -MF $(*D)/$(*F).d
 %.a:
 	$(call quiet-command, rm -f $@ && $(AR) rcs $@ $^, "  AR    $(TARGET_DIR)$@")
 
+%.so:
+	$(call quiet-command, $(CC) $(LDFLAGS) -shared -fPIC -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
+
 quiet-command = $(if $(V), $1, $(if $2, @echo $2 && $1, @$1))
