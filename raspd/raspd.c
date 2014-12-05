@@ -107,14 +107,14 @@ static void cb_listen(int fd, short what, void *arg)
     }
 }
 
-int modexec_init(struct module *m, void *opaque)
+static int modexec_init(struct module *m, void *opaque)
 {
     if (m->init)
         return m->init();
     return ENOENT;
 }
 
-int modexec_exit(struct module *m, void *opaque)
+static int modexec_exit(struct module *m, void *opaque)
 {
     if (m->exit)
         m->exit();
