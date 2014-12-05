@@ -107,6 +107,20 @@ static void cb_listen(int fd, short what, void *arg)
     }
 }
 
+int modexec_init(struct module *m, void *opaque)
+{
+    if (m->init)
+        return m->init();
+    return ENOENT;
+}
+
+int modexec_exit(struct module *m, void *opaque)
+{
+    if (m->exit)
+        m->exit();
+    return 0;
+}
+
 static void usage(FILE *fp)
 {
     fprintf(fp,
@@ -200,6 +214,16 @@ int main(int argc, char *argv[])
         }
     }
 
+    /* initialize bcm2835 */
+    if (!bcm2835_init()) {
+        fprintf(stderr, "bcm2835_init() error\n");
+        return 1;
+    }
+
+    /* initialize all modules */
+    if ((err = foreach_module(modexec_init, NULL)) < 0)
+        return 1;
+
     if (listen_port > 0 && listen_port < 65535) {
         size_t ss_len;
 
@@ -246,16 +270,14 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!bcm2835_init()) {
-        fprintf(stderr, "bcm2835_init() error\n");
-        return 1;
-    }
-
     /* main loop */
     rasp_event_loop();
 
     if (fd != -1)
         close(fd);
+
+    /* uninitialize all modules */
+    foreach_module(modexec_exit, NULL);
 
     bcm2835_close();
     rasp_event_exit();

@@ -14,6 +14,8 @@
 #include "event.h"
 #include "gpiolib.h"
 
+#include "ultrasonic.h"
+
 #define PIN_TRIG    20
 #define PIN_ECHO    21
 
@@ -51,7 +53,9 @@ struct ultrasonic_env {
     struct event *ev_echo;
     struct timespec trig_tp;
     struct timespec echo_tp;     /* last time */
-    int wfd;
+    /*int wfd;*/
+    void (*urgent_cb)(double distance/* cm */, void *opaque);
+    void *opaque;
 };
 
 static int pin_trig = PIN_TRIG;
@@ -74,8 +78,6 @@ static void cb_echo(int fd, short what, void *arg)
     struct timespec tp, elapse;
     unsigned long microsec;
     double distance;
-    char buffer[128];
-    size_t len;
     int value;
 
     env->nr_echo++;
@@ -93,9 +95,8 @@ static void cb_echo(int fd, short what, void *arg)
         distance = (double)microsec * VELOCITY_VOICE / 2;
         distance = US2VELOCITY(microsec);
 
-        len = snprintf(buffer, sizeof(buffer),
-                "ultrasonic: distance = %.3f cm\n", distance);
-        write(env->wfd, buffer, len);
+        if (env->urgent_cb)
+            env->urgent_cb(distance, env->opaque);
     }
 }
 
@@ -127,6 +128,58 @@ static void cb_timer(int fd, short what, void *arg)
     evtimer_add(env->ev_over_trig, &tv);
 }
 
+int ultrasonic_scope(int count, int interval,
+            void (*urgent_cb)(double distance/* cm */, void *opaque),
+            void *opaque)
+{
+    struct ultrasonic_env *env;
+    struct timeval tv;
+
+    env = xmalloc(sizeof(*env));
+    memset(env, 0, sizeof(*env));
+    env->pin_trig = pin_trig;
+    env->pin_echo = pin_echo;
+    env->count = count;
+    env->interval = interval;
+    env->urgent_cb = urgent_cb;
+    env->opaque = opaque;
+
+    /* XXX  not add */
+    env->ev_over_trig = evtimer_new(base, cb_over_trig, env);
+    if (env->ev_over_trig == NULL) {
+        free_env(env);
+        return -ENOMEM;
+    }
+
+    if (bcm2835_gpio_signal(env->pin_echo, EDGE_both,
+                        cb_echo, env, &env->ev_echo) < 0) {
+        free_env(env);
+        return -EIO;
+    }
+
+    bcm2835_gpio_fsel(env->pin_trig, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_write(env->pin_trig, LOW);
+    tv.tv_sec = interval / 1000;
+    tv.tv_usec = (interval % 1000) * 1000000;
+    if (register_timer(EV_PERSIST, &tv,
+                cb_timer, env, &env->ev_timer) < 0) {
+        free_env(env);
+        return -ENOENT;
+    }
+    return 0;
+}
+
+static void urgent_cb(double distance/* cm */, void *opaque)
+{
+    int wfd = (int)opaque;
+    char buffer[128];
+    size_t len;
+
+    len = snprintf(buffer, sizeof(buffer),
+            "ultrasonic: distance = %.3f cm\n", distance);
+    write(env->wfd, buffer, len);
+}
+
 static int ultrasonic_main(int wfd, int argc, char *argv[])
 {
     int count = 1;
@@ -156,38 +209,8 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     }
 
     if (count >= 1 && interval) {
-        struct timeval tv;
-
-        env = xmalloc(sizeof(*env));
-        memset(env, 0, sizeof(*env));
-        env->pin_trig = pin_trig;
-        env->pin_echo = pin_echo;
-        env->count = count;
-        env->interval = interval;
-        env->wfd = wfd;
-
-        /* XXX  not add */
-        env->ev_over_trig = evtimer_new(base, cb_over_trig, env);
-        if (env->ev_over_trig == NULL) {
-            free_env(env);
+        if (ultrasonic_scope(count, interval, urgent_cb, (void *)wfd) < 0)
             return 1;
-        }
-
-        if (bcm2835_gpio_signal(env->pin_echo, EDGE_both,
-                        cb_echo, env, &env->ev_echo) < 0) {
-            free_env(env);
-            return 1;
-        }
-
-        bcm2835_gpio_fsel(env->pin_trig, BCM2835_GPIO_FSEL_OUTP);
-        bcm2835_gpio_write(env->pin_trig, LOW);
-        tv.tv_sec = interval / 1000;
-        tv.tv_usec = (interval % 1000) * 1000000;
-        if (register_timer(EV_PERSIST, &tv,
-                    cb_timer, env, &env->ev_timer) < 0) {
-            free_env(env);
-            return 1;
-        }
     }
 
     return 0;

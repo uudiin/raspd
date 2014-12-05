@@ -5,6 +5,9 @@
 
 struct module {
     const char *name;
+    int (*init)(void);
+    void (*exit)(void);
+    /*int (*lua_config)(lua_State *L);*/
     int (*main)(int wfd, int argc, char *argv[]);
     TAILQ_ENTRY(module) list;
 };
@@ -13,6 +16,7 @@ struct module {
 #define __exit  __attribute__((destructor))
 
 void register_module(struct module *m);
+int foreach_module(int (*fn)(struct module *m, void *opaque));
 int module_execv(int wfd, int argc, char *argv[]);
 int module_execl(int wfd, const char *modname, /*const char *arg0, ..., 0,*/ ...);
 int module_cmdexec(int wfd, const char *cmdexec);
