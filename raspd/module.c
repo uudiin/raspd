@@ -29,7 +29,7 @@ static struct module *find_module(const char *name)
     return NULL;
 }
 
-int foreach_module(int (*fn)(struct module *m, void *opaque))
+int foreach_module(int (*fn)(struct module *m, void *opaque), void *opaque)
 {
     struct module *m;
     int err = 0;

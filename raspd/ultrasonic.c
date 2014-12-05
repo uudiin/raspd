@@ -177,7 +177,7 @@ static void urgent_cb(double distance/* cm */, void *opaque)
 
     len = snprintf(buffer, sizeof(buffer),
             "ultrasonic: distance = %.3f cm\n", distance);
-    write(env->wfd, buffer, len);
+    write(wfd, buffer, len);
 }
 
 static int ultrasonic_main(int wfd, int argc, char *argv[])
