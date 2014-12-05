@@ -33,6 +33,14 @@ void right(void)
 	client_send_cmd(cmd2, strlen(cmd2));
 } 
 
+void brake(void)
+{
+	char cmd1[] = "l298n_lbrake;";
+	char cmd2[] = "l298n_rbrake;";
+	client_send_cmd(cmd1, strlen(cmd1));
+	client_send_cmd(cmd2, strlen(cmd2));
+} 
+
 void speed_up(void)
 {
 	char cmd1[] = "l298n_lspeedup;";

@@ -1,6 +1,11 @@
 #include <string.h>
 #include <stdio.h>
 
+void cbrecv(char *buf, int buflen)
+{
+	printf(buf);
+}
+
 int main(int argc, char *argv[])
 {
 	int err;
@@ -11,6 +16,8 @@ int main(int argc, char *argv[])
 		printf("connect_stream err = %d\n", err);
 		return err;
 	}
+
+	client_msg_dispatch(cbrecv);
 
 	speed_up();
 	speed_down();

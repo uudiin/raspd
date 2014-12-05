@@ -16,8 +16,12 @@ static struct event_base *base;
 
 static void cb_recv(int fd, short what, void *arg)
 {
+	void (*cb)(char *buf, int buflen) = arg;
 	char buf[1024] = "\0";
 	read(fd, buf, 1024);
+	if (cb != NULL) {
+		cb(buf, strlen(buf));
+	}
 	perror(buf);
 }
 
@@ -51,12 +55,7 @@ static int client_eventfd_add(int fd, short flags, struct timeval *timeout,
     return 0;
 }
 
-static int client_event_loop(void)
-{
-    return event_base_dispatch(base);
-}
-
-static int client_msg_dispatch(void)
+static void *thread_func(void *arg)
 {
 	int err;
 	static struct event *ev_recv;
@@ -64,24 +63,25 @@ static int client_msg_dispatch(void)
 	err = client_event_init();
 	if (err < 0) {
 		perror("rasp_event_init()\n");
-		return err;
+		return NULL;
 	}
 
 	unblock_socket(fd);
 	err = client_eventfd_add(fd, EV_READ | EV_PERSIST,
-		NULL, cb_recv, (void *)&ev_recv, &ev_recv);
+		NULL, cb_recv, arg, &ev_recv);
 	if (err < 0) {
 		perror("eventfd_add()\n");
-		return err;
+		return NULL;
 	}
 
-	return client_event_loop();
+	event_base_dispatch(base);
+	return NULL;
 }
 
-static void *thread_func(void *arg)
+int client_msg_dispatch(void (*cb)(char *buf, int buflen))
 {
-	client_msg_dispatch();
-	return NULL;
+	pthread_t thread;
+	return pthread_create(&thread, NULL, thread_func, cb);
 }
 
 int client_connect(const char *hostname, unsigned short portno)
@@ -89,20 +89,19 @@ int client_connect(const char *hostname, unsigned short portno)
 	union sockaddr_u addr;
 	size_t ss_len;
 	fd_set master_readfds;
-	pthread_t thread;
 	int maxfd;
 	int err;
 
 	ss_len = sizeof(addr);
 	err = resolve(hostname, portno, &addr.storage, &ss_len, AF_INET, 0);
-	if (err < 0)
+	if (err < 0) {
 		return err;
+	}
 
 	fd = do_connect(SOCK_STREAM, &addr);
-	if (fd < 0)
+	if (fd < 0) {
 		return -1;
-
-	pthread_create(&thread, NULL, thread_func, NULL);
+	}
 
 	return err;
 }

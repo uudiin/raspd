@@ -5,19 +5,15 @@ CFLAGS += -g -I../lib -I../libevent/include -fPIC
 LDFLAGS = -L ../lib -pthread
 LIBS =
 
-PROGS = libclient.a libclient.so test
+PROGS = libclient.a test
 
 SRCS_client = client.c l298n.c
 OBJS_client = client.o l298n.o
 OBJS_test = test.o
 
-#$(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):%.c=%.o)))
-
 .PHONY: all clean
 
 all: $(PROGS)
-
-libclient.so: $(OBJS_client)
 
 libclient.a: $(OBJS_client)
 
