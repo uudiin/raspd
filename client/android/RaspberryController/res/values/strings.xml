@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">RaspberryController</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="btn_up">UP</string>
+    <string name="btn_down">DOWN</string>
+    <string name="btn_left">LEFT</string>
+    <string name="btn_right">RIGHT</string>
+    <string name="btn_brake">BRAKE</string>
+    <string name="btn_tleft">TLEFT</string>
+    <string name="btn_tright">TRIGHT</string>
+    <string name="btn_sup">SUP</string>
+    <string name="btn_sdown">SDOWN</string>
+    <string name="btn_telev">TELEV</string>
+    <string name="btn_fire">FIRE</string>
+    <string name="btn_connect">CONN</string>
+
+</resources>
