@@ -1,24 +1,36 @@
 package com.raspberry.controller;
 
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.client.nativef.ClientNative;
+import com.raspberry.controller.PiMessageHandler.IControllerListener;
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity implements IControllerListener {
+
+	List<String> mDataArray;
+    ArrayAdapter<String> mAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
+        PiMessageHandler mMessageHandler = new PiMessageHandler(this);
+        ClientNative.setJNIEnv(mMessageHandler);
+
         Button mSupBtn = (Button)findViewById(R.id.button_sup);
         mSupBtn.setOnClickListener(new View.OnClickListener() {
 
@@ -136,12 +148,11 @@ public class MainActivity extends ActionBarActivity {
 			}
 		});
 
+        ListView mListView = (ListView)findViewById(R.id.list_shower);
+        mDataArray = new ArrayList<String>();
+        mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mDataArray);
+        mListView.setAdapter(mAdapter);
     }
-    
-    public void DisplayOutput(String msg) {
-    	Toast.makeText(getApplicationContext(), "YY", Toast.LENGTH_SHORT).show();
-    }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -161,4 +172,15 @@ public class MainActivity extends ActionBarActivity {
         }
         return super.onOptionsItemSelected(item);
     }
+
+	@Override
+	public void onControllerEvent(int event, int type, Object data) {
+		// TODO Auto-generated method stub
+		if(data instanceof String) {
+			String msg = (String)data;
+			
+			mDataArray.add(0, msg);
+			mAdapter.notifyDataSetChanged();
+		}
+	}
 }

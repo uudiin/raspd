@@ -8,11 +8,11 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.raspberry.controller.MainActivity" >
 
-    <EditText
-        android:id="@+id/editText"
+    <ListView
+        android:id="@+id/list_shower"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/edit_addr"
+        android:layout_above="@+id/button_connect"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true"
         android:layout_alignParentTop="true"
@@ -20,7 +20,7 @@
         android:inputType="textMultiLine" >
 
         <requestFocus />
-    </EditText>
+    </ListView>
 
     <Button
         android:id="@+id/button_down"
@@ -117,16 +117,25 @@
         android:layout_height="wrap_content"
         android:layout_above="@+id/button_fire"
         android:layout_alignLeft="@+id/button_telev"
-        android:layout_alignRight="@+id/button_tright"
+        android:layout_toLeftOf="@+id/button_connect"
         android:ems="10"
         android:inputType="textPostalAddress" />
+
+    <Button
+        android:id="@+id/button_auto"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/button_tright"
+        android:layout_alignRight="@+id/button_tright"
+        android:text="Button" />
 
     <Button
         android:id="@+id/button_connect"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/button_tright"
-        android:layout_below="@+id/edit_addr"
+        android:layout_alignBaseline="@+id/edit_addr"
+        android:layout_alignBottom="@+id/edit_addr"
+        android:layout_alignLeft="@+id/button_auto"
         android:text="@string/btn_connect" />
 
 </RelativeLayout>
