@@ -2,7 +2,7 @@
 
 include ../../rules.mak
 CFLAGS += -g -fPIC
-LDFLAGS =
+LDFLAGS += -llog
 LIBS =
 CROSS_COMPILE=arm-linux-androideabi-
 

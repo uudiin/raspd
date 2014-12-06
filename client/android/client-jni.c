@@ -118,17 +118,18 @@ void cbrecv(char *buf, int buflen)
 
 		jstring msg = string_to_jstring(env, buf, buflen);
 
-		jclass java_class = (*env)->GetObjectClass(env, gs_obj);
-		if (java_class == 0) {
+		jclass cls = (*env)->GetObjectClass(env, gs_obj);
+		if (cls == 0) {
 			break;
 		}
 
-		jmethodID java_method = (*env)->GetMethodID(
-						env, java_class, "DisplayOutput", "(Ljava/lang/String;)V");
-		if (java_method == 0) {
+		jmethodID med = (*env)->GetMethodID(env, cls, 
+					"handlePiMessage", "(Ljava/lang/String;)V");
+		if (med == 0) {
 			break;
 		}
-		(*env)->CallVoidMethod(env, java_class, java_method, 0);
+		(*env)->CallVoidMethod(env, gs_obj, med, msg);
+		(*env)->DeleteLocalRef(env, msg);
 	} while (0);
 
 	if (env != NULL) {
@@ -146,7 +147,24 @@ int Java_com_client_nativef_ClientNative_connect(JNIEnv *env, jobject thiz, jstr
 	err = client_connect(hostname, (unsigned short)port);
 	client_msg_dispatch(cbrecv);
 	(*env)->ReleaseStringUTFChars(env, host, hostname);
-	(*env)->GetJavaVM(env, &gs_jvm);
-	gs_obj = (*env)->NewGlobalRef(env, thiz);
 	return err;
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
+{
+	JNIEnv* env = NULL;
+	jint result = -1;
+
+	if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_4) != JNI_OK) {
+		LOGE("GetEnv failed!");
+		return result;
+	}
+
+	return JNI_VERSION_1_4;
+}
+
+JNIEXPORT void Java_com_client_nativef_ClientNative_setJNIEnv(JNIEnv *env, jobject obj, jobject handler)
+{
+	(*env)->GetJavaVM(env, &gs_jvm);
+	gs_obj = (*env)->NewGlobalRef(env, handler);
 }
