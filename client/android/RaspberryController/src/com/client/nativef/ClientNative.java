@@ -1,5 +1,7 @@
 package com.client.nativef;
 
+import com.raspberry.controller.PiMessageHandler;
+
 public class ClientNative {
 	static {
 		System.loadLibrary("client");
@@ -17,4 +19,5 @@ public class ClientNative {
 	public static native void telev();
 	public static native void fire();
 	public static native int connect(String host, int port);
+	public static native void setJNIEnv(PiMessageHandler mMessageHandler);
 }
