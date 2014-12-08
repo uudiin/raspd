@@ -10,6 +10,8 @@
 #include "module.h"
 #include "event.h"
 
+#include "gpio.h"
+
 #define NR_BCM2835_GPIO     54
 #define INVALID_PIN(x)      ((x) < 0 || (x) >= NR_BCM2835_GPIO)
 
@@ -49,6 +51,50 @@ static void cb_timer(int fd, short what, void *arg)
         gpios[pin].level ^= 1;
         bcm2835_gpio_write(pin, gpios[pin].level);
     }
+}
+
+int gpio_blink_multi(int gpio[], int nr, int count, int interval)
+{
+    struct blink *bl;
+    struct timeval timeout;
+    int i;
+    int err = -EFAULT;
+
+    if (nr > NR_BCM2835_GPIO)
+        return -EINVAL;
+
+    bl = xmalloc(sizeof(*bl));
+    memset(bl, 0, sizeof(*bl));
+    bl->count = count;
+    bl->interval = interval;
+    bl->nr = nr;
+    timeout.tv_sec = interval / 1000;
+    timeout.tv_usec = (interval % 1000) * 1000;
+
+    for (i = 0; i < nr; i++) {
+        if (INVALID_PIN(gpio[i])) {
+            bl->gpio[i] = -1;   /* set invalid */
+            continue;
+        }
+        bl->gpio[i] = gpio[i];
+
+        bcm2835_gpio_fsel(gpio[i], BCM2835_GPIO_FSEL_OUTP);
+        bcm2835_gpio_write(gpio[i], 1);
+        gpios[gpio[i]].level = 1;
+    }
+
+    if ((err = register_timer(EV_PERSIST, &timeout,
+                        cb_timer, bl, &bl->timer)) < 0) {
+        free(bl);
+        return err;
+    }
+
+    return 0;
+}
+
+int gpio_blink(int gpio, int count, int interval)
+{
+    return gpio_blink_multi(&gpio, 1, count, interval);
 }
 
 /*

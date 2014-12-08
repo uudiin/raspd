@@ -29,6 +29,18 @@ static struct module *find_module(const char *name)
     return NULL;
 }
 
+int foreach_module(int (*fn)(struct module *m, void *opaque), void *opaque)
+{
+    struct module *m;
+    int err = 0;
+
+    TAILQ_FOREACH(m, &list_head, list) {
+        if ((err = fn(m, opaque)) < 0)
+            break;
+    }
+    return err;
+}
+
 int module_execv(int wfd, int argc, char *argv[])
 {
     struct module *m;
