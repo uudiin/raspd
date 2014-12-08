@@ -1,11 +1,33 @@
+/*
+ * Raspberry Tank SSH Remote Control script
+ * Ian Renton, June 2012
+ * http://ianrenton.com
+ * 
+ * Based on the GPIO example by Dom and Gert
+ * (http://elinux.org/Rpi_Low-level_peripherals#GPIO_Driving_Example_.28C.29)
+ * Using Heng Long op codes discovered by ancvi_pIII
+ * (http://www.rctanksaustralia.com/forum/viewtopic.php?p=1314#p1314)
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include <bcm2835.h>
 
-/* GPIO pin that connects to the Heng Long main board
-   (Pin 7 is the top right pin on the Pi's GPIO, next to the yellow video-out) */
+/*
+ * N.B. These have been reversed compared to Gert & Dom's original code!
+ * This is because the transistor board I use for talking to the Heng
+ * Long RX18 inverts the signal.  So the GPIO_SET pointer here actually
+ * sets the GPIO pin low - but that ends up as a high at the tank.
+ */
+#define GPIO_CLR *(bcm2835_gpio + 7)
+#define GPIO_SET *(bcm2835_gpio + 10)
+
+/*
+ * GPIO pin that connects to the Heng Long main board
+ * (Pin 7 is the top right pin on the Pi's GPIO, next to the yellow video-out)
+ */
 #define PIN 7
 
 /* Heng Long tank bit-codes */
@@ -26,51 +48,59 @@ int fire = 0xFE442F34;
 int machine_gun = 0xFE440F78;
 int recoil = 0xFE420F24;
 
-/* Sends one individual bit using Manchester coding
-   1 = high-low, 0 = low-high */
+/*
+ * Sends one individual bit using Manchester coding
+ * 1 = high-low, 0 = low-high
+ */
 void sendBit(int bit)
 {
+
 	if (bit == 1) {
-		bcm2835_gpio_write(PIN, HIGH);
+		GPIO_SET = 1 << PIN;
 		usleep(250);
-		bcm2835_gpio_write(PIN, LOW);
+		GPIO_CLR = 1 << PIN;
 		usleep(250);
 	} else {
-		bcm2835_gpio_write(PIN, LOW);
+		GPIO_CLR = 1 << PIN;
 		usleep(250);
-		bcm2835_gpio_write(PIN, HIGH);
+		GPIO_SET = 1 << PIN;
 		usleep(250);
 	}
 }
 
 /* Sends one individual code to the main tank controller */
-void sendCode(int code) {
+void sendCode(int code)
+{
 	/* Send header "bit" (not a valid Manchester code) */
-	bcm2835_gpio_write(PIN, HIGH);
+	GPIO_SET = 1 << PIN;
 	usleep(500);
 
 	/* Send the code itself, bit by bit using Manchester coding */
 	int i;
 	for (i = 0; i < 32; i++) {
-		int bit = (code>>(31-i)) & 0x1;
+		int bit = (code >> (31 - i)) & 0x1;
 		sendBit(bit);
 	}
 
 	/* Force a 4ms gap between messages */
-	bcm2835_gpio_write(PIN, LOW);
+	GPIO_CLR = 1 << PIN;
 	usleep(3333);
 }
 
 int main(int argc, char **argv)
 { 
+
 	int g,rep,i;
 	char inchar;
 
 	if (!bcm2835_init())
 		return 1;
 
+	/* must use INP_GPIO before we can use OUT_GPIO */
+	bcm2835_gpio_fsel(PIN, BCM2835_GPIO_FSEL_INPT);
 	bcm2835_gpio_fsel(PIN, BCM2835_GPIO_FSEL_OUTP);
-	bcm2835_gpio_write(PIN, LOW);
+
+	GPIO_CLR = 1 << PIN;
 
 	/* Send the idle and ignition codes */
 	printf("Idle\n");

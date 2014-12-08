@@ -11,8 +11,6 @@
 #ifndef _EVENT2_EVENT_CONFIG_H_
 #define _EVENT2_EVENT_CONFIG_H_
 
-#define ARC4RANDOM_NOADDRANDOM 1
-
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
