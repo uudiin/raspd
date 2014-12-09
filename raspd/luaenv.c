@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 #include <errno.h>
 
@@ -88,7 +89,7 @@ static int lr_modexec(lua_State *L)
     return 0;
 }
 
-static const luaL_Reg luaraspd_funcs[] = {
+static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
     { "breath",  lr_breath  },
@@ -99,7 +100,11 @@ static const luaL_Reg luaraspd_funcs[] = {
 
 static int luaopen_luaraspd(lua_State *L)
 {
-    luaL_newlib(L, luaraspd_funcs);
+    /*
+     * only exported by lua 5.2 and above
+     * luaL_newlib(L, luaraspd_lib);
+     */
+    luaL_register(L, "luaraspd", luaraspd_lib);
     return 1;
 }
 
@@ -177,7 +182,7 @@ int luaenv_call_va(const char *func, const char *fmt, ...)
         return -EFAULT;
 
     /* fetch results */
-    while (nres = -nres; *fmt; nres++) {
+    for (nres = -nres; *fmt; nres++) {
         switch (*fmt++) {
         case 'd':
             if (!lua_isnumber(L, nres))
@@ -207,7 +212,7 @@ int luaenv_run_file(const char *file)
 {
     if (luaL_loadfile(L, file) != 0)
         return -EBADF;
-    if (lua_pcall(L, 0, 0, 0) != LUA_OK && !lua_isnil(L, -1))
+    if (lua_pcall(L, 0, 0, 0) != 0 && !lua_isnil(L, -1))
         return -EFAULT;
     return 0;
 }
@@ -218,8 +223,14 @@ int luaenv_init(void)
     luaL_openlibs(L);
 
     /* register luaraspd lib */
-    luaL_requiref(L, "luaraspd", luaopen_luaraspd, 1/* global */);
-    lua_pop(L, 1);
+    /*
+     * only exported by lua 5.2 and above
+     * luaL_requiref(L, "luaraspd", luaopen_luaraspd, 1);
+     * lua_pop(L, 1);
+     */
+    lua_pushcfunction(L, luaopen_luaraspd);
+    lua_pushstring(L, "luaraspd");
+    lua_call(L, 1, 0);
 
     return 0;
 }

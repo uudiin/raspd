@@ -8,5 +8,6 @@ local lr = luaraspd
 
 function urgent_cb(fd, distance)
     --io.stderr:write("distance = " .. distance)
-    io.stderr:write("ultrasonic.lua  distance = " .. "lua")
+    io.stderr:write("ultrasonic.lua  distance = " .. "lua\n")
+    lr.blink(18, 2, 500)
 end
