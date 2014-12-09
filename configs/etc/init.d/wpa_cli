@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Starting wpa cli
+#
+
+case "$1" in
+        start)
+                echo -n "Starting wpa cli: "
+                start-stop-daemon -S -x /usr/sbin/wpa_supplicant -- -B -i wlan0 -c /etc/wpa_supplicant/wpa_cli.conf
+                [ $? == 0 ] && echo "OK" || echo "FAIL"
+                ;;
+        stop)
+                echo -n "Stopping wpa cli: "
+                start-stop-daemon -K -x /usr/sbin/wpa_supplicant
+                [ $? == 0 ] && echo "OK" || echo "FAIL"
+                ;;
+        restart | force-reload)
+                $0 stop
+                sleep 2
+                $0 start
+                if [ "$?" != "0" ]; then
+                        exit 1
+                fi
+                ;;
+        *)
+                echo "Usage: /etc/init.d/wpa-cli {start|stop|restart|force-reload}"
+                exit 1
+esac
+
+exit 0

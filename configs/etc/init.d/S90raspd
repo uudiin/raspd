@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Starting Raspd
+#
+
+case "$1" in
+        start)
+                echo -n "Starting Raspd: "
+                start-stop-daemon -S -x /root/source/raspberry/raspd/raspd -- --daemon --logerr /tmp/raspd.log --listen 8888
+                [ $? == 0 ] && echo "OK" || echo "FAIL"
+                ;;
+        stop)
+                echo -n "Stopping Raspd: "
+                start-stop-daemon -K -x /root/source/raspberry/raspd/raspd
+                [ $? == 0 ] && echo "OK" || echo "FAIL"
+                ;;
+        restart | force-reload)
+                $0 stop
+                sleep 2
+                $0 start
+                if [ "$?" != "0" ]; then
+                        exit 1
+                fi
+                ;;
+        *)
+                echo "Usage: /etc/init.d/raspd {start|stop|restart|force-reload}"
+                exit 1
+esac
+
+exit 0
