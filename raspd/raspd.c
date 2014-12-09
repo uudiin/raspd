@@ -16,6 +16,8 @@
 
 #include "module.h"
 #include "event.h"
+#include "luaenv.h"
+#include "config.h"
 
 #define BUF_SIZE    1024
 
@@ -107,6 +109,20 @@ static void cb_listen(int fd, short what, void *arg)
     }
 }
 
+static int modexec_init(struct module *m, void *opaque)
+{
+    if (m->init)
+        return m->init();
+    return ENOENT;
+}
+
+static int modexec_exit(struct module *m, void *opaque)
+{
+    if (m->exit)
+        m->exit();
+    return 0;
+}
+
 static void usage(FILE *fp)
 {
     fprintf(fp,
@@ -118,6 +134,7 @@ static void usage(FILE *fp)
         "  -l, --listen <port>       listen on port use TCP\n"
         "  -u, --unix-listen <sock>  listen on the unix socket file\n"
         "  -e, --logerr <file>       specify the error log file\n"
+        "  -c, --lua-config <file>   specify the lua config file\n"
         "  -h, --help                display this help screen\n"
         );
 
@@ -139,6 +156,7 @@ int main(int argc, char *argv[])
         { "listen",      required_argument, NULL, 'l' },
         { "unix-listen", required_argument, NULL, 'u' },
         { "logerr",      required_argument, NULL, 'e' },
+        { "lua-config",  required_argument, NULL, 'c' },
         { "help",        no_argument,       NULL, 'h' },
         { 0, 0, 0, 0 }
     };
@@ -146,17 +164,19 @@ int main(int argc, char *argv[])
     int daemon = 0;
     char *unixlisten = NULL;
     char *logerr = NULL;
+    char *lua_conf = DEFAULT_LUA_CONFIG;
     long listen_port = 0;
     union sockaddr_u addr;
     int fd = -1;
     int err;
 
-    while ((c = getopt_long(argc, argv, "dl:u:e:h", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "dl:u:e:c:h", options, NULL)) != -1) {
         switch (c) {
         case 'd': daemon = 1; break;
         case 'l': listen_port = strtol(optarg, NULL, 10); break;
         case 'u': unixlisten = optarg; break;
         case 'e': logerr = optarg; break;
+        case 'c': lua_conf = optarg; break;
         case 'h': usage(stdout); break;
         default:
             usage(stderr);
@@ -199,6 +219,24 @@ int main(int argc, char *argv[])
             close(logfd);
         }
     }
+
+    /* initialize bcm2835 */
+    if (!bcm2835_init()) {
+        fprintf(stderr, "bcm2835_init() error\n");
+        return 1;
+    }
+
+    /* initialize luaenv */
+    if ((err = luaenv_init()) < 0) {
+        fprintf(stderr, "luaenv_init(), err = %d\n", err);
+        return 1;
+    }
+    if ((err = luaenv_run_file(lua_conf)) < 0)
+        fprintf(stderr, "luaenv_run_file(%s), err = %d\n", lua_conf, err);
+
+    /* initialize all modules */
+    if ((err = foreach_module(modexec_init, NULL)) < 0)
+        return 1;
 
     if (listen_port > 0 && listen_port < 65535) {
         size_t ss_len;
@@ -246,17 +284,16 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!bcm2835_init()) {
-        fprintf(stderr, "bcm2835_init() error\n");
-        return 1;
-    }
-
     /* main loop */
     rasp_event_loop();
 
     if (fd != -1)
         close(fd);
 
+    /* uninitialize all modules */
+    foreach_module(modexec_exit, NULL);
+
+    luaenv_exit();
     bcm2835_close();
     rasp_event_exit();
 
