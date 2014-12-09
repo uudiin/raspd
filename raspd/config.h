@@ -1,7 +1,6 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#define RASPD_USE_CATNET	0
-#define RASPD_PC_DEBUG		0
+#define DEFAULT_LUA_CONFIG  "config.lua"
 
 #endif /* __CONFIG_H__ */

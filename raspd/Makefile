@@ -4,11 +4,11 @@ include ../rules.mak
 
 CFLAGS += -g -I../lib -I../libbcm2835 -I../libevent/include
 LDFLAGS += -L ../lib
-LIBS = -lpthread -lrt
+LIBS = -lpthread -lrt -llua
 
 PROGS = raspd
 
-SRCS_raspd = raspd.c module.c event.c \
+SRCS_raspd = raspd.c module.c event.c luaenv.c \
 	gpiolib.c gpio.c pwm.c l298n.c ultrasonic.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))

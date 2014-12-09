@@ -13,8 +13,11 @@
 #include "module.h"
 #include "event.h"
 #include "gpiolib.h"
+#include "luaenv.h"
 
 #include "ultrasonic.h"
+
+#define MODNAME     "ultrasonic"
 
 #define PIN_TRIG    20
 #define PIN_ECHO    21
@@ -60,6 +63,12 @@ struct ultrasonic_env {
 
 static int pin_trig = PIN_TRIG;
 static int pin_echo = PIN_ECHO;
+
+/* urgent scope, double ? */
+static int threshold;
+
+#define MAX_LFUNCNAME   64
+static char callback[MAX_LFUNCNAME];
 
 static free_env(struct ultrasonic_env *env)
 {
@@ -178,6 +187,14 @@ static void urgent_cb(double distance/* cm */, void *opaque)
     len = snprintf(buffer, sizeof(buffer),
             "ultrasonic: distance = %.3f cm\n", distance);
     write(wfd, buffer, len);
+
+    /* call the lua function urgent_cb */
+    if (threshold && distance <= (double)threshold && callback[0]) {
+        int err;
+
+        if ((err = luaenv_call_va(callback, "id:", wfd, distance)) < 0)
+            fprintf(stderr, "luaenv_call_va(%s), err = %d\n", callback, err);
+    }
 }
 
 static int ultrasonic_main(int wfd, int argc, char *argv[])
@@ -216,4 +233,42 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     return 0;
 }
 
-DEFINE_MODULE(ultrasonic);
+static int ultrasonic_init(void)
+{
+    const char *script = NULL;
+    const char *cb = NULL;
+    int err;
+
+    luaenv_getconf_int(MODNAME, "TRIG", &pin_trig);
+    luaenv_getconf_int(MODNAME, "ECHO", &pin_echo);
+    luaenv_getconf_int(MODNAME, "threshold", &threshold);
+
+    luaenv_getconf_str(MODNAME, "script", &script);
+    if (script) {
+        if ((err = luaenv_run_file(script)) < 0)
+            fprintf(stderr, "luaenv_run_file(%s), err = %d\n", script, err);
+        luaenv_pop(1);
+    }
+
+    luaenv_getconf_str(MODNAME, "callback", &cb);
+    if (cb) {
+        strncpy(callback, cb, MAX_LFUNCNAME);
+        luaenv_pop(1);
+    }
+
+    return 0;
+}
+
+/*
+ * DEFINE_MODULE(ultrasonic);
+ */
+static struct module __module_ultrasonic = {
+    .name = "ultrasonic",
+    .init = ultrasonic_init,
+    .main = ultrasonic_main
+};
+
+static __init void __reg_module_ultrasonic(void)
+{
+    register_module(&__module_ultrasonic);
+}
