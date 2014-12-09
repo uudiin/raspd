@@ -1,0 +1,6 @@
+#!/bin/sh
+
+#/root/raspberry/raspd/raspd --logerr /tmp/raspd.log --unix /tmp/raspd.sock --daemon
+#/root/raspberry/catnet/catnet --unix /tmp/raspd.sock --listen --daemon 9999
+
+/root/raspberry/raspd/raspd --daemon --logerr /tmp/raspd.log --lua-config /root/raspberry/raspd/config.lua --listen 8888
