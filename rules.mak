@@ -1,9 +1,11 @@
 # Makefile rule
 
 SHELL = bash
-CC = gcc
-CXX = g++
-LD = gcc
+CROSS_COMPILE=
+CC = $(CROSS_COMPILE)gcc
+CXX = $(CROSS_COMPILE)g++
+LD = $(CROSS_COMPILE)gcc
+AR = $(CROSS_COMPILE)ar
 MAKE = make
 CFLAGS = -g
 LDFLAGS = -g

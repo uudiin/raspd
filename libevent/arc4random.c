@@ -445,8 +445,8 @@ arc4random_stir(void)
 #endif
 
 #ifndef ARC4RANDOM_NOADDRANDOM
-ARC4RANDOM_EXPORT void
-arc4random_addrandom(const unsigned char *dat, int datlen)
+void
+arc4random_addrandom(unsigned char *dat, int datlen)
 {
 	int j;
 	_ARC4_LOCK();
@@ -477,7 +477,7 @@ arc4random(void)
 }
 #endif
 
-ARC4RANDOM_EXPORT void
+void
 arc4random_buf(void *_buf, size_t n)
 {
 	unsigned char *buf = _buf;

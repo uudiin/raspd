@@ -29,7 +29,9 @@
 #ifndef	_SYS_TREE_H_
 #define	_SYS_TREE_H_
 
+#ifndef __unused
 #define __unused
+#endif
 
 /*
  * This file defines data structures for different types of trees:

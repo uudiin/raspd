@@ -11,7 +11,7 @@ SRCS_lib = event.c evthread.c buffer.c \
 	bufferevent_pair.c listener.c bufferevent_ratelim.c \
 	evmap.c	log.c evutil.c evutil_rand.c strlcpy.c \
 	epoll.c signal.c \
-	evthread_pthread.c bufferevent_openssl.c
+	evthread_pthread.c
 
 OBJS_lib = $(SRCS_lib:.c=.o)
 

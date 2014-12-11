@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot 2014.11-git-01098-g6d53104 Configuration
+# Buildroot 2015.02-git-00348-g4ac8f78 Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 
@@ -31,7 +31,6 @@ BR2_arm=y
 # BR2_xtensa is not set
 BR2_ARCH="arm"
 BR2_ENDIAN="LITTLE"
-BR2_GCC_TARGET_ARCH="armv6zk"
 BR2_GCC_TARGET_ABI="aapcs-linux"
 BR2_GCC_TARGET_CPU="arm1176jzf-s"
 BR2_GCC_TARGET_FPU="vfp"
@@ -44,8 +43,7 @@ BR2_ARM_CPU_ARMV6=y
 # BR2_arm920t is not set
 # BR2_arm922t is not set
 # BR2_arm926t is not set
-# BR2_arm1136jf_s_r0 is not set
-# BR2_arm1136jf_s_r1 is not set
+# BR2_arm1136jf_s is not set
 # BR2_arm1176jz_s is not set
 BR2_arm1176jzf_s=y
 # BR2_cortex_a5 is not set
@@ -59,7 +57,6 @@ BR2_arm1176jzf_s=y
 # BR2_strongarm is not set
 # BR2_xscale is not set
 # BR2_iwmmxt is not set
-# BR2_arm1136jf_s is not set
 BR2_ARM_EABI=y
 # BR2_ARM_EABIHF is not set
 # BR2_ARM_SOFT_FLOAT is not set
@@ -121,6 +118,11 @@ BR2_PACKAGE_OVERRIDE_FILE="$(CONFIG_DIR)/local.mk"
 BR2_GLOBAL_PATCH_DIR=""
 
 #
+# Advanced
+#
+# BR2_COMPILER_PARANOID_UNSAFE_PATH is not set
+
+#
 # Toolchain
 #
 BR2_TOOLCHAIN=y
@@ -137,10 +139,10 @@ BR2_TOOLCHAIN_BUILDROOT_VENDOR="buildroot"
 # BR2_KERNEL_HEADERS_3_10 is not set
 # BR2_KERNEL_HEADERS_3_12 is not set
 # BR2_KERNEL_HEADERS_3_14 is not set
-BR2_KERNEL_HEADERS_3_16=y
 # BR2_KERNEL_HEADERS_3_17 is not set
+BR2_KERNEL_HEADERS_3_18=y
 # BR2_KERNEL_HEADERS_VERSION is not set
-BR2_DEFAULT_KERNEL_HEADERS="3.16.7"
+BR2_DEFAULT_KERNEL_HEADERS="3.18"
 # BR2_TOOLCHAIN_BUILDROOT_UCLIBC is not set
 # BR2_TOOLCHAIN_BUILDROOT_EGLIBC is not set
 BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
@@ -212,7 +214,9 @@ BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_13=y
 BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_14=y
 BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_15=y
 BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_16=y
-BR2_TOOLCHAIN_HEADERS_AT_LEAST="3.16"
+BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_17=y
+BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_18=y
+BR2_TOOLCHAIN_HEADERS_AT_LEAST="3.18"
 
 #
 # System configuration
@@ -328,6 +332,7 @@ BR2_PACKAGE_XZ=y
 #
 # Debugging, profiling and benchmark
 #
+# BR2_PACKAGE_BLKTRACE is not set
 # BR2_PACKAGE_BONNIE is not set
 # BR2_PACKAGE_CACHE_CALIBRATOR is not set
 # BR2_PACKAGE_DHRYSTONE is not set
@@ -350,6 +355,7 @@ BR2_PACKAGE_GOOGLE_BREAKPAD_ARCH_SUPPORTS=y
 # BR2_PACKAGE_LSOF is not set
 # BR2_PACKAGE_LTP_TESTSUITE is not set
 # BR2_PACKAGE_LTRACE is not set
+# BR2_PACKAGE_LTTNG_BABELTRACE is not set
 
 #
 # lttng-modules needs a Linux kernel to be built
@@ -379,10 +385,6 @@ BR2_PACKAGE_GOOGLE_BREAKPAD_ARCH_SUPPORTS=y
 # Development tools
 #
 # BR2_PACKAGE_BINUTILS is not set
-
-#
-# binutils needs a toolchain w/ wchar
-#
 # BR2_PACKAGE_BSDIFF is not set
 # BR2_PACKAGE_CPPUNIT is not set
 # BR2_PACKAGE_CVS is not set
@@ -715,8 +717,10 @@ BR2_PACKAGE_LINUX_FIRMWARE_RTL_81XX=y
 #
 # usbmount requires udev to be enabled
 #
-BR2_PACKAGE_USBUTILS=y
-# BR2_PACKAGE_USBUTILS_ZLIB is not set
+
+#
+# usbutils needs udev /dev management and toolchain w/ threads
+#
 # BR2_PACKAGE_W_SCAN is not set
 # BR2_PACKAGE_WIPE is not set
 
@@ -725,11 +729,75 @@ BR2_PACKAGE_USBUTILS=y
 #
 # BR2_PACKAGE_ENSCRIPT is not set
 # BR2_PACKAGE_ERLANG is not set
+# BR2_PACKAGE_GUILE is not set
 # BR2_PACKAGE_HASERL is not set
 # BR2_PACKAGE_JAMVM is not set
 # BR2_PACKAGE_JIMTCL is not set
-# BR2_PACKAGE_LUA is not set
+BR2_PACKAGE_LUA=y
+BR2_PACKAGE_PROVIDES_LUAINTERPRETER="lua"
+# BR2_PACKAGE_LUA_5_1 is not set
+BR2_PACKAGE_LUA_5_2=y
+BR2_PACKAGE_LUAINTERPRETER_ABI_VERSION="5.2"
+BR2_PACKAGE_LUA_EDITING_NONE=y
+# BR2_PACKAGE_LUA_READLINE is not set
+# BR2_PACKAGE_LUA_LINENOISE is not set
+BR2_PACKAGE_HAS_LUAINTERPRETER=y
 # BR2_PACKAGE_LUAJIT is not set
+
+#
+# Lua libraries/modules
+#
+# BR2_PACKAGE_CGILUA is not set
+# BR2_PACKAGE_COPAS is not set
+# BR2_PACKAGE_COXPCALL is not set
+# BR2_PACKAGE_DADO is not set
+
+#
+# lbase64 needs a Lua 5.1 interpreter
+#
+
+#
+# ljlinenoise needs LuaJIT
+#
+
+#
+# ljsyscall needs LuaJIT
+#
+# BR2_PACKAGE_LPEG is not set
+# BR2_PACKAGE_LPTY is not set
+# BR2_PACKAGE_LRANDOM is not set
+# BR2_PACKAGE_LSQLITE3 is not set
+# BR2_PACKAGE_LUA_CJSON is not set
+# BR2_PACKAGE_LUA_COAT is not set
+# BR2_PACKAGE_LUA_COATPERSISTENT is not set
+# BR2_PACKAGE_LUA_CSNAPPY is not set
+# BR2_PACKAGE_LUA_EV is not set
+# BR2_PACKAGE_LUA_MESSAGEPACK is not set
+
+#
+# lua-msgpack-native needs a Lua 5.1 interpreter
+#
+# BR2_PACKAGE_LUA_TESTMORE is not set
+# BR2_PACKAGE_LUASQL_SQLITE3 is not set
+# BR2_PACKAGE_LUABITOP is not set
+# BR2_PACKAGE_LUACRYPTO is not set
+# BR2_PACKAGE_LUAEXPAT is not set
+# BR2_PACKAGE_LUAEXPATUTILS is not set
+# BR2_PACKAGE_LUAFILESYSTEM is not set
+# BR2_PACKAGE_LUAJSON is not set
+# BR2_PACKAGE_LUALOGGING is not set
+# BR2_PACKAGE_LUAPOSIX is not set
+# BR2_PACKAGE_LUASEC is not set
+# BR2_PACKAGE_LUASOCKET is not set
+
+#
+# lunit needs a Lua 5.1 interpreter
+#
+# BR2_PACKAGE_LZLIB is not set
+# BR2_PACKAGE_ORBIT is not set
+# BR2_PACKAGE_RINGS is not set
+# BR2_PACKAGE_WSAPI is not set
+# BR2_PACKAGE_XAVANTE is not set
 BR2_PACKAGE_MONO_ARCH_SUPPORTS=y
 # BR2_PACKAGE_MONO is not set
 # BR2_PACKAGE_NODEJS is not set
@@ -841,9 +909,9 @@ BR2_PACKAGE_OPENSSL=y
 #
 # Graphics
 #
-# BR2_PACKAGE_ADWAITA_ICON_THEME is not set
 # BR2_PACKAGE_ATK is not set
 # BR2_PACKAGE_CAIRO is not set
+# BR2_PACKAGE_EXIV2 is not set
 # BR2_PACKAGE_FONTCONFIG is not set
 # BR2_PACKAGE_FREETYPE is not set
 # BR2_PACKAGE_GD is not set
@@ -883,10 +951,6 @@ BR2_PACKAGE_OPENSSL=y
 # BR2_PACKAGE_POPPLER is not set
 # BR2_PACKAGE_TIFF is not set
 # BR2_PACKAGE_WAYLAND is not set
-
-#
-# wayland needs a toolchain w/ threads, dynamic library
-#
 BR2_PACKAGE_WEBKIT_ARCH_SUPPORTS=y
 
 #
@@ -1067,6 +1131,7 @@ BR2_PACKAGE_LIBNL=y
 # BR2_PACKAGE_LIBTORRENT is not set
 # BR2_PACKAGE_LIBUPNP is not set
 # BR2_PACKAGE_LIBUPNPP is not set
+# BR2_PACKAGE_LIBURIPARSER is not set
 # BR2_PACKAGE_LIBVNCSERVER is not set
 # BR2_PACKAGE_LIBWEBSOCKETS is not set
 # BR2_PACKAGE_NEON is not set
@@ -1091,6 +1156,8 @@ BR2_PACKAGE_LIBNL=y
 # BR2_PACKAGE_APR_UTIL is not set
 # BR2_PACKAGE_ARGP_STANDALONE is not set
 # BR2_PACKAGE_ARMADILLO is not set
+BR2_PACKAGE_BDWGC_ARCH_SUPPORTS=y
+# BR2_PACKAGE_BDWGC is not set
 # BR2_PACKAGE_BOOST is not set
 # BR2_PACKAGE_CLAPACK is not set
 # BR2_PACKAGE_CPPCMS is not set
@@ -1150,7 +1217,6 @@ BR2_PACKAGE_LINUX_PAM=y
 # BR2_PACKAGE_PROTOBUF_C is not set
 # BR2_PACKAGE_QHULL is not set
 # BR2_PACKAGE_QLIBC is not set
-# BR2_PACKAGE_SCHIFRA is not set
 
 #
 # Security
@@ -1252,9 +1318,7 @@ BR2_PACKAGE_DHCPCD=y
 # BR2_PACKAGE_FPING is not set
 # BR2_PACKAGE_GESFTPSERVER is not set
 # BR2_PACKAGE_HIAWATHA is not set
-BR2_PACKAGE_HOSTAPD=y
-BR2_PACKAGE_HOSTAPD_EAP=y
-BR2_PACKAGE_HOSTAPD_WPS=y
+# BR2_PACKAGE_HOSTAPD is not set
 # BR2_PACKAGE_HTTPING is not set
 # BR2_PACKAGE_IFPLUGD is not set
 # BR2_PACKAGE_IFTOP is not set
@@ -1365,7 +1429,6 @@ BR2_PACKAGE_OPENSSH=y
 # BR2_PACKAGE_TRANSMISSION is not set
 # BR2_PACKAGE_TVHEADEND is not set
 # BR2_PACKAGE_UDPCAST is not set
-# BR2_PACKAGE_ULOGD is not set
 # BR2_PACKAGE_USHARE is not set
 # BR2_PACKAGE_USSP_PUSH is not set
 # BR2_PACKAGE_VDE2 is not set
@@ -1444,6 +1507,7 @@ BR2_PACKAGE_ATTR=y
 BR2_PACKAGE_COREUTILS=y
 # BR2_PACKAGE_CPULOAD is not set
 # BR2_PACKAGE_DCRON is not set
+# BR2_PACKAGE_DEBIANUTILS is not set
 # BR2_PACKAGE_FTOP is not set
 # BR2_PACKAGE_GETENT is not set
 # BR2_PACKAGE_HTOP is not set
@@ -1509,8 +1573,7 @@ BR2_PACKAGE_UTIL_LINUX_SWITCH_ROOT=y
 # BR2_PACKAGE_ED is not set
 # BR2_PACKAGE_JOE is not set
 BR2_PACKAGE_LESS=y
-BR2_PACKAGE_NANO=y
-BR2_PACKAGE_NANO_TINY=y
+# BR2_PACKAGE_NANO is not set
 # BR2_PACKAGE_UEMACS is not set
 BR2_PACKAGE_VIM=y
 BR2_PACKAGE_VIM_RUNTIME=y
@@ -1560,6 +1623,7 @@ BR2_TARGET_ROOTFS_TAR_OPTIONS=""
 # BR2_PACKAGE_HOST_GENIMAGE is not set
 # BR2_PACKAGE_HOST_GENPART is not set
 # BR2_PACKAGE_HOST_LPC3250LOADER is not set
+# BR2_PACKAGE_HOST_MKE2IMG is not set
 # BR2_PACKAGE_HOST_MTD is not set
 # BR2_PACKAGE_HOST_MTOOLS is not set
 # BR2_PACKAGE_HOST_OMAP_U_BOOT_UTILS is not set
@@ -1580,6 +1644,7 @@ BR2_TARGET_ROOTFS_TAR_OPTIONS=""
 #
 # Legacy options removed in 2014.11
 #
+# BR2_x86_generic is not set
 # BR2_GCC_VERSION_4_4_X is not set
 # BR2_sparc_sparchfleon is not set
 # BR2_sparc_sparchfleonv8 is not set
