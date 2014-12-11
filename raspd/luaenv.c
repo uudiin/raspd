@@ -51,7 +51,7 @@ static int pwm(lua_State *L, int flags)
 
     if ((n = lua_gettop(L)) != 6)
         return 0;
-    for (i = 1; i <=6; i++)
+    for (i = 1; i <= 6; i++)
         luaL_checkinteger(L, i);
     gpio = (int)lua_tointeger(L, 1);
     count = (int)lua_tointeger(L, 2);
