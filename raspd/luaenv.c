@@ -85,8 +85,34 @@ static int lr_l298n(lua_State *L)
 
 static int lr_modexec(lua_State *L)
 {
-    /* FIXME */
-    return 0;
+    int fd;
+    const char *cmd;
+    char *buffer;
+    int n;
+    int err;
+
+    /* TODO  use lua_error() ? */
+    if ((n = lua_gettop()) != 2)
+        return 0;
+
+    luaL_checkinteger(L, 1);
+    luaL_checkstring(L, 2);
+    fd = (int)lua_tointeger(L, 1);
+    cmd = lua_tostring(L, 2);
+
+    err = -ENOMEM;
+    if ((buffer = strdup(cmd)) != NULL) {
+        char *s, *cmdexec, *saveptr;
+
+        err = 0;
+        for (s = buffer; cmdexec = strtok_r(s, ";", &saveptr); s = NULL)
+            err |= module_cmdexec(fd, cmdexec);
+
+        free(buffer);
+    }
+
+    lua_pushinteger(L, err);
+    return 1;
 }
 
 static const luaL_Reg luaraspd_lib[] = {
