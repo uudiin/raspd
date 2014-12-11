@@ -15,11 +15,14 @@
 #include <getopt.h>
 
 #include <bcm2835.h>
+#include <queue.h>
 #include <xmalloc.h>
 #include <event2/event.h>
 
 #include "module.h"
 #include "event.h"
+
+#define MODNAME     "tank"
 
 /*
  * N.B. These have been reversed compared to Gert & Dom's original code!
@@ -55,6 +58,23 @@ static int turret_elev	= 0xFE404F3C;
 static int fire		= 0xFE442F34;
 static int machine_gun	= 0xFE440F78;
 static int recoil	= 0xFE420F24;
+
+static int current_code = 0;
+static int speed = 0;
+static struct event *ev_timer = NULL;
+
+struct code_entry { 
+	TAILQ_ENTRY(code_entry) link; 
+	int code;
+	int count;
+};
+
+TAILQ_HEAD(code_qh, code_entry);
+
+struct code_qh code_qh = TAILQ_HEAD_INITIALIZER(code_qh);
+
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
 
 /*
  * Sends one individual bit using Manchester coding
@@ -95,220 +115,151 @@ void sendCode(int code)
 	usleep(3333);
 }
 
-#if 0
-int main(int argc, char **argv)
-{ 
-
-	int g,rep,i;
-	char inchar;
-
-	if (!bcm2835_init())
-		return 1;
-
-	/* must use INP_GPIO before we can use OUT_GPIO */
-	bcm2835_gpio_fsel(PIN, BCM2835_GPIO_FSEL_INPT);
-	bcm2835_gpio_fsel(PIN, BCM2835_GPIO_FSEL_OUTP);
-
-	GPIO_CLR = 1 << PIN;
-
-	/* Send the idle and ignition codes */
-	printf("Idle\n");
-	for (i = 0; i < 40; i++) {
-		sendCode(idle);
-	}
-	printf("Ignition\n");
-	for (i = 0; i < 10; i++) {
-		sendCode(ignition);
-	}
-	printf("Waiting for ignition\n");
-	for (i = 0; i < 300; i++) {
-		sendCode(idle);
-	}
-
-	/* Loop, sending movement commands indefinitely */
-	do {
-		printf("Ready: ");
-		inchar = getchar();
-		if (inchar == 'w') {
-			printf("Forward\n");
-			for (i = 0; i < 100; i++) {
-				sendCode(fwd_fast);
-			}
-			sendCode(idle);
-		} else if (inchar == 's') {
-			printf("Reverse\n");
-			for (i = 0; i < 100; i++) {
-				sendCode(rev_fast);
-			}
-			sendCode(idle);
-		} else if (inchar == 'a') {
-			printf("Left\n");
-			for (i = 0; i < 10; i++) {
-				sendCode(left_fast);
-			}
-			sendCode(idle);
-		} else if (inchar == 'd') {
-			printf("Right\n");
-			for (i = 0; i < 10; i++) {
-				sendCode(right_fast);
-			}
-			sendCode(idle);
-		} else if (inchar == 'q') {
-			printf("Turret Left\n");
-			for (i = 0; i < 25; i++) {
-				sendCode(turret_left);
-			}
-			sendCode(idle);
-		} else if (inchar == 'e') {
-			printf("Turret Right\n");
-			for (i = 0; i < 25; i++) {
-				sendCode(turret_right);
-			}
-			sendCode(idle);
-		} else if (inchar == 'z') {
-			printf("Turret Elev\n");
-			for (i = 0; i < 50; i++) {
-				sendCode(turret_elev);
-			}
-			sendCode(idle);
-		} else if (inchar == 'x') {
-			printf("Fire\n");
-			for (i = 0; i < 50; i++) {
-				sendCode(fire);
-			}
-			sendCode(idle);
-		}
-	} while (inchar != '.');
-
-	printf("Ignition Off\n");
-	for (i = 0; i < 10; i++) {
-		sendCode(ignition);
-	}
-	printf("Idle\n");
-	for (i = 0; i < 40; i++) {
-		sendCode(idle);
-	}
-
-	bcm2835_close();
-
-	return 0;
-}
-#endif
-
-struct code_env {
-	int code;
-	int count;
-	struct event *ev_timer;
-};
-
-static free_env(struct code_env *env)
+void insert_code(int code, int count)
 {
-    if (env->ev_timer)
-        eventfd_del(env->ev_timer);
-    free(env);
+	struct code_entry *entry;
+        entry = xmalloc(sizeof(*entry));
+	if (entry == NULL) {
+		return;
+	}
+	entry->code = code;
+	entry->count = count;
+	TAILQ_INSERT_TAIL(&code_qh, entry, link);
 }
 
 static void cb_send_code(int fd, short what, void *arg)
 {
-	struct code_env *env = arg;
-	printf("fuck %d\n", env->count);	
-	env->count--;
-	if (env->count == 0) {
-		free_env(env);
-		return;
+	int code = 0;
+	struct code_entry *q = TAILQ_FIRST(&code_qh);
+	if (q != NULL) {
+		current_code = 0;
+		if (q->count > 0) {
+			q->count--;
+			code = q->code;
+		} else {
+			if (q->count == -1) {
+				current_code = q->code;
+				code = current_code;
+			}
+			TAILQ_REMOVE(&code_qh, q, link);
+			free(q);
+		}
+	} else {
+		code = current_code;
+	}
+
+	if (code != 0) {
+		sendCode(code);
 	}
 }
 
-static void send_code(int code, int count)
+static void start_timer(void)
 {
-        struct timeval tv = {0, 3333};
-	struct code_env *env;
-
-        env = xmalloc(sizeof(*env));
-	if (env == NULL)
-		return;
-	memset(env, 0, sizeof(*env));
-
-	env->code = code;
-	env->count = count;
-
-	if (register_timer(EV_PERSIST, &tv,
-		cb_send_code, env, &env->ev_timer) < 0) {
-			free_env(env);
-	}
+	struct timeval tv = {0, 3333};
+	register_timer(EV_PERSIST, &tv,
+		cb_send_code, NULL, &ev_timer);
 }
+
+int tank_sdown_main(int wfd, int argc, char *argv[])
+{
+	speed--;
+	speed = max(0, speed);
+	return 0;
+}
+DEFINE_MODULE(tank_sdown);
+
+int tank_sup_main(int wfd, int argc, char *argv[])
+{
+	speed++;
+	speed = min(2, speed);
+	return 0;
+}
+DEFINE_MODULE(tank_sup);
 
 int tank_fwd_main(int wfd, int argc, char *argv[])
 {
+	if (speed == 1) {
+		insert_code(fwd_slow, -1);
+	} else if (speed == 2) {
+		insert_code(fwd_fast, -1);
+	}
 	return 0;
 }
 DEFINE_MODULE(tank_fwd);
 
 int tank_rev_main(int wfd, int argc, char *argv[])
 {
+	if (speed == 1) {
+		insert_code(rev_slow, -1);
+	} else if (speed == 2) {
+		insert_code(rev_fast, -1);
+	}
 	return 0;
 }
 DEFINE_MODULE(tank_rev);
 
 int tank_left_main(int wfd, int argc, char *argv[])
 {
+	if (speed == 1) {
+		insert_code(left_slow, -1);
+	} else if (speed == 2) {
+		insert_code(left_fast, -1);
+	}
 	return 0;
 }
 DEFINE_MODULE(tank_left);
 
 int tank_right_main(int wfd, int argc, char *argv[])
 {
+	if (speed == 1) {
+		insert_code(right_slow, -1);
+	} else if (speed == 2) {
+		insert_code(right_fast, -1);
+	}
 	return 0;
 }
 DEFINE_MODULE(tank_right);
 
 int tank_turret_left_main(int wfd, int argc, char *argv[])
 {
+	insert_code(turret_left, 25);
 	return 0;
 }
 DEFINE_MODULE(tank_turret_left);
 
 int tank_turret_right_main(int wfd, int argc, char *argv[])
 {
+	insert_code(turret_right, 25);
 	return 0;
 }
 DEFINE_MODULE(tank_turret_right);
 
 int tank_turret_elev_main(int wfd, int argc, char *argv[])
 {
+	insert_code(turret_elev, 50);
 	return 0;
 }
 DEFINE_MODULE(tank_turret_elev);
 
 int tank_fire_main(int wfd, int argc, char *argv[])
 {
-	send_code(fire, 5);
+	insert_code(fire, 50);
 	return 0;
 }
 DEFINE_MODULE(tank_fire);
 
 int tank_init_main(int wfd, int argc, char *argv[])
 {
-	int c;
-
-	static struct option opts[] = {
-		{ "pin", required_argument, NULL, 'p' },
-		{ 0, 0, 0, 0 } };
-
-	for (;;) {
-		c = getopt_long(argc, argv, "p:", opts, NULL);
-		if (c < 0) break;
-
-		switch (c) {
-		case 'p': pin = atoi(optarg); break;
-		}
-	}
+	luaenv_getconf_int(MODNAME, "PIN", &pin);
 
 	/* must use INP_GPIO before we can use OUT_GPIO */
 	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
 	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
+	printf("pin = %d\n", pin);
 
 	GPIO_CLR = 1 << pin;
+
+	start_timer();
 
 	return 0;
 }
