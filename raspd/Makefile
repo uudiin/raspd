@@ -3,7 +3,7 @@
 include ../rules.mak
 
 CFLAGS += -g -I../lib -I../libbcm2835 -I../libevent/include
-LDFLAGS += -L ../lib -llua
+LDFLAGS += -L ../lib -llua -ldl -lm
 LIBS =
 
 PROGS = raspd
