@@ -1,5 +1,9 @@
 -- lua config
 
+pid_file = "/var/run/raspd.pid"
+sock_file = "/var/run/raspd.sock"
+chroot = ""
+
 -- ultrasonic
 ultrasonic = {
     ["TRIG"] = 20,
