@@ -113,12 +113,83 @@ static int lr_modexec(lua_State *L)
     return 1;
 }
 
+struct signal_env {
+    int pin;
+    int nr_trig;
+    int count;
+    int counted;
+    struct event *ev;
+    char *callback;
+    void *opaque;
+};
+
+static void free_signal_env(struct signal_env *env)
+{
+    if (env->callback)
+        free(env->callback);
+    free(env);
+}
+
+static void cb_gpio_signal(int fd, short what, void *arg)
+{
+    struct signal_env *env = arg;
+    int retval = 0;
+    int err;
+
+    if (env->count != -1 && env->counted++ >= env->count) {
+        eventfd_del(env->ev);
+        free_signal_env(env);
+        return;
+    }
+
+    /* call lua function */
+    err = luaenv_call_va(env->callback, ":i", &retval);
+    if (err >= 0 && retval < 0) {
+        eventfd_del(env->ev);
+        free_signal_env(env);
+    }
+}
+
+/* pin, count, cb, [opaque] */
+static int lr_gpio_signal(lua_State *L)
+{
+    struct signal_env *env;
+    int pin, count;
+    const char *callback;
+    int n;
+    int err;
+
+    if ((n = lua_gettop(L)) != 3)
+        return 0;
+    pin = (int)luaL_checkinteger(L, 1);
+    count = (int)luaL_checkinteger(L, 2);
+    callback = luaL_checkstring(L, 3);
+
+    env = xmalloc(sizeof(*env));
+    memset(env, 0, sizeof(*env));
+    env->pin = pin;
+    env->count = count;
+    /*env->opaque = opaque;*/
+    env->callback = strdup(callback);
+    if (env->callback == NULL) {
+        free(env);
+        return 0;
+    }
+    if ((err = bcm2835_gpio_signal(pin, EDGE_both,
+                    cb_gpio_signal, env, &env->ev)) < 0) {
+        free_signal_env(env);
+    }
+    lua_pushinteger(L, err);
+    return 1;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
     { "breath",  lr_breath  },
     { "l298n",   lr_l298n   },
     { "modexec", lr_modexec },
+    { "gpio_signal", lr_gpio_signal },
     { NULL, NULL }
 };
 
@@ -128,7 +199,7 @@ static int luaopen_luaraspd(lua_State *L)
      * only exported by lua 5.2 and above
      * luaL_newlib(L, luaraspd_lib);
      */
-#if LUA_VERSION_NUM == 502
+#if LUA_VERSION_NUM >= 502
     lua_newtable(L);
     luaL_setfuncs(L, luaraspd_lib, 0);
 #else

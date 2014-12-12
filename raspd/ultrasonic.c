@@ -245,13 +245,6 @@ static int ultrasonic_init(void)
     luaenv_getconf_int(MODNAME, "ECHO", &pin_echo);
     luaenv_getconf_int(MODNAME, "threshold", &threshold);
 
-    luaenv_getconf_str(MODNAME, "script", &script);
-    if (script) {
-        if ((err = luaenv_run_file(script)) < 0)
-            fprintf(stderr, "luaenv_run_file(%s), err = %d\n", script, err);
-        luaenv_pop(1);
-    }
-
     luaenv_getconf_str(MODNAME, "callback", &cb);
     if (cb) {
         strncpy(callback, cb, MAX_LFUNCNAME);

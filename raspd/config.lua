@@ -4,6 +4,13 @@ pid_file = "/var/run/raspd.pid"
 sock_file = "/var/run/raspd.sock"
 chroot = ""
 
+script = "control.lua"
+
+pin_led_warn = 16
+pin_infrared_sensor = XX
+pin_laser = XX
+pin_voice_sensor = XX
+
 -- ultrasonic
 ultrasonic = {
     ["TRIG"] = 20,
@@ -11,8 +18,7 @@ ultrasonic = {
 
     -- urgent scope, 10 cm
     ["threshold"] = 10,
-    ["script"] = "ultrasonic.lua",
-    ["callback"] = "urgent_cb",
+    ["callback"] = "cb_ultrasonic_urgent",
 }
 
 -- l298n
