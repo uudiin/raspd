@@ -10,8 +10,11 @@
 
 #include <bcm2835.h>
 
+#include <xmalloc.h>
+
 #include "module.h"
 #include "event.h"
+#include "gpiolib.h"
 #include "gpio.h"
 #include "pwm.h"
 
