@@ -187,6 +187,13 @@ int tank_sup_main(int wfd, int argc, char *argv[])
 }
 DEFINE_MODULE(tank_sup);
 
+int tank_brake_main(int wfd, int argc, char *argv[])
+{
+	insert_code(idle, 10);
+	return 0;
+}
+DEFINE_MODULE(tank_brake);
+
 int tank_fwd_main(int wfd, int argc, char *argv[])
 {
 	insert_code(idle, 10);
@@ -271,7 +278,7 @@ int tank_fire_main(int wfd, int argc, char *argv[])
 }
 DEFINE_MODULE(tank_fire);
 
-int tank_init_main(int wfd, int argc, char *argv[])
+int tank_init(void)
 {
 	luaenv_getconf_int(MODNAME, "PIN", &pin);
 
@@ -286,4 +293,17 @@ int tank_init_main(int wfd, int argc, char *argv[])
 
 	return 0;
 }
-DEFINE_MODULE(tank_init);
+
+/*
+ * DEFINE_MODULE(tank);
+ */
+static struct module __module_tank = {
+    .name = "tank",
+    .init = tank_init,
+    .main = NULL,
+};
+
+static __init void __reg_module_tank(void)
+{
+    register_module(&__module_tank);
+}

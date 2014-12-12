@@ -51,6 +51,9 @@ int module_execv(int wfd, int argc, char *argv[])
     /* FIXME  needed? */
     optind = 1;
 
+    if (m->main == NULL)
+	return 0;
+
     return m->main(wfd, argc, argv);
 }
 
