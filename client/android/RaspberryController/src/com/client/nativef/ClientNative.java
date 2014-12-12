@@ -7,6 +7,7 @@ public class ClientNative {
 		System.loadLibrary("client");
 	}
 	
+	public static native void select_tank();
 	public static native void up();
 	public static native void down();
 	public static native void left();
