@@ -184,9 +184,11 @@ static void urgent_cb(double distance/* cm */, void *opaque)
     char buffer[128];
     size_t len;
 
-    len = snprintf(buffer, sizeof(buffer),
-            "ultrasonic: distance = %.3f cm\n", distance);
-    write(wfd, buffer, len);
+    if (wfd != -1) {
+        len = snprintf(buffer, sizeof(buffer),
+                "ultrasonic: distance = %.3f cm\n", distance);
+        write(wfd, buffer, len);
+    }
 
     /* call the lua function urgent_cb */
     if (threshold && distance <= (double)threshold && callback[0]) {

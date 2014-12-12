@@ -235,7 +235,6 @@ int l298n_init_main(int wfd, int argc, char *argv[])
 		}
 	}
 
-	bcm2835_init();
 	l298n_init();
 
         fprintf(fd, "l298n_main end\n");
@@ -250,6 +249,8 @@ static int l298n_init_init(void)
     luaenv_getconf_int(MODNAME, "IN2", &int2);
     luaenv_getconf_int(MODNAME, "IN3", &int3);
     luaenv_getconf_int(MODNAME, "IN4", &int4);
+
+	l298n_init();
 
     return 0;
 }

@@ -131,7 +131,7 @@ char **cmdline_split(const char *cmdexec, int *cmd_argv)
 
     /* The line is not empty so we've got something to deal with */
     cmd_args = (char **)xmalloc(sizeof(char *) * (max_tokens + 1));
-    cur_arg = (char *)calloc(sizeof(char), strlen(cmdexec));
+    cur_arg = (char *)calloc(sizeof(char), strlen(cmdexec) + 1);
 
     /* Get and copy the tokens */
     ptr = cmdexec;

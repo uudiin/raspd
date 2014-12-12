@@ -92,13 +92,11 @@ static int lr_modexec(lua_State *L)
     int err;
 
     /* TODO  use lua_error() ? */
-    if ((n = lua_gettop()) != 2)
+    if ((n = lua_gettop(L)) != 2)
         return 0;
 
-    luaL_checkinteger(L, 1);
-    luaL_checkstring(L, 2);
-    fd = (int)lua_tointeger(L, 1);
-    cmd = lua_tostring(L, 2);
+    fd = (int)luaL_checkinteger(L, 1);
+    cmd = luaL_checkstring(L, 2);
 
     err = -ENOMEM;
     if ((buffer = strdup(cmd)) != NULL) {
