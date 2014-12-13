@@ -4,8 +4,13 @@ pid_file = "/var/run/raspd.pid"
 sock_file = "/var/run/raspd.sock"
 chroot = ""
 
+-- control script
 script = "control.lua"
 
+-- automatic function
+automatic = "automatic"
+
+-- pin of peripherals
 pin_led_warn = 16
 pin_infrared_sensor = XX
 pin_laser = XX

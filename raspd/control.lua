@@ -4,8 +4,12 @@ local lr = luaraspd
 
 --lr.modexec(-1, "ultrasonic -n 999999 -t 2000")
 
+function automatic()
+    io.stderr:write("automatic enter\n")
+end
+
 function cb_ultrasonic_urgent(fd, distance)
-    io.stderr:write("distance = " .. distance .. "\n")
+    io.stderr:write("distance = " .. distance .. " cm\n")
     lr.blink(pin_led_warn, 5, 300)
     lr.modexec(fd, "l298n_lbrake; l298n_rbrake")
 end

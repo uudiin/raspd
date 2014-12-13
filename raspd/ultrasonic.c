@@ -123,7 +123,7 @@ static void cb_timer(int fd, short what, void *arg)
     struct ultrasonic_env *env = arg;
 
     /* check the count */
-    if (env->counted++ >= env->count) {
+    if (env->count != -1 && env->counted++ >= env->count) {
         free_env(env);
         return;
     }
@@ -205,7 +205,7 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     int interval = 2000;
     struct ultrasonic_env *env;
     static struct option options[] = {
-        { "stop",     no_argument,       NULL, 's' },
+        { "stop",     no_argument,       NULL, 'e' },
         { "pin-trig", required_argument, NULL, 'i' },
         { "pin-echo", required_argument, NULL, 'o' },
         { "count",    required_argument, NULL, 'n' },
@@ -215,9 +215,9 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     int c;
     int err;
 
-    while ((c = getopt_long(argc, argv, "si:o:n:t:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "ei:o:n:t:", options, NULL)) != -1) {
         switch (c) {
-        case 's': break;
+        case 'e': break;
         case 'i': pin_trig = atoi(optarg); break;
         case 'o': pin_echo = atoi(optarg); break;
         case 'n': count = atoi(optarg); break;
