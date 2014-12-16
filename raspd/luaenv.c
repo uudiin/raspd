@@ -122,8 +122,6 @@ struct signal_env {
     int count;
     int counted;
     struct event *ev;
-    char *callback;
-    void *opaque;
 };
 
 static void free_signal_env(struct signal_env *env)
@@ -133,11 +131,9 @@ static void free_signal_env(struct signal_env *env)
     free(env);
 }
 
-static void cb_gpio_signal(int fd, short what, void *arg)
+static void cb_gpio_signal_wrap(int fd, short what, void *arg)
 {
     struct signal_env *env = arg;
-    int retval = 0;
-    int err;
 
     if (env->count != -1 && env->counted++ >= env->count) {
         eventfd_del(env->ev);
@@ -145,41 +141,49 @@ static void cb_gpio_signal(int fd, short what, void *arg)
         return;
     }
 
-    /* call lua function */
-    err = luaenv_call_va(env->callback, ":i", &retval);
-    if (err >= 0 && retval < 0) {
-        eventfd_del(env->ev);
-        free_signal_env(env);
+    /* get gpio signal table */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, env->pin);
+    lua_gettable(L, -2);
+
+    /* call lua handler with one result */
+    lua_pushinteger(L, env->pin);
+    if (lua_pcall(L, 0, 1, 0) == 0) {
+        int retval = luaL_checkinteger(L, -1);
+        if (retval < 0) {
+            eventfd_del(env->ev);
+            free_signal_env(env);
+        }
+        lua_pop(1); /* pop result */
     }
 }
 
-/* pin, count, cb, [opaque] */
+/* pin, cb, [count], TODO [EDGE] */
 static int lr_gpio_signal(lua_State *L)
 {
     struct signal_env *env;
     int pin, count;
-    const char *callback;
-    int n;
     int err;
 
-    if ((n = lua_gettop(L)) != 3)
-        return 0;
     pin = (int)luaL_checkinteger(L, 1);
-    count = (int)luaL_checkinteger(L, 2);
-    callback = luaL_checkstring(L, 3);
+    count = (int)luaL_optint(L, 3, 1);
+    if (!lua_isfunction(L, 2) || lua_iscfunction(L, 2))
+        return 0;
+    /* set lua handler */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushvalue(L, 1); /* key: pin */
+    lua_pushvalue(L, 2); /* value: callback */
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
 
     env = xmalloc(sizeof(*env));
     memset(env, 0, sizeof(*env));
     env->pin = pin;
     env->count = count;
-    /*env->opaque = opaque;*/
-    env->callback = strdup(callback);
-    if (env->callback == NULL) {
-        free(env);
-        return 0;
-    }
     if ((err = bcm2835_gpio_signal(pin, EDGE_both,
-                    cb_gpio_signal, env, &env->ev)) < 0) {
+                cb_gpio_signal_wrap, env, &env->ev)) < 0) {
         free_signal_env(env);
     }
     lua_pushinteger(L, err);
@@ -208,6 +212,12 @@ static int luaopen_luaraspd(lua_State *L)
 #else
     luaL_register(L, "luaraspd", luaraspd_lib);
 #endif
+
+    /* gpio signal table */
+    lua_pushlightuserdata(L, &L); /* key */
+    lua_newtable(L); /* value */
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     return 1;
 }
 
