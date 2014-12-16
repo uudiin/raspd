@@ -61,6 +61,8 @@ struct ultrasonic_env {
     void *opaque;
 };
 
+static struct ultrasonic_env *global_env;
+
 static int pin_trig = PIN_TRIG;
 static int pin_echo = PIN_ECHO;
 
@@ -79,6 +81,7 @@ static free_env(struct ultrasonic_env *env)
     if (env->ev_echo)
         eventfd_del(env->ev_echo);
     free(env);
+    global_env = NULL;
 }
 
 static void cb_echo(int fd, short what, void *arg)
@@ -144,6 +147,18 @@ int ultrasonic_scope(int count, int interval,
     struct ultrasonic_env *env;
     struct timeval tv;
 
+    /* only one instance permitted */
+    if (global_env) {
+        if (count > 0) {
+            return -EEXIST;
+        } else {
+            free_env(global_env);
+            return 0;
+        }
+    } else if (count <= 0) {
+        return ENOENT;
+    }
+
     env = xmalloc(sizeof(*env));
     memset(env, 0, sizeof(*env));
     env->pin_trig = pin_trig;
@@ -152,6 +167,8 @@ int ultrasonic_scope(int count, int interval,
     env->interval = interval;
     env->urgent_cb = urgent_cb;
     env->opaque = opaque;
+
+    global_env = env;
 
     /* XXX  not add */
     env->ev_over_trig = evtimer_new(base, cb_over_trig, env);
@@ -217,7 +234,7 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
 
     while ((c = getopt_long(argc, argv, "ei:o:n:t:", options, NULL)) != -1) {
         switch (c) {
-        case 'e': break;
+        case 'e': count = -1; break;
         case 'i': pin_trig = atoi(optarg); break;
         case 'o': pin_echo = atoi(optarg); break;
         case 'n': count = atoi(optarg); break;
@@ -227,7 +244,7 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
         }
     }
 
-    if (count >= 1 && interval) {
+    if (interval) {
         if (ultrasonic_scope(count, interval, urgent_cb, (void *)wfd) < 0)
             return 1;
     }

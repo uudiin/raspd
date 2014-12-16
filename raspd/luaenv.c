@@ -116,6 +116,33 @@ static int lr_modexec(lua_State *L)
     return 1;
 }
 
+static int lr_gpio_fsel(lua_State *L)
+{
+    int pin = (int)luaL_checkinteger(L, 1);
+    int fsel = (int)luaL_optint(L, 2, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(pin, fsel);
+    return 0;
+}
+
+static int lr_gpio_set(lua_State *L)
+{
+    int pin = (int)luaL_checkinteger(L, 1);
+    int v = (int)luaL_optint(L, 2, 1);
+    if (v)
+        bcm2835_gpio_set(pin);
+    else
+        bcm2835_gpio_clr(pin);
+    return 0;
+}
+
+static int lr_gpio_level(lua_State *L)
+{
+    int pin = (int)luaL_checkinteger(L, 1);
+    int level = (int)bcm2835_gpio_lev(pin);
+    lua_pushinteger(L, level);
+    return 1;
+}
+
 struct signal_env {
     int pin;
     int nr_trig;
@@ -192,6 +219,9 @@ static const luaL_Reg luaraspd_lib[] = {
     { "breath",  lr_breath  },
     { "l298n",   lr_l298n   },
     { "modexec", lr_modexec },
+    { "gpio_fsel",   lr_gpio_fsel   },
+    { "gpio_set",    lr_gpio_set    },
+    { "gpio_level",  lr_gpio_level  },
     { "gpio_signal", lr_gpio_signal },
     { NULL, NULL }
 };
