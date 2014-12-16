@@ -14,7 +14,11 @@ function cb_ultrasonic_urgent(fd, distance)
     lr.modexec(fd, "l298n_lbrake; l298n_rbrake")
 end
 
+-- default is output
+lr.gpio_fsel(pin_laser)
+
 lr.gpio_signal(pin_infrared_sensor, function()
-    lr.blink(pin_laser, 5, 300)
+    lev = lr.gpio_level(pin_infrared_sensor)
+    lr.gpio_set(pin_laser, lev)
     return 0
 end, -1)
