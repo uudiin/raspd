@@ -153,8 +153,6 @@ struct signal_env {
 
 static void free_signal_env(struct signal_env *env)
 {
-    if (env->callback)
-        free(env->callback);
     free(env);
 }
 
@@ -182,7 +180,7 @@ static void cb_gpio_signal_wrap(int fd, short what, void *arg)
             eventfd_del(env->ev);
             free_signal_env(env);
         }
-        lua_pop(1); /* pop result */
+        lua_pop(L, 1); /* pop result */
     }
 }
 
