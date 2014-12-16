@@ -8,7 +8,7 @@ chroot = ""
 script = "control.lua"
 
 -- automatic function
-automatic = "automatic"
+automatic = "automatic_v1"
 
 -- pin pwm
 -- channel-0  12 18
@@ -24,10 +24,9 @@ pin_voice_sensor = 25
 ultrasonic = {
     ["TRIG"] = 20,
     ["ECHO"] = 21,
-
     -- urgent scope, 15 cm
     ["threshold"] = 15,
-    ["callback"] = "cb_ultrasonic_urgent",
+    ["callback"] = "cb_ultrasonic_urgent"
 }
 
 -- l298n
@@ -37,5 +36,5 @@ l298n = {
     ["IN1"] = 27,
     ["IN2"] = 22,
     ["IN3"] = 5,
-    ["IN4"] = 6,
+    ["IN4"] = 6
 }

@@ -4,7 +4,7 @@ local lr = luaraspd
 
 --lr.modexec(-1, "ultrasonic -n 999999 -t 2000")
 
-function automatic()
+function automatic_v1()
     io.stderr:write("automatic enter\n")
 end
 
