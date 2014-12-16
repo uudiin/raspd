@@ -22,7 +22,7 @@
 /// BCM 2835).
 ///
 /// The version of the package that this documentation refers to can be downloaded 
-/// from http://www.airspayce.com/mikem/bcm2835/bcm2835-1.36.tar.gz
+/// from http://www.airspayce.com/mikem/bcm2835/bcm2835-1.38.tar.gz
 /// You can find the latest version at http://www.airspayce.com/mikem/bcm2835
 ///
 /// Several example programs are provided.
@@ -309,6 +309,7 @@
 /// \version 1.37 Moved confiure.in to configure.ac as receommnded by autoreconf.<br>
 ///               Improvements to bcm2835_st_read to account for possible timer overflow, contributed by 'Ed'.<br>
 ///               Added definitions for Raspberry Pi B+ J8 header GPIO pins.<br>
+/// \version 1.38 Added bcm2835_regbase for the benefit of C# wrappers, patch by Frank Hommers <br>
 ///
 /// \author  Mike McCauley (mikem@airspayce.com) DO NOT CONTACT THE AUTHOR DIRECTLY: USE THE LISTS
 
@@ -385,6 +386,20 @@ extern volatile uint32_t *bcm2835_bsc0;
 /// Base of the BSC1 registers.
 /// Available after bcm2835_init has been called
 extern volatile uint32_t *bcm2835_bsc1;
+
+/// \brief bcm2835RegisterBase
+/// Register bases for bcm2835_regbase()
+typedef enum
+{
+    BCM2835_REGBASE_ST   = 1, ///< Base of the ST (System Timer) registers.
+    BCM2835_REGBASE_GPIO = 2, ///< Base of the GPIO registers.
+    BCM2835_REGBASE_PWM  = 3, ///< Base of the PWM registers.
+    BCM2835_REGBASE_CLK  = 4, ///< Base of the CLK registers.
+    BCM2835_REGBASE_PADS = 5, ///< Base of the PADS registers.
+    BCM2835_REGBASE_SPI0 = 6, ///< Base of the SPI0 registers.
+    BCM2835_REGBASE_BSC0 = 7, ///< Base of the BSC0 registers.
+    BCM2835_REGBASE_BSC1 = 8 ///< Base of the BSC1 registers.
+} bcm2835RegisterBase;
 
 /// Size of memory page on RPi
 #define BCM2835_PAGE_SIZE               (4*1024)
@@ -487,7 +502,9 @@ typedef enum
 /// RPi B+ has yet differnet pinouts and these are defined in RPI_BPLUS_*.
 /// At bootup, pins 8 and 10 are set to UART0_TXD, UART0_RXD (ie the alt0 function) respectively
 /// When SPI0 is in use (ie after bcm2835_spi_begin()), SPI0 pins are dedicated to SPI
-/// and cant be controlled independently
+/// and cant be controlled independently.
+/// If you are using the RPi Compute Module, just use the GPIO number: there is no need to use one of these
+/// symbolic names
 typedef enum
 {
     RPI_GPIO_P1_03        =  0,  ///< Version 1, Pin P1-03
@@ -829,6 +846,13 @@ extern "C" {
     /// need to be used 
     /// 
     /// @{
+
+    /// Gets the base of a register
+    /// \param[in] regbase You can use one of the common values BCM2835_REGBASE_*
+    /// in \ref bcm2835RegisterBase
+    /// \return the register base
+    /// \sa Physical Addresses
+    extern uint32_t* bcm2835_regbase(uint8_t regbase);
 
     /// Reads 32 bit value from a peripheral address
     /// The read is done twice, and is therefore always safe in terms of 
@@ -1293,7 +1317,6 @@ extern "C" {
     extern void bcm2835_pwm_set_data(uint8_t channel, uint32_t data);
 
     /// @} 
-
 #ifdef __cplusplus
 }
 #endif

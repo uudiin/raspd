@@ -55,6 +55,31 @@ static int i2c_byte_wait_us = 0;
 // Low level register access functions
 //
 
+// Function to return the pointers to the hardware register bases
+uint32_t* bcm2835_regbase(uint8_t regbase)
+{
+    switch (regbase)
+    {
+	case BCM2835_REGBASE_ST:
+	    return (uint32_t *)bcm2835_st;
+	case BCM2835_REGBASE_GPIO:
+	    return (uint32_t *)bcm2835_gpio;
+	case BCM2835_REGBASE_PWM:
+	    return (uint32_t *)bcm2835_pwm;
+	case BCM2835_REGBASE_CLK:
+	    return (uint32_t *)bcm2835_clk;
+	case BCM2835_REGBASE_PADS:
+	    return (uint32_t *)bcm2835_pads;
+	case BCM2835_REGBASE_SPI0:
+	    return (uint32_t *)bcm2835_spi0;
+	case BCM2835_REGBASE_BSC0:
+	    return (uint32_t *)bcm2835_bsc0;
+	case BCM2835_REGBASE_BSC1:
+	    return (uint32_t *)bcm2835_st;
+    }
+    return (uint32_t *)MAP_FAILED;
+}
+
 void  bcm2835_set_debug(uint8_t d)
 {
     debug = d;
