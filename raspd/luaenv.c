@@ -267,7 +267,7 @@ static int lr_ultrasonic_scope(lua_State *L)
 
 static int lr_ultrasonic_is_using(lua_State *L)
 {
-    lua_pushboolean((int)ultrasonic_is_using());
+    lua_pushboolean(L, (int)ultrasonic_is_using());
     return 1;
 }
 
