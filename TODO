@@ -1,2 +1,13 @@
 TODO:
     manage gpio as resource
+    devicetree.lua
+        root_dev {
+            gpio {
+                ultrasonic { ... }
+                stepmotor { ... }
+                l298n { ... }
+
+                ...
+            }
+        }
+    unknown cmdexec passed to lua

@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
     int delay = 10;
     uint32_t *pulse = pulse_eight;
     int pulse_nr = 8;
+    unsigned int total_pulse = -1;
     int i = 0;
 
     if (argc >= 2)
@@ -49,6 +50,8 @@ int main(int argc, char *argv[])
             pulse_nr = 4;
         }
     }
+    if (argc >= 4)
+        total_pulse = atoi(argv[3]);
 
     if (!bcm2835_init())
         return 1;
@@ -59,7 +62,7 @@ int main(int argc, char *argv[])
     FSEL(PIN3);
     FSEL(PIN4);
 
-    while (1) {
+    while (total_pulse--) {
         bcm2835_gpio_write_mask(pulse[i], PINMASK);
         i++;
         if (i == pulse_nr)
