@@ -17,6 +17,7 @@
 #include "gpiolib.h"
 #include "gpio.h"
 #include "pwm.h"
+#include "ultrasonic.h"
 
 #include "luaenv.h"
 
@@ -174,7 +175,8 @@ static void cb_gpio_signal_wrap(int fd, short what, void *arg)
 
     /* call lua handler with one result */
     lua_pushinteger(L, env->pin);
-    if (lua_pcall(L, 0, 1, 0) == 0) {
+    lua_pushinteger(L, bcm2835_gpio_lev(env->pin));
+    if (lua_pcall(L, 2, 1, 0) == 0) {
         int retval = luaL_checkinteger(L, -1);
         if (retval < 0) {
             eventfd_del(env->ev);
@@ -215,6 +217,60 @@ static int lr_gpio_signal(lua_State *L)
     return 1;
 }
 
+/* 1-54: used by gpio */
+#define ULTRASONIC_INDEX    64
+
+static int ultrasonic_callback_wrap(double distance, void *opaque)
+{
+    int retval = 0;
+
+    /* get table */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, ULTRASONIC_INDEX);
+    lua_gettable(L, -2);
+
+    /* call lua handler with one result */
+    lua_pushinteger(L, distance);
+    if (lua_pcall(L, 1, 1, 0) == 0) {
+        retval = luaL_checkinteger(L, -1);
+        lua_pop(L, 1);
+    }
+    return retval;
+}
+
+/* cb, [count], [interval] */
+static int lr_ultrasonic_scope(lua_State *L)
+{
+    int count, interval;
+    int err;
+
+    count = (int)luaL_optint(L, 2, -1);
+    if ((!lua_isfunction(L, 1) || lua_iscfunction(L, 1)) && count > 0)
+        return 0;
+    interval = (int)luaL_optint(L, 3, 2000); /* 2s */
+    /* set lua handler */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, ULTRASONIC_INDEX); /* key */
+    lua_pushvalue(L, 1); /* value: callback */
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+
+    err = ultrasonic_scope(count, interval, ultrasonic_callback_wrap, NULL);
+    if (err < 0) {
+        /* TODO  pop */
+    }
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+static int lr_ultrasonic_is_using(lua_State *L)
+{
+    lua_pushboolean((int)ultrasonic_is_using());
+    return 1;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
@@ -225,6 +281,8 @@ static const luaL_Reg luaraspd_lib[] = {
     { "gpio_set",    lr_gpio_set    },
     { "gpio_level",  lr_gpio_level  },
     { "gpio_signal", lr_gpio_signal },
+    { "ultrasonic_scope",    lr_ultrasonic_scope    },
+    { "ultrasonic_is_using", lr_ultrasonic_is_using },
     { NULL, NULL }
 };
 

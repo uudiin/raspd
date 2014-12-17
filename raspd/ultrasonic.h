@@ -2,7 +2,9 @@
 #define __ULTRASONIC_H__
 
 int ultrasonic_scope(int count, int interval,
-            void (*urgent_cb)(double distance/* cm */, void *opaque),
+            int (*urgent_cb)(double distance/* cm */, void *opaque),
             void *opaque);
+
+unsigned int ultrasonic_is_using(void);
 
 #endif /* __ULTRASONIC_H__ */

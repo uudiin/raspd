@@ -57,7 +57,7 @@ struct ultrasonic_env {
     struct timespec trig_tp;
     struct timespec echo_tp;     /* last time */
     /*int wfd;*/
-    void (*urgent_cb)(double distance/* cm */, void *opaque);
+    int (*urgent_cb)(double distance/* cm */, void *opaque);
     void *opaque;
 };
 
@@ -107,8 +107,10 @@ static void cb_echo(int fd, short what, void *arg)
         distance = (double)microsec * VELOCITY_VOICE / 2;
         distance = US2VELOCITY(microsec);
 
-        if (env->urgent_cb)
-            env->urgent_cb(distance, env->opaque);
+        if (env->urgent_cb) {
+            if (env->urgent_cb(distance, env->opaque) < 0)
+                free_env(env);
+        }
     }
 }
 
@@ -141,7 +143,7 @@ static void cb_timer(int fd, short what, void *arg)
 }
 
 int ultrasonic_scope(int count, int interval,
-            void (*urgent_cb)(double distance/* cm */, void *opaque),
+            int (*urgent_cb)(double distance/* cm */, void *opaque),
             void *opaque)
 {
     struct ultrasonic_env *env;
@@ -195,7 +197,12 @@ int ultrasonic_scope(int count, int interval,
     return 0;
 }
 
-static void urgent_cb(double distance/* cm */, void *opaque)
+unsigned int ultrasonic_is_using(void)
+{
+    return (global_env != 0);
+}
+
+static int urgent_cb(double distance/* cm */, void *opaque)
 {
     int wfd = (int)opaque;
     char buffer[128];
@@ -214,6 +221,7 @@ static void urgent_cb(double distance/* cm */, void *opaque)
         if ((err = luaenv_call_va(callback, "id:", wfd, distance)) < 0)
             fprintf(stderr, "luaenv_call_va(%s), err = %d\n", callback, err);
     }
+    return 0;
 }
 
 static int ultrasonic_main(int wfd, int argc, char *argv[])
