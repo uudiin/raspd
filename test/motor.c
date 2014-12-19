@@ -3,10 +3,14 @@
 #include <bcm2835.h>
 
 /* 5 6 13 19 */
-#define PIN1  RPI_BPLUS_GPIO_J8_35
-#define PIN2  RPI_BPLUS_GPIO_J8_33
-#define PIN3  RPI_BPLUS_GPIO_J8_31
-#define PIN4  RPI_BPLUS_GPIO_J8_29
+//#define PIN1  RPI_BPLUS_GPIO_J8_35
+//#define PIN2  RPI_BPLUS_GPIO_J8_33
+//#define PIN3  RPI_BPLUS_GPIO_J8_31
+//#define PIN4  RPI_BPLUS_GPIO_J8_29
+#define PIN1  2
+#define PIN2  3
+#define PIN3  4
+#define PIN4  17
 #define PINMASK  ((1 << PIN1) | (1 << PIN2) | (1 << PIN3) | (1 << PIN4))
 
 int main(int argc, char *argv[])
@@ -33,14 +37,15 @@ int main(int argc, char *argv[])
         1 << PIN4,
         (1 << PIN4) | (1 << PIN1)
     };
-    int delay = 10;
+    uint64_t delay = 4 * 1000;
     uint32_t *pulse = pulse_eight;
     int pulse_nr = 8;
     unsigned int total_pulse = -1;
+    unsigned int n = 0;
     int i = 0;
 
     if (argc >= 2)
-        delay = atoi(argv[1]);
+        delay = (uint64_t)(atoi(argv[1]) * 1000);
     if (argc >= 3) {
         if (strcmp(argv[2], "s4") == 0) {
             pulse = pulse_four;
@@ -48,6 +53,9 @@ int main(int argc, char *argv[])
         } else if (strcmp(argv[2], "d4") == 0) {
             pulse = pulse_double_four;
             pulse_nr = 4;
+        } else if (strcmp(argv[2], "s8") == 0) {
+            pulse = pulse_eight;
+            pulse_nr = 8;
         }
     }
     if (argc >= 4)
@@ -68,9 +76,19 @@ int main(int argc, char *argv[])
         if (i == pulse_nr)
             i = 0;
 
-        bcm2835_delay(delay);
+        /*
+        n++;
+        if (n >= 64) {
+            n = 0;
+            delay -= 200;
+            if (delay < 900)
+                delay = 900;
+        }
+        */
+        bcm2835_delayMicroseconds(delay);
     }
 
+    bcm2835_gpio_write_mask(0, PINMASK);
     bcm2835_close();
 
     return 0;
