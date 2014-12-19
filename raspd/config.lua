@@ -38,3 +38,25 @@ l298n = {
     ["IN3"] = 5,
     ["IN4"] = 6
 }
+
+devroot = {
+    gpio = {
+        ultrasonic = {}
+        stepmotor = {
+            id = 2,
+
+            pin1 = 2,
+            pin2 = 3,
+            pin3 = 4,
+            pin4 = 17,
+
+            step_angle = 5.625,
+            reduction_ratio = 64,
+            pullin_freq = 500,
+            pullout_freq = 900,
+            flags = 2           -- SMF_PULSE_EIGHT
+        }
+    }
+
+    i2c = {}
+}
