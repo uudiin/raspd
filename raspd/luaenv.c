@@ -23,6 +23,10 @@
 
 static lua_State *L;
 
+/* 1-54: used by gpio */
+#define ULTRASONIC_INDEX    64
+#define STEPMOTOR_INDEX     96
+
 /*
  * int blink(gpio, n (times), t (interval))
  */
@@ -217,9 +221,6 @@ static int lr_gpio_signal(lua_State *L)
     return 1;
 }
 
-/* 1-54: used by gpio */
-#define ULTRASONIC_INDEX    64
-
 static int ultrasonic_callback_wrap(double distance, void *opaque)
 {
     int retval = 0;
@@ -271,6 +272,84 @@ static int lr_ultrasonic_is_using(lua_State *L)
     return 1;
 }
 
+
+static int lr_stepmotor_new(lua_State *L)
+{
+    int pin1, pin2, pin3, pin4;
+    double step_angle;
+    int reduction_ratio, pullin_freq, pullout_freq, flags;
+    struct stepmotor_dev **devp;
+
+    pin1 = (int)luaL_checkinteger(L, 1);
+    pin2 = (int)luaL_checkinteger(L, 2);
+    pin3 = (int)luaL_checkinteger(L, 3);
+    pin4 = (int)luaL_checkinteger(L, 4);
+    step_angle = luaL_checkinteger(L, 5);
+    reduction_ratio = (int)luaL_checkinteger(L, 6);
+    pullin_freq = (int)luaL_checkinteger(L, 7);
+    pullout_freq = (int)luaL_checkinteger(L, 8);
+    flags = (int)luaL_checkinteger(L, 9);
+
+    devp = lua_newuserdata(L, sizeof(struct stepmotor_dev *));
+    *devp = stepmotor_new(pin1, pin2, pin3, pin4, step_angle,
+                reduction_ratio, pullin_freq, pullout_freq, flags);
+    if (*devp == NULL) {
+        /* TODO:  return 0; */
+        luaL_error(L, "stepmotor_new() error\n");
+    }
+    return 1;
+}
+
+static int lr_stepmotor_del(lua_State *L)
+{
+    struct stepmotor_dev **devp = lua_touserdata(L, 1);
+    stepmotor_del(*devp);
+    return 0;
+}
+
+static int cb_stepmotor_done_wrap(struct stepmotor_dev *dev, void *opaque)
+{
+    /* get table */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, STEPMOTOR_INDEX);
+    lua_gettable(L, -2);
+
+    /* call lua handler with one arg, one result */
+    lua_pushinteger(L, dev->angle);
+    if (lua_pcall(L, 1, 1, 0) == 0) {
+        /* TODO */
+        lua_pop(L, 1);
+    }
+    return 0;
+}
+
+static int lr_stepmotor(lua_State *L)
+{
+    struct stepmotor_dev **devp = lua_touserdata(L, 1);
+    double angle = luaL_checkinteger(L, 2);
+    int delay = (int)luaL_checkinteger(L, 3);
+    int err;
+
+    if (!lua_isfunction(L, 4) || lua_iscfunction(L, 4))
+        return 0;
+
+    /* set lua handler */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, STEPMOTOR_INDEX);
+    lua_pushvalue(L, 4); /* value: callback */
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+
+    err = stepmotor(*devp, angle, delay, cb_stepmotor_done_wrap, NULL);
+    if (err < 0) {
+        /* TODO */
+    }
+    lua_pushinteger(L, err);
+    return 1;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
@@ -283,6 +362,12 @@ static const luaL_Reg luaraspd_lib[] = {
     { "gpio_signal", lr_gpio_signal },
     { "ultrasonic_scope",    lr_ultrasonic_scope    },
     { "ultrasonic_is_using", lr_ultrasonic_is_using },
+
+    /* stepmotor */
+    { "stepmotor_new", lr_stepmotor_new },
+    { "stepmotor_del", lr_stepmotor_del },
+    { "stepmotor",     lr_stepmotor     },
+
     { NULL, NULL }
 };
 
