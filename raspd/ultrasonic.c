@@ -57,9 +57,11 @@ struct ultrasonic_env {
     struct timespec trig_tp;
     struct timespec echo_tp;     /* last time */
     /*int wfd;*/
-    void (*urgent_cb)(double distance/* cm */, void *opaque);
+    int (*urgent_cb)(double distance/* cm */, void *opaque);
     void *opaque;
 };
+
+static struct ultrasonic_env *global_env;
 
 static int pin_trig = PIN_TRIG;
 static int pin_echo = PIN_ECHO;
@@ -79,6 +81,7 @@ static free_env(struct ultrasonic_env *env)
     if (env->ev_echo)
         eventfd_del(env->ev_echo);
     free(env);
+    global_env = NULL;
 }
 
 static void cb_echo(int fd, short what, void *arg)
@@ -104,8 +107,10 @@ static void cb_echo(int fd, short what, void *arg)
         distance = (double)microsec * VELOCITY_VOICE / 2;
         distance = US2VELOCITY(microsec);
 
-        if (env->urgent_cb)
-            env->urgent_cb(distance, env->opaque);
+        if (env->urgent_cb) {
+            if (env->urgent_cb(distance, env->opaque) < 0)
+                free_env(env);
+        }
     }
 }
 
@@ -123,7 +128,7 @@ static void cb_timer(int fd, short what, void *arg)
     struct ultrasonic_env *env = arg;
 
     /* check the count */
-    if (env->counted++ >= env->count) {
+    if (env->count != -1 && env->counted++ >= env->count) {
         free_env(env);
         return;
     }
@@ -138,11 +143,23 @@ static void cb_timer(int fd, short what, void *arg)
 }
 
 int ultrasonic_scope(int count, int interval,
-            void (*urgent_cb)(double distance/* cm */, void *opaque),
+            int (*urgent_cb)(double distance/* cm */, void *opaque),
             void *opaque)
 {
     struct ultrasonic_env *env;
     struct timeval tv;
+
+    /* only one instance permitted */
+    if (global_env) {
+        if (count > 0) {
+            return -EEXIST;
+        } else {
+            free_env(global_env);
+            return 0;
+        }
+    } else if (count <= 0) {
+        return ENOENT;
+    }
 
     env = xmalloc(sizeof(*env));
     memset(env, 0, sizeof(*env));
@@ -152,6 +169,8 @@ int ultrasonic_scope(int count, int interval,
     env->interval = interval;
     env->urgent_cb = urgent_cb;
     env->opaque = opaque;
+
+    global_env = env;
 
     /* XXX  not add */
     env->ev_over_trig = evtimer_new(base, cb_over_trig, env);
@@ -178,7 +197,12 @@ int ultrasonic_scope(int count, int interval,
     return 0;
 }
 
-static void urgent_cb(double distance/* cm */, void *opaque)
+unsigned int ultrasonic_is_using(void)
+{
+    return (global_env != 0);
+}
+
+static int urgent_cb(double distance/* cm */, void *opaque)
 {
     int wfd = (int)opaque;
     char buffer[128];
@@ -197,6 +221,7 @@ static void urgent_cb(double distance/* cm */, void *opaque)
         if ((err = luaenv_call_va(callback, "id:", wfd, distance)) < 0)
             fprintf(stderr, "luaenv_call_va(%s), err = %d\n", callback, err);
     }
+    return 0;
 }
 
 static int ultrasonic_main(int wfd, int argc, char *argv[])
@@ -205,7 +230,7 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     int interval = 2000;
     struct ultrasonic_env *env;
     static struct option options[] = {
-        { "stop",     no_argument,       NULL, 's' },
+        { "stop",     no_argument,       NULL, 'e' },
         { "pin-trig", required_argument, NULL, 'i' },
         { "pin-echo", required_argument, NULL, 'o' },
         { "count",    required_argument, NULL, 'n' },
@@ -215,9 +240,9 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     int c;
     int err;
 
-    while ((c = getopt_long(argc, argv, "si:o:n:t:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "ei:o:n:t:", options, NULL)) != -1) {
         switch (c) {
-        case 's': break;
+        case 'e': count = -1; break;
         case 'i': pin_trig = atoi(optarg); break;
         case 'o': pin_echo = atoi(optarg); break;
         case 'n': count = atoi(optarg); break;
@@ -227,7 +252,7 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
         }
     }
 
-    if (count >= 1 && interval) {
+    if (interval) {
         if (ultrasonic_scope(count, interval, urgent_cb, (void *)wfd) < 0)
             return 1;
     }
@@ -244,13 +269,6 @@ static int ultrasonic_init(void)
     luaenv_getconf_int(MODNAME, "TRIG", &pin_trig);
     luaenv_getconf_int(MODNAME, "ECHO", &pin_echo);
     luaenv_getconf_int(MODNAME, "threshold", &threshold);
-
-    luaenv_getconf_str(MODNAME, "script", &script);
-    if (script) {
-        if ((err = luaenv_run_file(script)) < 0)
-            fprintf(stderr, "luaenv_run_file(%s), err = %d\n", script, err);
-        luaenv_pop(1);
-    }
 
     luaenv_getconf_str(MODNAME, "callback", &cb);
     if (cb) {

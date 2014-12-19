@@ -284,6 +284,17 @@ int main(int argc, char *argv[])
         }
     }
 
+    /* run the lua script file */
+    do {
+        const char *script = NULL;
+        luaenv_getconf_str("_G", "script", &script);
+        if (script) {
+            if ((err = luaenv_run_file(script)) < 0)
+                fprintf(stderr, "luaenv_run_fle(%s), err = %d\n", script, err);
+            luaenv_pop(1);
+        }
+    } while (0);
+
     /* main loop */
     rasp_event_loop();
 

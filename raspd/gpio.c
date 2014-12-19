@@ -37,7 +37,7 @@ static void cb_timer(int fd, short what, void *arg)
     struct blink *bl = arg;
     int i;
 
-    if (bl->counted++ >= bl->count) {
+    if (bl->count != -1 && bl->counted++ >= bl->count) {
         eventfd_del(bl->timer);
         free(bl);
         return;

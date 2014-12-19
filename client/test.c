@@ -3,7 +3,7 @@
 
 void cbrecv(char *buf, int buflen)
 {
-	printf(buf);
+	printf("%s", buf);
 }
 
 int main(int argc, char *argv[])

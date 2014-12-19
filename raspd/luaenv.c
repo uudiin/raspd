@@ -10,10 +10,14 @@
 
 #include <bcm2835.h>
 
+#include <xmalloc.h>
+
 #include "module.h"
 #include "event.h"
+#include "gpiolib.h"
 #include "gpio.h"
 #include "pwm.h"
+#include "ultrasonic.h"
 
 #include "luaenv.h"
 
@@ -113,12 +117,172 @@ static int lr_modexec(lua_State *L)
     return 1;
 }
 
+static int lr_gpio_fsel(lua_State *L)
+{
+    int pin = (int)luaL_checkinteger(L, 1);
+    int fsel = (int)luaL_optint(L, 2, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(pin, fsel);
+    return 0;
+}
+
+static int lr_gpio_set(lua_State *L)
+{
+    int pin = (int)luaL_checkinteger(L, 1);
+    int v = (int)luaL_optint(L, 2, 1);
+    if (v)
+        bcm2835_gpio_set(pin);
+    else
+        bcm2835_gpio_clr(pin);
+    return 0;
+}
+
+static int lr_gpio_level(lua_State *L)
+{
+    int pin = (int)luaL_checkinteger(L, 1);
+    int level = (int)bcm2835_gpio_lev(pin);
+    lua_pushinteger(L, level);
+    return 1;
+}
+
+struct signal_env {
+    int pin;
+    int nr_trig;
+    int count;
+    int counted;
+    struct event *ev;
+};
+
+static void free_signal_env(struct signal_env *env)
+{
+    free(env);
+}
+
+static void cb_gpio_signal_wrap(int fd, short what, void *arg)
+{
+    struct signal_env *env = arg;
+
+    if (env->count != -1 && env->counted++ >= env->count) {
+        eventfd_del(env->ev);
+        free_signal_env(env);
+        return;
+    }
+
+    /* get gpio signal table */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, env->pin);
+    lua_gettable(L, -2);
+
+    /* call lua handler with one result */
+    lua_pushinteger(L, env->pin);
+    lua_pushinteger(L, bcm2835_gpio_lev(env->pin));
+    if (lua_pcall(L, 2, 1, 0) == 0) {
+        int retval = luaL_checkinteger(L, -1);
+        if (retval < 0) {
+            eventfd_del(env->ev);
+            free_signal_env(env);
+        }
+        lua_pop(L, 1); /* pop result */
+    }
+}
+
+/* pin, cb, [count], TODO [EDGE] */
+static int lr_gpio_signal(lua_State *L)
+{
+    struct signal_env *env;
+    int pin, count;
+    int err;
+
+    pin = (int)luaL_checkinteger(L, 1);
+    count = (int)luaL_optint(L, 3, 1);
+    if (!lua_isfunction(L, 2) || lua_iscfunction(L, 2))
+        return 0;
+    /* set lua handler */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushvalue(L, 1); /* key: pin */
+    lua_pushvalue(L, 2); /* value: callback */
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+
+    env = xmalloc(sizeof(*env));
+    memset(env, 0, sizeof(*env));
+    env->pin = pin;
+    env->count = count;
+    if ((err = bcm2835_gpio_signal(pin, EDGE_both,
+                cb_gpio_signal_wrap, env, &env->ev)) < 0) {
+        free_signal_env(env);
+    }
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+/* 1-54: used by gpio */
+#define ULTRASONIC_INDEX    64
+
+static int ultrasonic_callback_wrap(double distance, void *opaque)
+{
+    int retval = 0;
+
+    /* get table */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, ULTRASONIC_INDEX);
+    lua_gettable(L, -2);
+
+    /* call lua handler with one result */
+    lua_pushinteger(L, distance);
+    if (lua_pcall(L, 1, 1, 0) == 0) {
+        retval = luaL_checkinteger(L, -1);
+        lua_pop(L, 1);
+    }
+    return retval;
+}
+
+/* cb, [count], [interval] */
+static int lr_ultrasonic_scope(lua_State *L)
+{
+    int count, interval;
+    int err;
+
+    count = (int)luaL_optint(L, 2, -1);
+    if ((!lua_isfunction(L, 1) || lua_iscfunction(L, 1)) && count > 0)
+        return 0;
+    interval = (int)luaL_optint(L, 3, 2000); /* 2s */
+    /* set lua handler */
+    lua_pushlightuserdata(L, &L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushinteger(L, ULTRASONIC_INDEX); /* key */
+    lua_pushvalue(L, 1); /* value: callback */
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+
+    err = ultrasonic_scope(count, interval, ultrasonic_callback_wrap, NULL);
+    if (err < 0) {
+        /* TODO  pop */
+    }
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+static int lr_ultrasonic_is_using(lua_State *L)
+{
+    lua_pushboolean(L, (int)ultrasonic_is_using());
+    return 1;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
     { "breath",  lr_breath  },
     { "l298n",   lr_l298n   },
     { "modexec", lr_modexec },
+    { "gpio_fsel",   lr_gpio_fsel   },
+    { "gpio_set",    lr_gpio_set    },
+    { "gpio_level",  lr_gpio_level  },
+    { "gpio_signal", lr_gpio_signal },
+    { "ultrasonic_scope",    lr_ultrasonic_scope    },
+    { "ultrasonic_is_using", lr_ultrasonic_is_using },
     { NULL, NULL }
 };
 
@@ -128,12 +292,18 @@ static int luaopen_luaraspd(lua_State *L)
      * only exported by lua 5.2 and above
      * luaL_newlib(L, luaraspd_lib);
      */
-#if LUA_VERSION_NUM == 502
+#if LUA_VERSION_NUM >= 502
     lua_newtable(L);
     luaL_setfuncs(L, luaraspd_lib, 0);
 #else
     luaL_register(L, "luaraspd", luaraspd_lib);
 #endif
+
+    /* gpio signal table */
+    lua_pushlightuserdata(L, &L); /* key */
+    lua_newtable(L); /* value */
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
     return 1;
 }
 
