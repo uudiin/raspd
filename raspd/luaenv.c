@@ -18,6 +18,7 @@
 #include "gpio.h"
 #include "pwm.h"
 #include "ultrasonic.h"
+#include "motor.h"
 
 #include "luaenv.h"
 

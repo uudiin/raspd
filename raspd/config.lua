@@ -41,7 +41,7 @@ l298n = {
 
 devroot = {
     gpio = {
-        ultrasonic = {}
+        ultrasonic = {},
         stepmotor = {
             id = 2,
 
@@ -56,7 +56,7 @@ devroot = {
             pullout_freq = 900,
             flags = 2           -- SMF_PULSE_EIGHT
         }
-    }
+    },
 
     i2c = {}
 }

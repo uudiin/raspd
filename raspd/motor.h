@@ -2,8 +2,8 @@
 #define __MOTOR_H__
 
 enum {
-    SMF_PULSE_FOUR
-    SMF_PULSE_DFOUR
+    SMF_PULSE_FOUR,
+    SMF_PULSE_DFOUR,
     SMF_PULSE_EIGHT
 };
 
