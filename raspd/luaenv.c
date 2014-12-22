@@ -22,7 +22,29 @@
 
 #include "luaenv.h"
 
-static lua_State *L;
+static lua_State *_L;
+
+#ifdef _DEBUG_LUAENV
+
+static void stack_dump(lua_State *L, FILE *fp)
+{
+    int i;
+    int top = lua_gettop(L);
+
+    for (i = 1; i <= top; i++) {
+        int t = lua_type(L, i);
+        switch (t) {
+        case LUA_TSTRING: fprintf(fp, "'%s'", lua_tostring(L, i)); break;
+        case LUA_TBOOLEAN: fprintf(fp, lua_toboolean(L, i) ? "true" : "false"); break;
+        case LUA_TNUMBER: fprintf(fp, "%g", lua_tonumber(L, i)); break;
+        default: fprintf(fp, "%s", lua_typename(L, t)); break;
+        }
+        fprintf(fp, " ");
+    }
+    fprintf(fp, "\n");
+}
+
+#endif
 
 /* 1-54: used by gpio */
 #define ULTRASONIC_INDEX    64
@@ -173,21 +195,21 @@ static void cb_gpio_signal_wrap(int fd, short what, void *arg)
     }
 
     /* get gpio signal table */
-    lua_pushlightuserdata(L, &L);
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    lua_pushinteger(L, env->pin);
-    lua_gettable(L, -2);
+    lua_pushlightuserdata(_L, &_L);
+    lua_rawget(_L, LUA_REGISTRYINDEX);
+    lua_pushinteger(_L, env->pin);
+    lua_gettable(_L, -2);
 
     /* call lua handler with one result */
-    lua_pushinteger(L, env->pin);
-    lua_pushinteger(L, bcm2835_gpio_lev(env->pin));
-    if (lua_pcall(L, 2, 1, 0) == 0) {
-        int retval = luaL_checkinteger(L, -1);
+    lua_pushinteger(_L, env->pin);
+    lua_pushinteger(_L, bcm2835_gpio_lev(env->pin));
+    if (lua_pcall(_L, 2, 1, 0) == 0) {
+        int retval = luaL_checkinteger(_L, -1);
         if (retval < 0) {
             eventfd_del(env->ev);
             free_signal_env(env);
         }
-        lua_pop(L, 1); /* pop result */
+        lua_pop(_L, 1); /* pop result */
     }
 }
 
@@ -203,7 +225,7 @@ static int lr_gpio_signal(lua_State *L)
     if (!lua_isfunction(L, 2) || lua_iscfunction(L, 2))
         return 0;
     /* set lua handler */
-    lua_pushlightuserdata(L, &L);
+    lua_pushlightuserdata(L, &_L);
     lua_rawget(L, LUA_REGISTRYINDEX);
     lua_pushvalue(L, 1); /* key: pin */
     lua_pushvalue(L, 2); /* value: callback */
@@ -227,16 +249,16 @@ static int ultrasonic_callback_wrap(double distance, void *opaque)
     int retval = 0;
 
     /* get table */
-    lua_pushlightuserdata(L, &L);
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    lua_pushinteger(L, ULTRASONIC_INDEX);
-    lua_gettable(L, -2);
+    lua_pushlightuserdata(_L, &_L);
+    lua_rawget(_L, LUA_REGISTRYINDEX);
+    lua_pushinteger(_L, ULTRASONIC_INDEX);
+    lua_gettable(_L, -2);
 
     /* call lua handler with one result */
-    lua_pushinteger(L, distance);
-    if (lua_pcall(L, 1, 1, 0) == 0) {
-        retval = luaL_checkinteger(L, -1);
-        lua_pop(L, 1);
+    lua_pushinteger(_L, distance);
+    if (lua_pcall(_L, 1, 1, 0) == 0) {
+        retval = luaL_checkinteger(_L, -1);
+        lua_pop(_L, 1);
     }
     return retval;
 }
@@ -252,7 +274,7 @@ static int lr_ultrasonic_scope(lua_State *L)
         return 0;
     interval = (int)luaL_optint(L, 3, 2000); /* 2s */
     /* set lua handler */
-    lua_pushlightuserdata(L, &L);
+    lua_pushlightuserdata(L, &_L);
     lua_rawget(L, LUA_REGISTRYINDEX);
     lua_pushinteger(L, ULTRASONIC_INDEX); /* key */
     lua_pushvalue(L, 1); /* value: callback */
@@ -386,7 +408,7 @@ static int luaopen_luaraspd(lua_State *L)
 #endif
 
     /* gpio signal table */
-    lua_pushlightuserdata(L, &L); /* key */
+    lua_pushlightuserdata(L, &_L); /* key */
     lua_newtable(L); /* value */
     lua_rawset(L, LUA_REGISTRYINDEX);
 
@@ -399,14 +421,14 @@ static int luaopen_luaraspd(lua_State *L)
 
 int luaenv_getconf_int(const char *table, const char *key, int *v)
 {
-    lua_getglobal(L, table);
-    if (!lua_istable(L, -1))
+    lua_getglobal(_L, table);
+    if (!lua_istable(_L, -1))
         return -EINVAL;
-    lua_getfield(L, -1, key);
-    if (!lua_isnumber(L, -1))
+    lua_getfield(_L, -1, key);
+    if (!lua_isnumber(_L, -1))
         return -ENOSPC;
-    *v = (int)lua_tonumber(L, -1);
-    lua_pop(L, 1);
+    *v = (int)lua_tonumber(_L, -1);
+    lua_pop(_L, 1);
     return 0;
 }
 
@@ -415,20 +437,20 @@ int luaenv_getconf_int(const char *table, const char *key, int *v)
  */
 int luaenv_getconf_str(const char *table, const char *key, const char **v)
 {
-    lua_getglobal(L, table);
-    if (!lua_istable(L, -1))
+    lua_getglobal(_L, table);
+    if (!lua_istable(_L, -1))
         return -EINVAL;
-    lua_getfield(L, -1, key);
-    if (!lua_isstring(L, -1))
+    lua_getfield(_L, -1, key);
+    if (!lua_isstring(_L, -1))
         return -ENOSPC;
-    *v = lua_tostring(L, -1);
+    *v = lua_tostring(_L, -1);
     /* donot pop */
     return 0;
 }
 
 void luaenv_pop(int n)
 {
-    lua_pop(L, n);
+    lua_pop(_L, n);
 }
 
 /*
@@ -444,15 +466,15 @@ int luaenv_call_va(const char *func, const char *fmt, ...)
 
     va_start(ap, fmt);
 
-    lua_getglobal(L, func);
+    lua_getglobal(_L, func);
 
     /* push args */
     for (narg = 0; *fmt; narg++) {
-        luaL_checkstack(L, 1, "too many arguments");
+        luaL_checkstack(_L, 1, "too many arguments");
         switch (*fmt++) {
-        case 'd': lua_pushnumber(L, va_arg(ap, double)); break;
-        case 'i': lua_pushinteger(L, va_arg(ap, int)); break;
-        case 's': lua_pushstring(L, va_arg(ap, char *)); break;
+        case 'd': lua_pushnumber(_L, va_arg(ap, double)); break;
+        case 'i': lua_pushinteger(_L, va_arg(ap, int)); break;
+        case 's': lua_pushstring(_L, va_arg(ap, char *)); break;
         case ':': goto endargs;
         default:
             return -EINVAL;
@@ -463,26 +485,26 @@ int luaenv_call_va(const char *func, const char *fmt, ...)
 
     /* do call */
     nres = strlen(fmt);
-    if (lua_pcall(L, narg, nres, 0) != 0)
+    if (lua_pcall(_L, narg, nres, 0) != 0)
         return -EFAULT;
 
     /* fetch results */
     for (nres = -nres; *fmt; nres++) {
         switch (*fmt++) {
         case 'd':
-            if (!lua_isnumber(L, nres))
+            if (!lua_isnumber(_L, nres))
                 return -ENOENT;
-            *va_arg(ap, double *) = lua_tonumber(L, nres);
+            *va_arg(ap, double *) = lua_tonumber(_L, nres);
             break;
         case 'i':
-            if (!lua_isnumber(L, nres))
+            if (!lua_isnumber(_L, nres))
                 return -ENOENT;
-            *va_arg(ap, int *) = lua_tonumber(L, nres);
+            *va_arg(ap, int *) = lua_tonumber(_L, nres);
             break;
         case 's':
-            if (!lua_isstring(L, nres))
+            if (!lua_isstring(_L, nres))
                 return -ENOENT;
-            *va_arg(ap, const char **) = lua_tostring(L, nres);
+            *va_arg(ap, const char **) = lua_tostring(_L, nres);
             break;
         default:
             return -EINVAL;
@@ -495,17 +517,17 @@ int luaenv_call_va(const char *func, const char *fmt, ...)
 
 int luaenv_run_file(const char *file)
 {
-    if (luaL_loadfile(L, file) != 0)
+    if (luaL_loadfile(_L, file) != 0)
         return -EBADF;
-    if (lua_pcall(L, 0, 0, 0) != 0 && !lua_isnil(L, -1))
+    if (lua_pcall(_L, 0, 0, 0) != 0 && !lua_isnil(_L, -1))
         return -EFAULT;
     return 0;
 }
 
 int luaenv_init(void)
 {
-    L = luaL_newstate();
-    luaL_openlibs(L);
+    _L = luaL_newstate();
+    luaL_openlibs(_L);
 
     /* register luaraspd lib */
     /*
@@ -513,15 +535,15 @@ int luaenv_init(void)
      * luaL_requiref(L, "luaraspd", luaopen_luaraspd, 1);
      * lua_pop(L, 1);
      */
-    lua_pushcfunction(L, luaopen_luaraspd);
-    lua_pushstring(L, "luaraspd");
-    lua_call(L, 1, 0);
+    lua_pushcfunction(_L, luaopen_luaraspd);
+    lua_pushstring(_L, "luaraspd");
+    lua_call(_L, 1, 0);
 
     return 0;
 }
 
 void luaenv_exit(void)
 {
-    if (L)
-        lua_close(L);
+    if (_L)
+        lua_close(_L);
 }
