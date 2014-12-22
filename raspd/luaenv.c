@@ -333,16 +333,16 @@ static int lr_stepmotor_del(lua_State *L)
 static int cb_stepmotor_done_wrap(struct stepmotor_dev *dev, void *opaque)
 {
     /* get table */
-    lua_pushlightuserdata(L, &L);
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    lua_pushinteger(L, STEPMOTOR_INDEX);
-    lua_gettable(L, -2);
+    lua_pushlightuserdata(_L, &_L);
+    lua_rawget(_L, LUA_REGISTRYINDEX);
+    lua_pushinteger(_L, STEPMOTOR_INDEX);
+    lua_gettable(_L, -2);
 
     /* call lua handler with one arg, one result */
-    lua_pushinteger(L, dev->angle);
-    if (lua_pcall(L, 1, 1, 0) == 0) {
+    lua_pushinteger(_L, dev->angle);
+    if (lua_pcall(_L, 1, 1, 0) == 0) {
         /* TODO */
-        lua_pop(L, 1);
+        lua_pop(_L, 1);
     }
     return 0;
 }
@@ -358,7 +358,7 @@ static int lr_stepmotor(lua_State *L)
         return 0;
 
     /* set lua handler */
-    lua_pushlightuserdata(L, &L);
+    lua_pushlightuserdata(L, &_L);
     lua_rawget(L, LUA_REGISTRYINDEX);
     lua_pushinteger(L, STEPMOTOR_INDEX);
     lua_pushvalue(L, 4); /* value: callback */
