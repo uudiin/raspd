@@ -23,6 +23,24 @@
 
 static lua_State *L;
 
+static void stack_dump(lua_State *L, FILE *fp)
+{
+    int i;
+    int top = lua_gettop(L);
+
+    for (i = 1; i <= top; i++) {
+        int t = lua_type(L, i);
+        switch (t) {
+        case LUA_TSTRING: fprintf(fp, "'%s'", lua_tostring(L, i)); break;
+        case LUA_TBOOLEAN: fprintf(fp, lua_toboolean(L, i) ? "true" : "false"); break;
+        case LUA_TNUMBER: fprintf(fp, "%g", lua_tonumber(L, i)); break;
+        default: fprintf(fp, "%s", lua_typename(L, t)); break;
+        }
+        fprintf(fp, " ");
+    }
+    fprintf(fp, "\n");
+}
+
 /*
  * int blink(gpio, n (times), t (interval))
  */
@@ -202,6 +220,7 @@ static int lr_gpio_signal(lua_State *L)
     lua_rawget(L, LUA_REGISTRYINDEX);
     lua_pushvalue(L, 1); /* key: pin */
     lua_pushvalue(L, 2); /* value: callback */
+    stack_dump(L, stderr);
     lua_rawset(L, -3);
     lua_pop(L, 1);
 
