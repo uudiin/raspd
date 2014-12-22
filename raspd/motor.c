@@ -56,6 +56,13 @@ struct stepmotor_dev *stepmotor_new(int pin1, int pin2, int pin3,
         dev->pin2 = pin2;
         dev->pin3 = pin3;
         dev->pin4 = pin4;
+
+#define FSEL_OUT(x) bcm2835_gpio_fsel(x, BCM2835_GPIO_FSEL_OUTP)
+        FSEL_OUT(pin1);
+        FSEL_OUT(pin2);
+        FSEL_OUT(pin3);
+        FSEL_OUT(pin4);
+
         dev->pin_mask = PIN_MASK(pin1, pin2, pin3, pin4);
         dev->step_angle = step_angle;
         dev->reduction_ratio = reduction_ratio;
@@ -117,7 +124,7 @@ static void cb_timer(int fd, short what, void *arg)
     }
 
     /* finished ? */
-    if (dev->remain_pulses--) {
+    if (--dev->remain_pulses <= 0) {
         eventfd_del(dev->ev);
         dev->ev = NULL;
         bcm2835_gpio_write_mask(0, dev->pin_mask);
@@ -157,7 +164,7 @@ int stepmotor(struct stepmotor_dev *dev, double angle,
     dev->cb = cb;
     dev->opaque = opaque;
     tv.tv_sec = delay / 1000;
-    tv.tv_usec = (delay % 1000) * 1000000;
+    tv.tv_usec = (delay % 1000) * 1000;
     err = register_timer(EV_PERSIST, &tv, cb_timer, dev, &dev->ev);
     if (err < 0)
         return err;

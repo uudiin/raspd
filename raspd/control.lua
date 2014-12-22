@@ -83,7 +83,7 @@ lr.gpio_signal(pin_infrared_sensor, function(pin, level)
 local stepmotor_done
 local direction = 1
 
-local stepmotor_done = function()
+stepmotor_done = function()
     io.stderr:write("stepmotor: done\n")
     direction = -direction;
     lr.stepmotor(devid[2], 180 * direction, 1, stepmotor_done)
