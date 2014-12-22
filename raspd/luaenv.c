@@ -23,6 +23,8 @@
 
 static lua_State *_L;
 
+#ifdef _DEBUG_LUAENV
+
 static void stack_dump(lua_State *L, FILE *fp)
 {
     int i;
@@ -40,6 +42,8 @@ static void stack_dump(lua_State *L, FILE *fp)
     }
     fprintf(fp, "\n");
 }
+
+#endif
 
 /*
  * int blink(gpio, n (times), t (interval))
@@ -320,7 +324,6 @@ static int luaopen_luaraspd(lua_State *L)
     /* gpio signal table */
     lua_pushlightuserdata(L, &_L); /* key */
     lua_newtable(L); /* value */
-    stack_dump(L, stderr);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     return 1;
