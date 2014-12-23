@@ -48,7 +48,8 @@ devroot = {
     gpio = {
         ultrasonic = {},
         stepmotor = {
-            id = 2,
+            ID = 2,
+            NAME = "stepmotor",
 
             pin1 = 2,
             pin2 = 3,

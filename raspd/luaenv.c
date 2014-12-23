@@ -307,7 +307,7 @@ static int lr_stepmotor_new(lua_State *L)
     pin2 = (int)luaL_checkinteger(L, 2);
     pin3 = (int)luaL_checkinteger(L, 3);
     pin4 = (int)luaL_checkinteger(L, 4);
-    step_angle = luaL_checkinteger(L, 5);
+    step_angle = luaL_checknumber(L, 5);
     reduction_ratio = (int)luaL_checkinteger(L, 6);
     pullin_freq = (int)luaL_checkinteger(L, 7);
     pullout_freq = (int)luaL_checkinteger(L, 8);

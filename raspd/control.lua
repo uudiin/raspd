@@ -4,6 +4,33 @@ local lr = luaraspd
 
 resources_gpio = {}
 devid = {}
+devname = {}
+
+local function request_gpio(config, pin)
+    if resources_gpio[pin] then
+        io.stderr:write("request_gpio: collisional gpio " .. pin .. "\n")
+        os.exit(1)
+    end
+    resources_gpio[pin] = config
+end
+
+local function register_device(dev, id, name)
+    if id then
+        devid[id] = dev
+    end
+
+    if name then
+        devname[name] = dev
+    end
+end
+
+local function __DEV(id)
+    if devid[id] then
+        return devid[id]
+    else
+        return devname[id]
+    end
+end
 
 function devicetree_init(dt)
     for k, v in pairs(dt) do
@@ -12,24 +39,17 @@ function devicetree_init(dt)
                 if d == "stepmotor" and type(c) == "table" then
                     local stepmotor
 
-                    if resources_gpio[c.pin1] or resources_gpio[c.pin2]
-                        or resources_gpio[c.pin3] or resources_gpio[c.pin4] then
-                        io.stderr:write("stepmotor: collisional gpio\n")
-                        os.exit(1)
-                    end
-
-                    -- register pin used
-                    resources_gpio[c.pin1] = c
-                    resources_gpio[c.pin2] = c
-                    resources_gpio[c.pin3] = c
-                    resources_gpio[c.pin4] = c
+                    request_gpio(c, pin1)
+                    request_gpio(c, pin2)
+                    request_gpio(c, pin3)
+                    request_gpio(c, pin4)
 
                     -- new object
                     stepmotor = lr.stepmotor_new(c.pin1, c.pin2, c.pin3, c.pin4,
                                         c.step_angle, c.reduction_ratio,
                                         c.pullin_freq, c.pullout_freq, c.flags)
                     if stepmotor then
-                        devid[c.id] = stepmotor
+                        register_device(stepmotor, c.ID, c.NAME)
                     else
                         io.stderr:write("stepmotor_new() error\n")
                     end
@@ -86,8 +106,8 @@ local direction = 1
 stepmotor_done = function()
     io.stderr:write("stepmotor: done\n")
     direction = -direction;
-    lr.stepmotor(devid[2], 180 * direction, 1, stepmotor_done)
+    lr.stepmotor(__DEV("stepmotor"), 180 * direction, 1, stepmotor_done)
     return 0
 end
 
-lr.stepmotor(devid[2], 90, 1, stepmotor_done)
+lr.stepmotor(__DEV("stepmotor"), 90, 1, stepmotor_done)
