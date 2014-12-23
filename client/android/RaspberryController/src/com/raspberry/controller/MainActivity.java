@@ -126,6 +126,7 @@ public class MainActivity extends ActionBarActivity implements IControllerListen
 
 			@Override
 			public void onClick(View arg0) {
+				ClientNative.select_tank();
 				ClientNative.fire();
 			}
 		});

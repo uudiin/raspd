@@ -21,14 +21,10 @@
 
 #define LOGE(msg) __android_log_print(ANDROID_LOG_ERROR, "client", msg)
 
-extern void up(void);
-extern void down(void);
-extern void left(void);
-extern void right(void);
-extern void speed_up(void);
-extern void speed_down(void);
-extern int client_connect(const char *hostname, unsigned short portno);
-
+void Java_com_client_nativef_ClientNative_select_tank(JNIEnv *env, jobject thiz)
+{
+	select_tank();
+}
 
 void Java_com_client_nativef_ClientNative_up(JNIEnv *env, jobject thiz)
 {
@@ -67,18 +63,22 @@ void Java_com_client_nativef_ClientNative_speeddown(JNIEnv *env, jobject thiz)
 
 void Java_com_client_nativef_ClientNative_tleft(JNIEnv *env, jobject thiz)
 {
+	turret_left();
 }
 
 void Java_com_client_nativef_ClientNative_tright(JNIEnv *env, jobject thiz)
 {
+	turret_right();
 }
 
 void Java_com_client_nativef_ClientNative_telev(JNIEnv *env, jobject thiz)
 {
+	turret_elev();
 }
 
 void Java_com_client_nativef_ClientNative_fire(JNIEnv *env, jobject thiz)
 {
+	fire();
 }
 
 static JavaVM *gs_jvm = NULL;
@@ -93,13 +93,6 @@ jstring string_to_jstring(JNIEnv *env, char *buf, int buflen)
 	(*env)->SetByteArrayRegion(env, bytes, 0, buflen, (jbyte*)buf);
 	jstring encoding = (*env)->NewStringUTF(env, "utf-8");
 	return (jstring)(*env)->NewObject(env, strClass, ctorID, bytes, encoding);
-}
-
-jobject getInstance(JNIEnv *env, jclass obj_class)
-{
-	jmethodID construction_id = (*env)->GetMethodID(env, obj_class, "<init>", "()V");
-	jobject obj = (*env)->NewObject(env, obj_class, construction_id);
-	return obj;  
 }
 
 void cbrecv(char *buf, int buflen)
@@ -123,7 +116,7 @@ void cbrecv(char *buf, int buflen)
 			break;
 		}
 
-		jmethodID med = (*env)->GetMethodID(env, cls, 
+		jmethodID med = (*env)->GetMethodID(env, cls,
 					"handlePiMessage", "(Ljava/lang/String;)V");
 		if (med == 0) {
 			break;

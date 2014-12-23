@@ -16,5 +16,6 @@
     <string name="btn_telev">TELEV</string>
     <string name="btn_fire">FIRE</string>
     <string name="btn_connect">CONN</string>
+    <string name="btn_auto">AUTO</string>
 
 </resources>

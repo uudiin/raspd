@@ -127,7 +127,7 @@
         android:layout_height="wrap_content"
         android:layout_above="@+id/button_tright"
         android:layout_alignRight="@+id/button_tright"
-        android:text="Button" />
+        android:text="@string/btn_auto" />
 
     <Button
         android:id="@+id/button_connect"

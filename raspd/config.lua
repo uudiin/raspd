@@ -39,6 +39,11 @@ l298n = {
     ["IN4"] = 6
 }
 
+-- tank
+tank = {
+    ["PIN"] = 7
+}
+
 devroot = {
     gpio = {
         ultrasonic = {},
