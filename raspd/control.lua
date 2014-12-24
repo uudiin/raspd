@@ -8,7 +8,7 @@ devname = {}
 
 local function request_gpio(config, pin)
     if resources_gpio[pin] then
-        io.stderr:write("request_gpio: collisional gpio " .. pin .. "\n")
+        io.stderr:write("request_gpio: collisional gpio: " .. pin .. "\n")
         os.exit(1)
     end
     resources_gpio[pin] = config
@@ -39,10 +39,10 @@ function devicetree_init(dt)
                 if d == "stepmotor" and type(c) == "table" then
                     local stepmotor
 
-                    request_gpio(c, pin1)
-                    request_gpio(c, pin2)
-                    request_gpio(c, pin3)
-                    request_gpio(c, pin4)
+                    request_gpio(c, c.pin1)
+                    request_gpio(c, c.pin2)
+                    request_gpio(c, c.pin3)
+                    request_gpio(c, c.pin4)
 
                     -- new object
                     stepmotor = lr.stepmotor_new(c.pin1, c.pin2, c.pin3, c.pin4,
