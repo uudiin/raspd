@@ -151,13 +151,13 @@ int ultrasonic_scope(int count, int interval,
 
     /* only one instance permitted */
     if (global_env) {
-        if (count > 0) {
+        if (interval > 0) {
             return -EEXIST;
         } else {
             free_env(global_env);
             return 0;
         }
-    } else if (count <= 0) {
+    } else if (interval <= 0) {
         return ENOENT;
     }
 

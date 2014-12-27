@@ -255,7 +255,7 @@ static int ultrasonic_callback_wrap(double distance, void *opaque)
     lua_gettable(_L, -2);
 
     /* call lua handler with one result */
-    lua_pushinteger(_L, distance);
+    lua_pushnumber(_L, distance);
     if (lua_pcall(_L, 1, 1, 0) == 0) {
         retval = luaL_checkinteger(_L, -1);
         lua_pop(_L, 1);
@@ -270,9 +270,9 @@ static int lr_ultrasonic_scope(lua_State *L)
     int err;
 
     count = (int)luaL_optint(L, 2, -1);
-    if ((!lua_isfunction(L, 1) || lua_iscfunction(L, 1)) && count > 0)
-        return 0;
     interval = (int)luaL_optint(L, 3, 2000); /* 2s */
+    if ((!lua_isfunction(L, 1) || lua_iscfunction(L, 1)) && interval > 0)
+        return 0;
     /* set lua handler */
     lua_pushlightuserdata(L, &_L);
     lua_rawget(L, LUA_REGISTRYINDEX);
