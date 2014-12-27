@@ -210,13 +210,15 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
     return err;
 }
 
-static __init void gpiolib_init(void)
+void gpiolib_init(void)
 {
     fd_export = open(SYSFS_GPIO_DIR "export", O_WRONLY);
     fd_unexport = open(SYSFS_GPIO_DIR "unexport", O_WRONLY);
+    if (fd_export == -1 || fd_unexport == -1)
+        perror("open (un)export");
 }
 
-static __exit void gpiolib_exit(void)
+void gpiolib_exit(void)
 {
     if (fd_export != -1)
         close(fd_export);

@@ -5,7 +5,7 @@ sock_file = "/var/run/raspd.sock"
 chroot = ""
 
 -- control script
-script = "control.lua"
+script = "/root/raspberry/raspd/control.lua"
 
 -- automatic function
 automatic = "automatic_v1"

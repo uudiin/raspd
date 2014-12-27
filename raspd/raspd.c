@@ -17,6 +17,7 @@
 #include "module.h"
 #include "event.h"
 #include "luaenv.h"
+#include "gpiolib.h"
 #include "config.h"
 
 #define BUF_SIZE    1024
@@ -193,6 +194,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    /* init gpiolib */
+    gpiolib_init();
+
     /* initialize event base */
     if (rasp_event_init() < 0) {
         fprintf(stderr, "event_init(), err = %d\n", err);
@@ -305,6 +309,7 @@ int main(int argc, char *argv[])
     foreach_module(modexec_exit, NULL);
 
     luaenv_exit();
+    gpiolib_exit();
     bcm2835_close();
     rasp_event_exit();
 

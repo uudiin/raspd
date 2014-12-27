@@ -72,21 +72,21 @@ function automatic_v1()
 
     lr.ultrasonic_scope(function(distance)
             io.stderr:write("auto: distance = " .. distance .. " cm\n")
-            if distance <= 15 then
+            if distance <= 30 then
                 lr.blink(pin_led_warn, 5, 300)
                 --lr.modexec(-1, "l298n_lbrake; l298n_rbrake")
 
                 -- turn right
-                lr.modexec(-1, "l298n_rdown")
+                lr.modexec(-1, "l298n_rdown; tank_right")
                 l298n_stat = 1
-            elseif l298n_stat == 1 and distance > 30 then
+            elseif l298n_stat == 1 and distance > 50 then
                 l298n_stat = 0
-                lr.modexec(-1, "l298n_rup")
+                lr.modexec(-1, "l298n_rup; tank_brake; tank_fwd")
             end
             return 0
         end)
 
-    lr.modexec(-1, "l298n_lup; l298n_rup")
+    lr.modexec(-1, "l298n_lup; l298n_rup; tank_sup; tank_fwd")
     lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
     lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
     lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
