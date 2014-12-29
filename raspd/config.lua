@@ -62,6 +62,21 @@ devroot = {
             pullout_freq = 900,
             flags = 2           -- SMF_PULSE_EIGHT
         }
+        l298n = {
+            ID = 3,
+            NAME = "l298n",
+
+            ena = 18,
+            enb = 13,
+            in1 = 27,
+            in2 = 22,
+            in3 = 5,
+            in4 = 6,
+
+            max_speed = 5,
+            range = 50000,
+            pwm_div = 16,
+        }
     },
 
     i2c = {}

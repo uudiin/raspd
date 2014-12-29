@@ -19,6 +19,7 @@
 #include "pwm.h"
 #include "ultrasonic.h"
 #include "motor.h"
+#include "l298n.h"
 
 #include "luaenv.h"
 
@@ -373,6 +374,109 @@ static int lr_stepmotor(lua_State *L)
     return 1;
 }
 
+static int lr_l298n_new(lua_State *L)
+{
+    int ena, enb, in1, in2, in3, in4;
+    int max_speed, range, pwm_div;
+    struct l298n_dev **devp;
+
+    ena = (int)luaL_checkinteger(L, 1);
+    enb = (int)luaL_checkinteger(L, 2);
+    in1 = (int)luaL_checkinteger(L, 3);
+    in2 = (int)luaL_checkinteger(L, 4);
+    in3 = (int)luaL_checkinteger(L, 5);
+    in4 = (int)luaL_checkinteger(L, 6);
+    max_speed = (int)luaL_checkinteger(L, 7);
+    range = (int)luaL_checkinteger(L, 8);
+    pwm_div = (int)luaL_checkinteger(L, 9);
+
+    devp = lua_newuserdata(L, sizeof(struct l298n_dev *));
+    *devp = l298n_new(ena, enb, in1, in2, in3, in4, max_speed,
+                range, pwm_div);
+    if (*devp == NULL) {
+        /* TODO:  return 0; */
+        luaL_error(L, "l298n_new() error\n");
+    }
+    return 1;
+}
+
+static int lr_l298n_del(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_del(*devp);
+    return 0;
+}
+
+static int lr_l298n_lup(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_lup(*devp);
+    return 0;
+}
+
+static int lr_l298n_ldown(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_ldown(*devp);
+    return 0;
+}
+
+static int lr_l298n_lbrake(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_lbrake(*devp);
+    return 0;
+}
+
+static int lr_l298n_lspeedup(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_lspeedup(*devp);
+    return 0;
+}
+
+static int lr_l298n_lspeeddown(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_lspeeddown(*devp);
+    return 0;
+}
+
+static int lr_l298n_rup(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_rup(*devp);
+    return 0;
+}
+
+static int lr_l298n_rdown(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_rdown(*devp);
+    return 0;
+}
+
+static int lr_l298n_rbrake(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_rbrake(*devp);
+    return 0;
+}
+
+static int lr_l298n_rspeedup(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_rspeedup(*devp);
+    return 0;
+}
+
+static int lr_l298n_rspeeddown(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    l298n_rspeeddown(*devp);
+    return 0;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
@@ -390,6 +494,20 @@ static const luaL_Reg luaraspd_lib[] = {
     { "stepmotor_new", lr_stepmotor_new },
     { "stepmotor_del", lr_stepmotor_del },
     { "stepmotor",     lr_stepmotor     },
+
+    /* l298n */
+    { "l298n_new", lr_l298n_new },
+    { "l298n_del", lr_l298n_del },
+    { "l298n_lup", lr_l298n_lup },
+    { "l298n_ldown", lr_l298n_ldown },
+    { "l298n_lbrake", lr_l298n_lbrake },
+    { "l298n_lspeedup", lr_l298n_lspeedup },
+    { "l298n_lspeeddown", lr_l298n_lspeeddown },
+    { "l298n_rup", lr_l298n_rup },
+    { "l298n_rdown", lr_l298n_rdown },
+    { "l298n_rbrake", lr_l298n_rbrake },
+    { "l298n_rspeedup", lr_l298n_rspeedup },
+    { "l298n_rspeeddown", lr_l298n_rspeeddown },
 
     { NULL, NULL }
 };
