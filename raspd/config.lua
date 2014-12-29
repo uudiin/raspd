@@ -46,7 +46,17 @@ tank = {
 
 devroot = {
     gpio = {
-        ultrasonic = {},
+        ultrasonic = {
+            ID = 1,
+            NAME = "ultrasonic",
+
+            pin_trig = 20,
+            pin_echo = 21,
+
+            -- keeping pin_trig 10 us in HIGH level
+            trig_time = 10
+        },
+
         stepmotor = {
             ID = 2,
             NAME = "stepmotor",
