@@ -54,7 +54,6 @@ struct ultrasonic_env {
     struct event *ev_timer;
     struct event *ev_over_trig;
     struct event *ev_echo;
-    struct timespec trig_tp;
     struct timespec echo_tp;     /* last time */
     /*int wfd;*/
     int (*urgent_cb)(double distance/* cm */, void *opaque);
@@ -104,7 +103,7 @@ static void cb_echo(int fd, short what, void *arg)
     } else {
         timespec_sub(&tp, &env->echo_tp, &elapse);
         microsec = elapse.tv_sec * 1000000 + elapse.tv_nsec / 1000;
-        distance = (double)microsec * VELOCITY_VOICE / 2;
+        /*distance = (double)microsec * VELOCITY_VOICE / 2;*/
         distance = US2VELOCITY(microsec);
 
         if (env->urgent_cb) {
@@ -138,7 +137,6 @@ static void cb_timer(int fd, short what, void *arg)
      * keeping 10 us at HIGH level
      */
     bcm2835_gpio_write(env->pin_trig, HIGH);
-    clock_gettime(CLOCK_MONOTONIC, &env->trig_tp);
     evtimer_add(env->ev_over_trig, &tv);
 }
 
