@@ -61,21 +61,35 @@ function devicetree_init(dt)
     end
 end
 
+local l298n_stat = 0
+
 function automatic_v1()
     io.stderr:write("automatic enter\n")
 
-    if lr.ultrasonic_is_using then
-        lr.ultrasonic_scope(nil, -1)
+    if lr.ultrasonic_is_using() then
+        lr.ultrasonic_scope(nil, 0, -1)
     end
 
     lr.ultrasonic_scope(function(distance)
             io.stderr:write("auto: distance = " .. distance .. " cm\n")
-            if distance <= 15 then
+            if distance <= 30 then
                 lr.blink(pin_led_warn, 5, 300)
-                lr.modexec(-1, "l298n_lbrake; l298n_rbrake")
+                --lr.modexec(-1, "l298n_lbrake; l298n_rbrake")
+
+                -- turn right
+                lr.modexec(-1, "l298n_rdown; tank_right")
+                l298n_stat = 1
+            elseif l298n_stat == 1 and distance > 50 then
+                l298n_stat = 0
+                lr.modexec(-1, "l298n_rup; tank_brake; tank_fwd")
             end
             return 0
         end)
+
+    lr.modexec(-1, "l298n_lup; l298n_rup; tank_sup; tank_fwd")
+    lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
+    lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
+    lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
 
     io.stderr:write("automatic leave\n")
 end
@@ -104,10 +118,11 @@ local stepmotor_done
 local direction = 1
 
 stepmotor_done = function()
-    io.stderr:write("stepmotor: done\n")
+    --io.stderr:write("stepmotor: done\n")
     direction = -direction;
     lr.stepmotor(__DEV("stepmotor"), 180 * direction, 1, stepmotor_done)
     return 0
 end
 
-lr.stepmotor(__DEV("stepmotor"), 90, 1, stepmotor_done)
+--lr.stepmotor(__DEV("stepmotor"), 90, 1, stepmotor_done)
+lr.modexec(-1, "automatic")
