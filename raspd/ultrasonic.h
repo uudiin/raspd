@@ -1,6 +1,9 @@
 #ifndef __ULTRASONIC_H__
 #define __ULTRASONIC_H__
 
+#include <time.h>
+#include <event2/event.h>
+
 int ultrasonic_scope(int count, int interval,
             int (*urgent_cb)(double distance/* cm */, void *opaque),
             void *opaque);
