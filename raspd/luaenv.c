@@ -264,7 +264,7 @@ static int ultrasonic_callback_wrap(double distance, void *opaque)
 }
 
 /* cb, [count], [interval] */
-static int lr_ultrasonic_scope(lua_State *L)
+static int lr_ultrasonic_scope0(lua_State *L)
 {
     int count, interval;
     int err;
@@ -281,7 +281,7 @@ static int lr_ultrasonic_scope(lua_State *L)
     lua_rawset(L, -3);
     lua_pop(L, 1);
 
-    err = ultrasonic_scope(count, interval, ultrasonic_callback_wrap, NULL);
+    err = ultrasonic_scope0(count, interval, ultrasonic_callback_wrap, NULL);
     if (err < 0) {
         /* TODO  pop */
     }
@@ -449,7 +449,7 @@ static const luaL_Reg luaraspd_lib[] = {
     { "gpio_set",    lr_gpio_set    },
     { "gpio_level",  lr_gpio_level  },
     { "gpio_signal", lr_gpio_signal },
-    { "ultrasonic_scope",    lr_ultrasonic_scope    },
+    { "ultrasonic_scope0",   lr_ultrasonic_scope0   },
     { "ultrasonic_is_using", lr_ultrasonic_is_using },
 
     /* stepmotor */

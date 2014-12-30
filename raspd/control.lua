@@ -98,7 +98,7 @@ function automatic_v1()
     io.stderr:write("automatic enter\n")
 
     --if lr.ultrasonic_is_using() then
-    --    lr.ultrasonic_scope(nil, 0, -1)
+    --    lr.ultrasonic_scope0(nil, 0, -1)
     --end
 
     lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
