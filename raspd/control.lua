@@ -142,4 +142,4 @@ stepmotor_done = function()
 end
 
 --lr.stepmotor(__DEV("stepmotor"), 90, 1, stepmotor_done)
-lr.modexec(-1, "automatic")
+--lr.modexec(-1, "automatic")

@@ -404,11 +404,16 @@ static int urgent_cb(double distance/* cm */, void *opaque)
     return 0;
 }
 
+static int cb(struct ultrasonic_dev *dev, double distance, void *opaque)
+{
+    return urgent_cb(distance, opaque);
+}
+
 static int ultrasonic_main(int wfd, int argc, char *argv[])
 {
     int count = 1;
     int interval = 2000;
-    struct ultrasonic_env *env;
+    struct ultrasonic_dev *dev;
     static struct option options[] = {
         { "stop",     no_argument,       NULL, 'e' },
         { "pin-trig", required_argument, NULL, 'i' },
@@ -422,7 +427,7 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
 
     while ((c = getopt_long(argc, argv, "ei:o:n:t:", options, NULL)) != -1) {
         switch (c) {
-        case 'e': count = -1; break;
+        case 'e': interval = -1; break;
         case 'i': pin_trig = atoi(optarg); break;
         case 'o': pin_echo = atoi(optarg); break;
         case 'n': count = atoi(optarg); break;
@@ -432,8 +437,16 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
         }
     }
 
+    dev = luaenv_getdev(MODNAME);
+    if (dev == NULL)
+        return 1;
+
     if (interval) {
+        /*
         if (ultrasonic_scope0(count, interval, urgent_cb, (void *)wfd) < 0)
+            return 1;
+        */
+        if (ultrasonic_scope(dev, count, interval, cb, (void *)wfd) < 0)
             return 1;
     }
 
