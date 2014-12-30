@@ -594,6 +594,21 @@ int luaenv_run_file(const char *file)
     return 0;
 }
 
+void *luaenv_getdev(const char *name)
+{
+    void *dev;
+    /* call __DEV lua function */
+    lua_getglobal(_L, "__DEV");
+    if (!lua_isfunction(_L, -1) || lua_iscfunction(_L, -1))
+        return NULL;
+    lua_pushstring(_L, name);
+    if (lua_pcall(_L, 1, 1, 0) != 0)
+        return NULL;
+    dev = lua_touserdata(_L, -1);
+    lua_pop(_L, 1);
+    return dev;
+}
+
 int luaenv_init(void)
 {
     _L = luaL_newstate();

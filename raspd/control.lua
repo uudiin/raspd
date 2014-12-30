@@ -24,7 +24,7 @@ local function register_device(dev, id, name)
     end
 end
 
-local function __DEV(id)
+function __DEV(id)
     if devid[id] then
         return devid[id]
     else
