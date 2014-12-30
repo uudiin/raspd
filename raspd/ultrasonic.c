@@ -211,7 +211,7 @@ int ultrasonic_scope(struct ultrasonic_dev *dev, int count,
     dev->opaque = opaque;
 
     tv.tv_sec = interval / 1000;
-    tv.tv_usec = (interval % 1000) * 1000000;
+    tv.tv_usec = (interval % 1000) * 1000;
     if (evtimer_add(dev->ev_timer, &tv) < 0)
         return -ENOSPC;
     return 0;
@@ -368,7 +368,7 @@ int ultrasonic_scope0(int count, int interval,
     bcm2835_gpio_fsel(env->pin_trig, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_write(env->pin_trig, LOW);
     tv.tv_sec = interval / 1000;
-    tv.tv_usec = (interval % 1000) * 1000000;
+    tv.tv_usec = (interval % 1000) * 1000;
     if (register_timer(EV_PERSIST, &tv,
                 cb_timer, env, &env->ev_timer) < 0) {
         free_env(env);
