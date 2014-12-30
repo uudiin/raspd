@@ -122,7 +122,7 @@ struct ultrasonic_dev *ultrasonic_new(int pin_trig,
             ultrasonic_del(dev);
             return NULL;
         }
-        dev->ev_timer = evtimer_new(base, timer_scope, dev);
+        dev->ev_timer = event_new(base, -1, EV_PERSIST, timer_scope, dev);
         if (dev->ev_timer == NULL) {
             ultrasonic_del(dev);
             return NULL;
@@ -441,14 +441,12 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     if (dev == NULL)
         return 1;
 
-    if (interval) {
-        /*
-        if (ultrasonic_scope0(count, interval, urgent_cb, (void *)wfd) < 0)
-            return 1;
-        */
-        if (ultrasonic_scope(dev, count, interval, cb, (void *)wfd) < 0)
-            return 1;
-    }
+    /*
+    if (ultrasonic_scope0(count, interval, urgent_cb, (void *)wfd) < 0)
+        return 1;
+    */
+    if (ultrasonic_scope(dev, count, interval, cb, (void *)wfd) < 0)
+        return 1;
 
     return 0;
 }

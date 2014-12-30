@@ -596,7 +596,8 @@ int luaenv_run_file(const char *file)
 
 void *luaenv_getdev(const char *name)
 {
-    void *dev;
+    void **devp;
+    void *dev = NULL;
     /* call __DEV lua function */
     lua_getglobal(_L, "__DEV");
     if (!lua_isfunction(_L, -1) || lua_iscfunction(_L, -1))
@@ -604,7 +605,8 @@ void *luaenv_getdev(const char *name)
     lua_pushstring(_L, name);
     if (lua_pcall(_L, 1, 1, 0) != 0)
         return NULL;
-    dev = lua_touserdata(_L, -1);
+    if (devp = lua_touserdata(_L, -1))
+        dev = *devp;
     lua_pop(_L, 1);
     return dev;
 }
