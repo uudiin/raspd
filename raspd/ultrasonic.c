@@ -44,6 +44,41 @@
     } while (0)
 
 /************************************************************/
+
+static void echo_signal(int fd, short what, void *arg)
+{
+    struct ultrasonic_dev *dev = arg;
+    struct timespec tp, elapse;
+    unsigned long microsec;
+    double distance;
+    int level;
+
+    dev->nr_echo++;
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    level = (int)bcm2835_gpio_lev(dev->pin_echo);
+    /*
+    fprintf(stderr, "nr_trig = %d, nr_echo = %d, level = %d, sec = %d, nsec = %d\n",
+                        dev->nr_trig, dev->nr_echo, level, tp.tv_sec, tp.tv_nsec);
+    */
+    if (level) {
+        dev->echo_tp = tp;
+    } else {
+        timespec_sub(&tp, &dev->echo_tp, &elapse);
+        microsec = elapse.tv_sec * 1000000 + elapse.tv_nsec / 1000;
+        distance = US2VELOCITY(microsec);
+        if (dev->cb)
+            dev->cb(dev, distance, dev->opaque);
+    }
+}
+
+static void trig_done(int fd, short what, void *arg)
+{
+    struct ultrasonic_dev *dev = arg;
+    dev->nr_trig++;
+    bcm2835_gpio_write(dev->pin_trig, LOW);
+    evtimer_del(dev->ev_over_trig);
+}
+
 struct ultrasonic_dev *ultrasonic_new(int pin_trig,
                                 int pin_echo, int trig_time)
 {
@@ -88,36 +123,6 @@ void ultrasonic_del(struct ultrasonic_dev *dev)
             eventfd_del(dev->ev_over_trig);
         free(dev);
     }
-}
-
-static void echo_signal(int fd, short what, void *arg)
-{
-    struct ultrasonic_dev *dev = arg;
-    struct timespec tp, elapse;
-    unsigned long microsec;
-    double distance;
-    int level;
-
-    dev->echo++;
-    clock_gettime(CLOCK_MONOTONIC, &tp);
-    level = (int)bcm2835_gpio_lev(dev->pin_echo);
-    if (level) {
-        env->echo_tp = tp;
-    } else {
-        timespec_sub(&tp, &dev->echo_tp, &elapse);
-        microsec = elapse.tv_sec * 1000000 + elapse.tv_nsec / 1000;
-        distance = US2VELOCITY(microsec);
-        if (dev->cb)
-            dev->cb(dev, distance, dev->opaque);
-    }
-}
-
-static void trig_done(int fd, short what, void *arg)
-{
-    struct ultrasonic_dev *dev = arg;
-    dev->nr_trig++;
-    bcm2835_gpio_write(dev->pin_trig, LOW);
-    evtimer_del(dev->ev_over_trig);
 }
 
 int ultrasonic(struct ultrasonic_dev *dev, __cb_ultrasonic cb, void *opaque)
