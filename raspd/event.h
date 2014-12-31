@@ -17,6 +17,7 @@ int register_timer(short flags, struct timeval *timeout,
 
 int register_signal(int signum, event_callback_fn cb, void *opaque);
 int rasp_event_loop(void);
+int rasp_event_loopexit(void);
 int rasp_event_init(void);
 void rasp_event_exit(void);
 
