@@ -1,4 +1,4 @@
--- ultrasonic used for obstacle avoidance
+-- control script
 
 local lr = luaraspd
 
@@ -90,7 +90,7 @@ ultrasonic_done = function(distance)
         lr.modexec(-1, "l298n_rup; tank_brake; tank_fwd")
     end
     -- start again
-    lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
+    --lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
     return 0
 end
 
@@ -101,7 +101,7 @@ function automatic_v1()
     --    lr.ultrasonic_scope0(nil, 0, -1)
     --end
 
-    lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
+    lr.ultrasonic_scope(__DEV("ultrasonic"), ultrasonic_done)
 
     lr.modexec(-1, "l298n_lup; l298n_rup; tank_sup; tank_fwd")
     lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")

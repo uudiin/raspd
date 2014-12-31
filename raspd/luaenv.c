@@ -46,10 +46,6 @@ static void stack_dump(lua_State *L, FILE *fp)
 
 #endif
 
-/* 1-54: used by gpio */
-#define ULTRASONIC_INDEX    64
-#define STEPMOTOR_INDEX     96
-
 /*
  * int blink(gpio, n (times), t (interval))
  */
@@ -179,18 +175,13 @@ struct signal_env {
     struct event *ev;
 };
 
-static void free_signal_env(struct signal_env *env)
-{
-    free(env);
-}
-
 static void cb_gpio_signal_wrap(int fd, short what, void *arg)
 {
     struct signal_env *env = arg;
 
     if (env->count != -1 && env->counted++ >= env->count) {
         eventfd_del(env->ev);
-        free_signal_env(env);
+        free(env);
         return;
     }
 
@@ -207,7 +198,7 @@ static void cb_gpio_signal_wrap(int fd, short what, void *arg)
         int retval = luaL_checkinteger(_L, -1);
         if (retval < 0) {
             eventfd_del(env->ev);
-            free_signal_env(env);
+            free(env);
         }
         lua_pop(_L, 1); /* pop result */
     }
@@ -238,63 +229,11 @@ static int lr_gpio_signal(lua_State *L)
     env->count = count;
     if ((err = bcm2835_gpio_signal(pin, EDGE_both,
                 cb_gpio_signal_wrap, env, &env->ev)) < 0) {
-        free_signal_env(env);
+        free(env);
     }
     lua_pushinteger(L, err);
     return 1;
 }
-
-static int ultrasonic_callback_wrap(double distance, void *opaque)
-{
-    int retval = 0;
-
-    /* get table */
-    lua_pushlightuserdata(_L, &_L);
-    lua_rawget(_L, LUA_REGISTRYINDEX);
-    lua_pushinteger(_L, ULTRASONIC_INDEX);
-    lua_gettable(_L, -2);
-
-    /* call lua handler with one result */
-    lua_pushnumber(_L, distance);
-    if (lua_pcall(_L, 1, 1, 0) == 0) {
-        retval = luaL_checkinteger(_L, -1);
-        lua_pop(_L, 1);
-    }
-    return retval;
-}
-
-/* cb, [count], [interval] */
-static int lr_ultrasonic_scope0(lua_State *L)
-{
-    int count, interval;
-    int err;
-
-    count = (int)luaL_optint(L, 2, -1);
-    interval = (int)luaL_optint(L, 3, 2000); /* 2s */
-    if ((!lua_isfunction(L, 1) || lua_iscfunction(L, 1)) && interval > 0)
-        return 0;
-    /* set lua handler */
-    lua_pushlightuserdata(L, &_L);
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    lua_pushinteger(L, ULTRASONIC_INDEX); /* key */
-    lua_pushvalue(L, 1); /* value: callback */
-    lua_rawset(L, -3);
-    lua_pop(L, 1);
-
-    err = ultrasonic_scope0(count, interval, ultrasonic_callback_wrap, NULL);
-    if (err < 0) {
-        /* TODO  pop */
-    }
-    lua_pushinteger(L, err);
-    return 1;
-}
-
-static int lr_ultrasonic_is_using(lua_State *L)
-{
-    lua_pushboolean(L, (int)ultrasonic_is_using());
-    return 1;
-}
-
 
 static int lr_stepmotor_new(lua_State *L)
 {
@@ -335,7 +274,7 @@ static int cb_stepmotor_done_wrap(struct stepmotor_dev *dev, void *opaque)
     /* get table */
     lua_pushlightuserdata(_L, &_L);
     lua_rawget(_L, LUA_REGISTRYINDEX);
-    lua_pushinteger(_L, STEPMOTOR_INDEX);
+    lua_pushlightuserdata(_L, dev); /* key */
     lua_gettable(_L, -2);
 
     /* call lua handler with one arg, one result */
@@ -360,8 +299,8 @@ static int lr_stepmotor(lua_State *L)
     /* set lua handler */
     lua_pushlightuserdata(L, &_L);
     lua_rawget(L, LUA_REGISTRYINDEX);
-    lua_pushinteger(L, STEPMOTOR_INDEX);
-    lua_pushvalue(L, 4); /* value: callback */
+    lua_pushlightuserdata(L, *devp); /* key: dev */
+    lua_pushvalue(L, 4);             /* value: callback */
     lua_rawset(L, -3);
     lua_pop(L, 1);
 
@@ -402,6 +341,7 @@ static int lr_ultrasonic_del(lua_State *L)
 static int cb_ultrasonic_wrap(struct ultrasonic_dev *dev,
                                 double distance, void *opaque)
 {
+    int retval = 0;
     /* get table */
     lua_pushlightuserdata(_L, &_L);
     lua_rawget(_L, LUA_REGISTRYINDEX);
@@ -410,17 +350,23 @@ static int cb_ultrasonic_wrap(struct ultrasonic_dev *dev,
 
     /* call lua handler with one arg, one result */
     lua_pushnumber(_L, distance);
-    if (lua_pcall(_L, 1, 1, 0) == 0)
+    if (lua_pcall(_L, 1, 1, 0) == 0) {
+        retval = luaL_checkinteger(_L, -1);
         lua_pop(_L, 1);
-    return 0;
+    }
+    return retval;
 }
 
-static int lr_ultrasonic(lua_State *L)
+/* dev, cb, count, interval */
+static int lr_ultrasonic_scope(lua_State *L)
 {
     struct ultrasonic_dev **devp = lua_touserdata(L, 1);
+    int count, interval;
     int err;
 
-    if (!lua_isfunction(L, 2) || lua_iscfunction(L, 2))
+    count = (int)luaL_optint(L, 3, -1);
+    interval = (int)luaL_optint(L, 4, 500/* 0.5s */);
+    if ((!lua_isfunction(L, 2) || lua_iscfunction(L, 2)) && interval > 0)
         return 0;
 
     /* set lua handler */
@@ -431,11 +377,18 @@ static int lr_ultrasonic(lua_State *L)
     lua_rawset(L, -3);
     lua_pop(L, 1);
 
-    err = ultrasonic(*devp, cb_ultrasonic_wrap, NULL);
+    err = ultrasonic_scope(*devp, count, interval, cb_ultrasonic_wrap, NULL);
     if (err < 0) {
         /* TODO */
     }
     lua_pushinteger(L, err);
+    return 1;
+}
+
+static int lr_ultrasonic_is_busy(lua_State *L)
+{
+    struct ultrasonic_dev **devp = lua_touserdata(L, 1);
+    lua_pushboolean(L, (int)ultrasonic_is_busy(*devp));
     return 1;
 }
 
@@ -449,17 +402,16 @@ static const luaL_Reg luaraspd_lib[] = {
     { "gpio_set",    lr_gpio_set    },
     { "gpio_level",  lr_gpio_level  },
     { "gpio_signal", lr_gpio_signal },
-    { "ultrasonic_scope0",   lr_ultrasonic_scope0   },
-    { "ultrasonic_is_using", lr_ultrasonic_is_using },
 
     /* stepmotor */
     { "stepmotor_new", lr_stepmotor_new },
     { "stepmotor_del", lr_stepmotor_del },
     { "stepmotor",     lr_stepmotor     },
     /* ultrasonic */
-    { "ultrasonic_new", lr_ultrasonic_new },
-    { "ultrasonic_del", lr_ultrasonic_del },
-    { "ultrasonic",     lr_ultrasonic     },
+    { "ultrasonic_new",     lr_ultrasonic_new     },
+    { "ultrasonic_del",     lr_ultrasonic_del     },
+    { "ultrasonic_scope",   lr_ultrasonic_scope   },
+    { "ultrasonic_is_busy", lr_ultrasonic_is_busy },
 
     { NULL, NULL }
 };
