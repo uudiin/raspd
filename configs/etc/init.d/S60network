@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# Network
+#
+
+case "$1" in
+	start)
+		echo -n "Starting Network"
+		ifconfig lo up
+		ifconfig wlan0 172.16.20.1
+		echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+		;;
+	stop)
+		echo -n "Stopping Network"
+		;;
+	restart | force-reload)
+		$0 stop
+		sleep 2
+		$0 start
+		if [ "$?" != "0" ]; then
+			exit 1
+		fi
+		;;
+	*)
+		echo "Usage: /etc/init.d/network {start|stop|restart|force-reload}"
+		exit 1
+esac
+
+exit 0
