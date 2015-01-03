@@ -1,4 +1,4 @@
--- ultrasonic used for obstacle avoidance
+-- control script
 
 local lr = luaraspd
 
@@ -24,7 +24,7 @@ local function register_device(dev, id, name)
     end
 end
 
-local function __DEV(id)
+function __DEV(id)
     if devid[id] then
         return devid[id]
     else
@@ -106,7 +106,7 @@ ultrasonic_done = function(distance)
         lr.modexec(-1, "l298n_rup; tank_brake; tank_fwd")
     end
     -- start again
-    lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
+    --lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
     return 0
 end
 
@@ -114,10 +114,10 @@ function automatic_v1()
     io.stderr:write("automatic enter\n")
 
     --if lr.ultrasonic_is_using() then
-    --    lr.ultrasonic_scope(nil, 0, -1)
+    --    lr.ultrasonic_scope0(nil, 0, -1)
     --end
 
-    lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
+    lr.ultrasonic_scope(__DEV("ultrasonic"), ultrasonic_done)
 
     lr.modexec(-1, "l298n_lup; l298n_rup; tank_sup; tank_fwd")
     lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
@@ -158,4 +158,4 @@ stepmotor_done = function()
 end
 
 --lr.stepmotor(__DEV("stepmotor"), 90, 1, stepmotor_done)
-lr.modexec(-1, "automatic")
+--lr.modexec(-1, "automatic")

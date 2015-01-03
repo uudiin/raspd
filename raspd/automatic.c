@@ -3,6 +3,7 @@
 #include <getopt.h>
 
 #include "module.h"
+#include "event.h"
 #include "luaenv.h"
 
 static int automatic_main(int fd, int argc, char *argv[])
@@ -54,3 +55,14 @@ static __init void __reg_module_automatic(void)
 {
     register_module(&__module_automatic);
 }
+
+/*
+ * exit module
+ */
+static exit_main(int fd, int argc, char *argv[])
+{
+    /* TODO  retval */
+    return rasp_event_loopexit();
+}
+
+DEFINE_MODULE(exit);
