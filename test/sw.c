@@ -5,14 +5,16 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
+#include <termios.h>
 #include <event2/event.h>
 
 #include <xmalloc.h>
 #include <bcm2835.h>
 #include "../raspd/event.h"
 
-
 #define INVALID_PIN(x)      ((x) < 0 || (x) >= NR_BCM2835_GPIO)
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
 
 struct esc_env {
     int pin;
@@ -52,10 +54,12 @@ static void cb_read(int fd, short what, void *arg)
     if (size < 1)
         return;
     switch (buffer[0]) {
-    case 65: env->keep_time += 100; break; /* up */
-    case 66: env->keep_time -= 100; break; /* down */
-    case 67: env->keep_time += 400; break; /* right */
-    case 68: env->keep_time -= 400; break; /* left */
+    case 'j': env->keep_time += 100; break; /* up */
+    case 'k': env->keep_time -= 100; break; /* down */
+    case 'k': env->keep_time += 400; break; /* right */
+    case 'h': env->keep_time -= 400; break; /* left */
+    case 'a': env->keep_time = env->min_keep_time;
+    case 'z': env->keep_time = env->max_keep_time;
     }
     env->keep_time = min(env->keep_time, env->max_keep_time);
     env->keep_time = max(env->keep_time, env->min_keep_time);
