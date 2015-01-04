@@ -45,6 +45,7 @@ test/breath_led
 test/motor
 test/pwm
 test/l298n
+test/sw
 test/test-raspd
 test/test_unix
 test/test_gpioint
