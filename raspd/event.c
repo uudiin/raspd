@@ -53,6 +53,11 @@ int rasp_event_loop(void)
     return event_base_dispatch(base);
 }
 
+int rasp_event_loopexit(void)
+{
+    return event_base_loopexit(base, NULL);
+}
+
 int rasp_event_init(void)
 {
     base = event_base_new();
@@ -66,4 +71,5 @@ int rasp_event_init(void)
 void rasp_event_exit(void)
 {
     /* FIXME */
+    event_base_free(base);
 }

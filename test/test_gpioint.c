@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
 
     if (bcm2835_init() < 0)
         return 1;
+    gpiolib_init();
 
     while ((c = getopt_long(argc, argv, "e:st:", options, NULL)) != -1) {
         switch (c) {
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
         assert(err >= 0);
 
         err = bcm2835_gpio_signal(pin, te, gpio_interrupt, (void *)pin, NULL);
-        assert(err == 0);
+        assert(err >= 0);
 
         err = rasp_event_loop();
         assert(err == 0);
@@ -89,6 +90,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    gpiolib_exit();
     bcm2835_close();
 
     return 0;
