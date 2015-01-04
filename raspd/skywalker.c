@@ -3,6 +3,8 @@
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
+#include <time.h>
+#include <event2/event.h>
 
 #include <xmalloc.h>
 #include <bcm2835.h>
@@ -20,16 +22,27 @@ struct blink {
     int counted;
     int interval;
     struct event *timer;
+    struct event *ev_done;
     int gpio;
 };
+
+static void trig_done(int fd, short what, void *arg)
+{
+    struct blink *bl = arg;
+    bcm2835_gpio_write(bl->gpio, LOW);
+    /* FIXME  need ? */
+    /*evtimer_del(bl->ev_done);*/
+}
 
 static void cb_timer(int fd, short what, void *arg)
 {
     struct blink *bl = arg;
+    struct timeval tv;
     int pin;
 
     if (bl->count != -1 && bl->counted++ >= bl->count) {
         eventfd_del(bl->timer);
+        eventfd_del(bl->ev_done);
         free(bl);
         return;
     }
@@ -38,13 +51,18 @@ static void cb_timer(int fd, short what, void *arg)
 
     printf("cb_timer pin = %d\n", pin);
     bcm2835_gpio_write(pin, HIGH);
+    /*
     usleep(bl->len);
     bcm2835_gpio_write(pin, LOW);
+    */
+    tv.tv_sec = bl->len / 1000000;
+    tv.tv_usec = bl->len % 1000000;
+    evtimer_add(bl->ev_done, &tv);
 }
 
 /*
  * usage:
- *   skywalker --ctrlnum [0-200] --count [num] --interval 2000 18
+ *   skywalker --ctrlnum [0-200] --count [num] --interval 20 18
  */
 static int sw_main(int wfd, int argc, char *argv[])
 {
@@ -91,6 +109,11 @@ static int sw_main(int wfd, int argc, char *argv[])
             timeout.tv_sec = interval / 1000;
             timeout.tv_usec = (interval % 1000) * 1000;
 
+            err = -ENOMEM;
+            bl->ev_done = evtimer_new(base, trig_done, bl);
+            if (bl->ev_done == NULL)
+                break;
+
             err = -EIO;
             if (register_timer(EV_PERSIST, &timeout, cb_timer, bl, &bl->timer) < 0)
                 break;
@@ -99,8 +122,13 @@ static int sw_main(int wfd, int argc, char *argv[])
         } while (0);
 
         if (err != 0) {
-            if (bl)
+            if (bl) {
+                if (bl->ev_done)
+                    event_free(bl->ev_done);
+                if (bl->timer)
+                    event_free(bl->timer);
                 free(bl);
+            }
 
             return 1;
         }
