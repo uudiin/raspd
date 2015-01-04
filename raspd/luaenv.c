@@ -255,7 +255,7 @@ static int ultrasonic_callback_wrap(double distance, void *opaque)
     lua_gettable(_L, -2);
 
     /* call lua handler with one result */
-    lua_pushinteger(_L, distance);
+    lua_pushnumber(_L, distance);
     if (lua_pcall(_L, 1, 1, 0) == 0) {
         retval = luaL_checkinteger(_L, -1);
         lua_pop(_L, 1);
@@ -270,9 +270,9 @@ static int lr_ultrasonic_scope(lua_State *L)
     int err;
 
     count = (int)luaL_optint(L, 2, -1);
-    if ((!lua_isfunction(L, 1) || lua_iscfunction(L, 1)) && count > 0)
-        return 0;
     interval = (int)luaL_optint(L, 3, 2000); /* 2s */
+    if ((!lua_isfunction(L, 1) || lua_iscfunction(L, 1)) && interval > 0)
+        return 0;
     /* set lua handler */
     lua_pushlightuserdata(L, &_L);
     lua_rawget(L, LUA_REGISTRYINDEX);
@@ -307,7 +307,7 @@ static int lr_stepmotor_new(lua_State *L)
     pin2 = (int)luaL_checkinteger(L, 2);
     pin3 = (int)luaL_checkinteger(L, 3);
     pin4 = (int)luaL_checkinteger(L, 4);
-    step_angle = luaL_checkinteger(L, 5);
+    step_angle = luaL_checknumber(L, 5);
     reduction_ratio = (int)luaL_checkinteger(L, 6);
     pullin_freq = (int)luaL_checkinteger(L, 7);
     pullout_freq = (int)luaL_checkinteger(L, 8);
@@ -373,6 +373,72 @@ static int lr_stepmotor(lua_State *L)
     return 1;
 }
 
+static int lr_ultrasonic_new(lua_State *L)
+{
+    int pin_trig, pin_echo;
+    int trig_time;
+    struct ultrasonic_dev **devp;
+
+    pin_trig = (int)luaL_checkinteger(L, 1);
+    pin_echo = (int)luaL_checkinteger(L, 2);
+    trig_time = (int)luaL_checkinteger(L, 3);
+
+    devp = lua_newuserdata(L, sizeof(struct ultrasonic_dev *));
+    *devp = ultrasonic_new(pin_trig, pin_echo, trig_time);
+    if (*devp == NULL) {
+        luaL_error(L, "ultrasonic_new() error\n");
+        return 0;
+    }
+    return 1;
+}
+
+static int lr_ultrasonic_del(lua_State *L)
+{
+    struct ultrasonic_dev **devp = lua_touserdata(L, 1);
+    ultrasonic_del(*devp);
+    return 0;
+}
+
+static int cb_ultrasonic_wrap(struct ultrasonic_dev *dev,
+                                double distance, void *opaque)
+{
+    /* get table */
+    lua_pushlightuserdata(_L, &_L);
+    lua_rawget(_L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(_L, dev);
+    lua_gettable(_L, -2);
+
+    /* call lua handler with one arg, one result */
+    lua_pushnumber(_L, distance);
+    if (lua_pcall(_L, 1, 1, 0) == 0)
+        lua_pop(_L, 1);
+    return 0;
+}
+
+static int lr_ultrasonic(lua_State *L)
+{
+    struct ultrasonic_dev **devp = lua_touserdata(L, 1);
+    int err;
+
+    if (!lua_isfunction(L, 2) || lua_iscfunction(L, 2))
+        return 0;
+
+    /* set lua handler */
+    lua_pushlightuserdata(L, &_L);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(L, *devp); /* key: dev */
+    lua_pushvalue(L, 2);             /* value: callback */
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+
+    err = ultrasonic(*devp, cb_ultrasonic_wrap, NULL);
+    if (err < 0) {
+        /* TODO */
+    }
+    lua_pushinteger(L, err);
+    return 1;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
@@ -390,6 +456,10 @@ static const luaL_Reg luaraspd_lib[] = {
     { "stepmotor_new", lr_stepmotor_new },
     { "stepmotor_del", lr_stepmotor_del },
     { "stepmotor",     lr_stepmotor     },
+    /* ultrasonic */
+    { "ultrasonic_new", lr_ultrasonic_new },
+    { "ultrasonic_del", lr_ultrasonic_del },
+    { "ultrasonic",     lr_ultrasonic     },
 
     { NULL, NULL }
 };
@@ -522,6 +592,21 @@ int luaenv_run_file(const char *file)
     if (lua_pcall(_L, 0, 0, 0) != 0 && !lua_isnil(_L, -1))
         return -EFAULT;
     return 0;
+}
+
+void *luaenv_getdev(const char *name)
+{
+    void *dev;
+    /* call __DEV lua function */
+    lua_getglobal(_L, "__DEV");
+    if (!lua_isfunction(_L, -1) || lua_iscfunction(_L, -1))
+        return NULL;
+    lua_pushstring(_L, name);
+    if (lua_pcall(_L, 1, 1, 0) != 0)
+        return NULL;
+    dev = lua_touserdata(_L, -1);
+    lua_pop(_L, 1);
+    return dev;
 }
 
 int luaenv_init(void)

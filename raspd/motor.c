@@ -10,6 +10,7 @@
 #include "event.h"
 #include "motor.h"
 
+static void cb_timer(int fd, short what, void *arg);
 
 #define INIT_PULSE_FOUR(x, pin1, pin2, pin3, pin4)  \
     do {                                            \
@@ -63,6 +64,12 @@ struct stepmotor_dev *stepmotor_new(int pin1, int pin2, int pin3,
         FSEL_OUT(pin3);
         FSEL_OUT(pin4);
 
+        dev->ev = event_new(base, -1, EV_PERSIST, cb_timer, dev);
+        if (dev->ev == NULL) {
+            free(dev);
+            return NULL;
+        }
+
         dev->pin_mask = PIN_MASK(pin1, pin2, pin3, pin4);
         dev->step_angle = step_angle;
         dev->reduction_ratio = reduction_ratio;
@@ -112,7 +119,6 @@ static void cb_timer(int fd, short what, void *arg)
 {
     struct stepmotor_dev *dev = arg;
 
-    bcm2835_gpio_write_mask(dev->pulse[dev->pidx], dev->pin_mask);
     if (dev->angle > 0) {
         dev->pidx++;
         if (dev->pidx >= dev->nr_pulse)
@@ -122,11 +128,11 @@ static void cb_timer(int fd, short what, void *arg)
         if (dev->pidx < 0)
             dev->pidx = dev->nr_pulse - 1;
     }
+    bcm2835_gpio_write_mask(dev->pulse[dev->pidx], dev->pin_mask);
 
     /* finished ? */
     if (--dev->remain_pulses <= 0) {
-        eventfd_del(dev->ev);
-        dev->ev = NULL;
+        event_del(dev->ev);
         bcm2835_gpio_write_mask(0, dev->pin_mask);
 
         /* invoid done callback */
@@ -140,13 +146,11 @@ int stepmotor(struct stepmotor_dev *dev, double angle,
 {
     struct timeval tv;
     double n;
-    int err;
 
     /* undo */
     if (delay == -1) {
-        if (dev->ev) {
-            eventfd_del(dev->ev);
-            dev->ev = NULL;
+        if (event_pending(dev->ev, EV_TIMEOUT, NULL)) {
+            event_del(dev->ev);
             bcm2835_gpio_write_mask(0, dev->pin_mask);
             return 0;
         }
@@ -160,13 +164,11 @@ int stepmotor(struct stepmotor_dev *dev, double angle,
     n = angle / 360;
     n = n < 0 ? -n : n;
     dev->remain_pulses = (int)(n * dev->nr_cycle_pulse);
-    dev->pidx = 0;
     dev->cb = cb;
     dev->opaque = opaque;
     tv.tv_sec = delay / 1000;
     tv.tv_usec = (delay % 1000) * 1000;
-    err = register_timer(EV_PERSIST, &tv, cb_timer, dev, &dev->ev);
-    if (err < 0)
-        return err;
+    if (evtimer_add(dev->ev, &tv) < 0)
+        return -ENOSPC;
     return 0;
 }

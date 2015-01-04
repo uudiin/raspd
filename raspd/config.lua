@@ -5,7 +5,7 @@ sock_file = "/var/run/raspd.sock"
 chroot = ""
 
 -- control script
-script = "control.lua"
+script = "/root/raspberry/raspd/control.lua"
 
 -- automatic function
 automatic = "automatic_v1"
@@ -46,9 +46,20 @@ tank = {
 
 devroot = {
     gpio = {
-        ultrasonic = {},
+        ultrasonic = {
+            ID = 1,
+            NAME = "ultrasonic",
+
+            pin_trig = 20,
+            pin_echo = 21,
+
+            -- keeping pin_trig 10 us in HIGH level
+            trig_time = 10
+        },
+
         stepmotor = {
-            id = 2,
+            ID = 2,
+            NAME = "stepmotor",
 
             pin1 = 2,
             pin2 = 3,

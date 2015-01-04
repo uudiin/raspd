@@ -43,6 +43,110 @@
         }                                                 \
     } while (0)
 
+/************************************************************/
+
+static void echo_signal(int fd, short what, void *arg)
+{
+    struct ultrasonic_dev *dev = arg;
+    struct timespec tp, elapse;
+    unsigned long microsec;
+    double distance;
+    int level;
+
+    dev->nr_echo++;
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    level = (int)bcm2835_gpio_lev(dev->pin_echo);
+    /*
+    fprintf(stderr, "nr_trig = %d, nr_echo = %d, level = %d, sec = %d, nsec = %d\n",
+                        dev->nr_trig, dev->nr_echo, level, tp.tv_sec, tp.tv_nsec);
+    */
+    if (level) {
+        dev->echo_tp = tp;
+    } else {
+        timespec_sub(&tp, &dev->echo_tp, &elapse);
+        microsec = elapse.tv_sec * 1000000 + elapse.tv_nsec / 1000;
+        distance = US2VELOCITY(microsec);
+        if (dev->cb)
+            dev->cb(dev, distance, dev->opaque);
+    }
+}
+
+static void trig_done(int fd, short what, void *arg)
+{
+    struct ultrasonic_dev *dev = arg;
+    dev->nr_trig++;
+    bcm2835_gpio_write(dev->pin_trig, LOW);
+    evtimer_del(dev->ev_over_trig);
+}
+
+struct ultrasonic_dev *ultrasonic_new(int pin_trig,
+                                int pin_echo, int trig_time)
+{
+    struct ultrasonic_dev *dev;
+
+    dev = malloc(sizeof(*dev));
+    if (dev) {
+        memset(dev, 0, sizeof(*dev));
+        dev->pin_trig = pin_trig;
+        dev->pin_echo = pin_echo;
+        dev->trig_time = trig_time;
+
+        dev->tv_trig.tv_sec = 0;
+        dev->tv_trig.tv_usec = trig_time;
+
+        /* only new, no add */
+        dev->ev_over_trig = evtimer_new(base, trig_done, dev);
+        if (dev->ev_over_trig == NULL) {
+            free(dev);
+            return NULL;
+        }
+
+        if (bcm2835_gpio_signal(dev->pin_echo, EDGE_both,
+                        echo_signal, dev, &dev->ev_echo) < 0) {
+            event_free(dev->ev_over_trig);
+            free(dev);
+            return NULL;
+        }
+
+        bcm2835_gpio_fsel(dev->pin_trig, BCM2835_GPIO_FSEL_OUTP);
+        bcm2835_gpio_write(dev->pin_trig, LOW);
+    }
+    return dev;
+}
+
+void ultrasonic_del(struct ultrasonic_dev *dev)
+{
+    if (dev) {
+        if (dev->ev_echo)
+            eventfd_del(dev->ev_echo);
+        if (dev->ev_over_trig)
+            eventfd_del(dev->ev_over_trig);
+        free(dev);
+    }
+}
+
+int ultrasonic(struct ultrasonic_dev *dev, __cb_ultrasonic cb, void *opaque)
+{
+    /* in using ? */
+    if (evtimer_pending(dev->ev_over_trig, NULL))
+        return -EBUSY;
+
+    dev->cb = cb;
+    dev->opaque = opaque;
+    /* keeping 10 us at HIGH level */
+    bcm2835_gpio_write(dev->pin_trig, HIGH);
+    if (evtimer_add(dev->ev_over_trig, &dev->tv_trig) < 0)
+        return -ENOSPC;
+    return 0;
+}
+
+unsigned int ultrasonic_is_busy(struct ultrasonic_dev *dev)
+{
+    return (unsigned int)evtimer_pending(dev->ev_over_trig, NULL);
+}
+
+/************************************************************/
+
 struct ultrasonic_env {
     int pin_trig;
     int pin_echo;
@@ -54,7 +158,6 @@ struct ultrasonic_env {
     struct event *ev_timer;
     struct event *ev_over_trig;
     struct event *ev_echo;
-    struct timespec trig_tp;
     struct timespec echo_tp;     /* last time */
     /*int wfd;*/
     int (*urgent_cb)(double distance/* cm */, void *opaque);
@@ -104,7 +207,7 @@ static void cb_echo(int fd, short what, void *arg)
     } else {
         timespec_sub(&tp, &env->echo_tp, &elapse);
         microsec = elapse.tv_sec * 1000000 + elapse.tv_nsec / 1000;
-        distance = (double)microsec * VELOCITY_VOICE / 2;
+        /*distance = (double)microsec * VELOCITY_VOICE / 2;*/
         distance = US2VELOCITY(microsec);
 
         if (env->urgent_cb) {
@@ -138,7 +241,6 @@ static void cb_timer(int fd, short what, void *arg)
      * keeping 10 us at HIGH level
      */
     bcm2835_gpio_write(env->pin_trig, HIGH);
-    clock_gettime(CLOCK_MONOTONIC, &env->trig_tp);
     evtimer_add(env->ev_over_trig, &tv);
 }
 
@@ -151,13 +253,13 @@ int ultrasonic_scope(int count, int interval,
 
     /* only one instance permitted */
     if (global_env) {
-        if (count > 0) {
+        if (interval > 0) {
             return -EEXIST;
         } else {
             free_env(global_env);
             return 0;
         }
-    } else if (count <= 0) {
+    } else if (interval <= 0) {
         return ENOENT;
     }
 

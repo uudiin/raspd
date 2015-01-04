@@ -16,4 +16,7 @@ int bcm2835_gpio_poll(unsigned int pin,
 int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
                 event_callback_fn cb, void *opaque, struct event **ev);
 
+void gpiolib_init(void);
+void gpiolib_exit(void);
+
 #endif /* __GPIO_INT_H__ */
