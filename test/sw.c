@@ -19,8 +19,8 @@
 struct esc_env {
     int pin;
     int keep_time;
-    int min_keep_time; /* 2100 us */
-    int max_keep_time; /* 900 us */
+    int min_keep_time; /* 900 us */
+    int max_keep_time; /* 2100 us */
     int interval;
     struct event *timer;
     struct event *ev_done;
@@ -54,12 +54,14 @@ static void cb_read(int fd, short what, void *arg)
     if (size < 1)
         return;
     switch (buffer[0]) {
-    case 'j': env->keep_time += 100; break; /* up */
-    case 'k': env->keep_time -= 100; break; /* down */
-    case 'k': env->keep_time += 400; break; /* right */
+    case 'k': env->keep_time += 100; break; /* up */
+    case 'j': env->keep_time -= 100; break; /* down */
+    case 'l': env->keep_time += 400; break; /* right */
     case 'h': env->keep_time -= 400; break; /* left */
-    case 'a': env->keep_time = env->min_keep_time;
-    case 'z': env->keep_time = env->max_keep_time;
+    case 'a': env->keep_time = env->min_keep_time; break; /* lowest */
+    case 'z': env->keep_time = env->max_keep_time; break; /* highest */
+    default:
+        return;
     }
     env->keep_time = min(env->keep_time, env->max_keep_time);
     env->keep_time = max(env->keep_time, env->min_keep_time);
@@ -85,8 +87,7 @@ static void reset_termios(void)
 
 /*
  * usage:
- *   skywalker --ctrlnum [0-200] --count [num] --interval 20 18
- *   0.9 -- 2.1
+ *   sw --hz 50 --min 900 --max 2100 18
  */
 int main(int argc, char *argv[])
 {
@@ -107,7 +108,7 @@ int main(int argc, char *argv[])
     int max_keep_time = 2100;
     int err = -EFAULT;
 
-    while ((c = getopt_long(argc, argv, "c:n:t:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "f:l:h:", options, NULL)) != -1) {
         switch (c) {
         case 'f': hz = atoi(optarg); break;
         case 'l': min_keep_time = atoi(optarg); break;
