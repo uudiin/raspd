@@ -55,8 +55,8 @@ static void cb_timer(int fd, short what, void *arg)
     usleep(bl->len);
     bcm2835_gpio_write(pin, LOW);
     */
-    tv.tv_sec = bl->len / 1000000;
-    tv.tv_usec = bl->len % 1000000;
+    tv.tv_sec = (int)bl->len / 1000000;
+    tv.tv_usec = (int)bl->len % 1000000;
     evtimer_add(bl->ev_done, &tv);
 }
 
