@@ -126,13 +126,13 @@ public class MainActivity extends ActionBarActivity implements IControllerListen
 
 			@Override
 			public void onClick(View arg0) {
-				ClientNative.select_tank();
+				ClientNative.selecttank();
 				ClientNative.fire();
 			}
 		});
 
         final EditText mHostEditor = (EditText)findViewById(R.id.edit_addr);
-        mHostEditor.setText("10.0.2.2");
+        mHostEditor.setText("172.16.20.1");
         Button mConnectBtn = (Button)findViewById(R.id.button_connect);
         mConnectBtn.setOnClickListener(new View.OnClickListener() {
 

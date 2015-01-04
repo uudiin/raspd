@@ -21,7 +21,7 @@
 
 #define LOGE(msg) __android_log_print(ANDROID_LOG_ERROR, "client", msg)
 
-void Java_com_client_nativef_ClientNative_select_tank(JNIEnv *env, jobject thiz)
+void Java_com_client_nativef_ClientNative_selecttank(JNIEnv *env, jobject thiz)
 {
 	select_tank();
 }

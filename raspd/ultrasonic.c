@@ -231,7 +231,7 @@ static char callback[MAX_LFUNCNAME];
 
 static int urgent_cb(double distance/* cm */, void *opaque)
 {
-    int wfd = (int)opaque;
+    int wfd = (intptr_t)opaque;
     char buffer[128];
     size_t len;
 
@@ -284,7 +284,7 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     if (dev == NULL)
         return 1;
 
-    if (ultrasonic_scope(dev, count, interval, cb, (void *)wfd) < 0)
+    if (ultrasonic_scope(dev, count, interval, cb, (void *)(intptr_t)wfd) < 0)
         return 1;
 
     return 0;

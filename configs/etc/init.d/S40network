@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Start the network....
+#
+
+case "$1" in
+  start)
+ 	echo "Starting network..."
+	/sbin/ifconfig lo up
+	/sbin/ifconfig wlan0 172.16.20.1
+	echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+	;;
+  stop)
+	echo -n "Stopping network..."
+	;;
+  restart|reload)
+	"$0" stop
+	"$0" start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?
+

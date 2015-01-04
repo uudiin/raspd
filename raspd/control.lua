@@ -65,6 +65,22 @@ function devicetree_init(dt)
                         register_device(ultrasonic, c.ID, c.NAME)
                     else
                         io.stderr:write("ultrasonic_new() error\n")
+                elseif d == "l298n" and type(c) == "table" then
+                    local l298n
+
+                    request_gpio(c, c.ena)
+                    request_gpio(c, c.enb)
+                    request_gpio(c, c.in1)
+                    request_gpio(c, c.in2)
+                    request_gpio(c, c.in3)
+                    request_gpio(c, c.in4)
+
+                    -- new object
+                    l298n = lr.l298n_new(c.ena, c.enb, c.in1, c.in2, c.in3, c.in4, c.max_speed, c.range, c.pwm_div)
+                    if l298n then
+                        register_device(l298n, c.ID, c.NAME)
+                    else
+                        io.stderr:write("l298n_new() error\n")
                     end
                 end
             end

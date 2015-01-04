@@ -3,7 +3,7 @@
 include ../rules.mak
 
 CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
-CFLAGS += -I ../lib -I ../libbcm2835 -I ../librf24
+CFLAGS += -I ../lib -I ../libbcm2835 -I ../librf24 -I../libevent/include
 LIBS =
 
 
