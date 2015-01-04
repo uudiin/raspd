@@ -42,77 +42,154 @@
 static int pin = PIN_DEFAULT;
 
 /* Heng Long tank bit-codes */
-static int idle		= 0xFE40121C;
-static int ignition	= 0xFE401294;
+static int idle         = 0xFE40121C;
+static int ignition     = 0xFE401294;
 static int left_slow	= 0xFE400608;
 static int left_fast	= 0xFE400010;
 static int right_slow	= 0xFE401930;
 static int right_fast	= 0xFE401E2C;
-static int fwd_slow	= 0xFE200F34;
-static int fwd_fast	= 0xFE000F3C;
-static int rev_slow	= 0xFE580F08;
-static int rev_fast	= 0xFE780F00;
-static int turret_left	= 0xFE408F0C;
-static int turret_right	= 0xFE410F28;
-static int turret_elev	= 0xFE404F3C;
-static int fire		= 0xFE442F34;
-static int machine_gun	= 0xFE440F78;
-static int recoil	= 0xFE420F24;
+static int fwd_slow     = 0xFE200F34;
+static int fwd_fast     = 0xFE000F3C;
+static int rev_slow     = 0xFE580F08;
+static int rev_fast     = 0xFE780F00;
+static int turret_left  = 0xFE408F0C;
+static int turret_right = 0xFE410F28;
+static int turret_elev  = 0xFE404F3C;
+static int fire         = 0xFE442F34;
+static int machine_gun  = 0xFE440F78;
+static int recoil       = 0xFE420F24;
 
 static int current_code = 0;
 static int speed = 0;
-static struct event *ev_timer = NULL;
+static struct event *ev = NULL;
 
 struct code_entry { 
-	TAILQ_ENTRY(code_entry) link; 
-	int code;
-	int count;
+    TAILQ_ENTRY(code_entry) link;
+    int code;
+    int count;
 };
 
 TAILQ_HEAD(code_qh, code_entry);
-
 struct code_qh code_qh = TAILQ_HEAD_INITIALIZER(code_qh);
+
+struct code_env {
+	int code;
+	int step;
+};
 
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
-/*
- * Sends one individual bit using Manchester coding
- * 1 = high-low, 0 = low-high
- */
-void sendBit(int bit)
+static void env_del(struct code_env *env)
 {
+    if (ev != NULL) {
+        eventfd_del(ev);
+        ev = NULL;
+    }
+    free(env);
+}
 
-	if (bit == 1) {
-		GPIO_SET = 1 << pin;
-		usleep(250);
-		GPIO_CLR = 1 << pin;
-		usleep(250);
-	} else {
-		GPIO_CLR = 1 << pin;
-		usleep(250);
-		GPIO_SET = 1 << pin;
-		usleep(250);
-	}
+static int get_code(void)
+{
+    int code = 0;
+    struct code_entry *q = TAILQ_FIRST(&code_qh);
+    if (q != NULL) {
+        current_code = 0;
+        if (q->count > 0) {
+            q->count--;
+            code = q->code;
+        } else if (q->count == -1) {
+            current_code = q->code;
+            code = current_code;
+        }
+
+        if (q->count == 0) {
+            TAILQ_REMOVE(&code_qh, q, link);
+            free(q);
+        }
+
+    } else {
+        code = current_code;
+    }
+
+    return code;
+}
+
+static void cb_send_bit(int fd, short what, void *arg)
+{
+    int tv_end = 0;
+	struct timeval tv = {0, 250};
+	struct code_env *env = arg;
+
+    do {
+
+        env->step++;
+        if (env->step == 32 * 2 + 1) {
+
+            /* Force a 4ms gap between messages */
+            GPIO_CLR = 1 << pin;
+
+            tv.tv_usec = 3333;
+            env->code = get_code();
+            env->step = 0;
+            if (env->code == 0) {
+                tv_end = 1;
+            }
+        } else {
+
+            int bit, i, set;
+            i = ((env->step - 1) / 2);
+            bit = (env->code >> (31 - i)) & 0x1;
+            set = env->step % 2;
+            if (bit == 1) {
+                if (set == 1) {
+                    GPIO_SET = 1 << pin;
+                } else {
+                    GPIO_CLR = 1 << pin;
+                }
+            } else {
+                if (set == 1) {
+                    GPIO_CLR = 1 << pin;
+                } else {
+                    GPIO_SET = 1 << pin;
+                }
+            }
+        }
+
+    } while (0);
+
+    if (tv_end != 0) {
+        env_del(env);
+    } else {
+        evtimer_add(ev, &tv);
+    }
 }
 
 /* Sends one individual code to the main tank controller */
-void sendCode(int code)
+void send_code(int code)
 {
+	struct code_env *env;
+	struct timeval tv = {0, 500};
+
 	/* Send header "bit" (not a valid Manchester code) */
 	GPIO_SET = 1 << pin;
-	usleep(500);
 
-	/* Send the code itself, bit by bit using Manchester coding */
-	int i;
-	for (i = 0; i < 32; i++) {
-		int bit = (code >> (31 - i)) & 0x1;
-		sendBit(bit);
+    env = xmalloc(sizeof(*env));
+	if (env == NULL) {
+		return;
 	}
+	env->code = code;
+	env->step = 0;
+    ev = evtimer_new(base, cb_send_bit, env);
+    if (ev == NULL) {
+        env_del(env);
+        return;
+    }
 
-	/* Force a 4ms gap between messages */
-	GPIO_CLR = 1 << pin;
-	usleep(3333);
+    if (evtimer_add(ev, &tv) < 0) {
+        env_del(env);
+        return;
+    }
 }
 
 void insert_code(int code, int count)
@@ -125,39 +202,10 @@ void insert_code(int code, int count)
 	entry->code = code;
 	entry->count = count;
 	TAILQ_INSERT_TAIL(&code_qh, entry, link);
-}
 
-static void cb_send_code(int fd, short what, void *arg)
-{
-	int code = 0;
-	struct code_entry *q = TAILQ_FIRST(&code_qh);
-	if (q != NULL) {
-		current_code = 0;
-		if (q->count > 0) {
-			q->count--;
-			code = q->code;
-		} else {
-			if (q->count == -1) {
-				current_code = q->code;
-				code = current_code;
-			}
-			TAILQ_REMOVE(&code_qh, q, link);
-			free(q);
-		}
-	} else {
-		code = current_code;
-	}
-
-	if (code != 0) {
-		sendCode(code);
-	}
-}
-
-static void start_timer(void)
-{
-	struct timeval tv = {0, 3333};
-	register_timer(EV_PERSIST, &tv,
-		cb_send_code, NULL, &ev_timer);
+    if (ev == NULL) {
+        send_code(get_code());
+    }
 }
 
 int tank_sdown_main(int wfd, int argc, char *argv[])
@@ -285,11 +333,8 @@ int tank_init(void)
 	/* must use INP_GPIO before we can use OUT_GPIO */
 	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
 	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
-	printf("pin = %d\n", pin);
 
 	GPIO_CLR = 1 << pin;
-
-	start_timer();
 
 	return 0;
 }
