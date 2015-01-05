@@ -104,6 +104,17 @@ function devicetree_init(dt)
                             io.stderr:write("esc_new() error\n")
                         end
                     end
+                elseif class == "simpledev" and type(devlist) == "table" then
+                    for index, d in ipairs(devlist) do
+                        if d.cb then
+                            lr.gpio_signal(d.pin, d.cb, -1)
+                        else
+                            lr.gpio_fsel(d.pin)
+                        end
+                        request_gpio(d, d.pin)
+                        -- use pin as dev pointer
+                        register_device(d.pin, d.ID, d.NAME)
+                    end
                 end
             end
         elseif k == "i2c" and type(v) == "table" then
@@ -118,7 +129,7 @@ local ultrasonic_done
 ultrasonic_done = function(distance)
     io.stderr:write("auto: distance = " .. distance .. " cm\n")
     if distance <= 30 then
-        lr.blink(pin_led_warn, 5, 300)
+        lr.blink(__DEV("led_warn"), 5, 300)
         --lr.modexec(-1, "l298n_lbrake; l298n_rbrake")
 
         -- turn right
@@ -150,18 +161,34 @@ function automatic_v1()
     io.stderr:write("automatic leave\n")
 end
 
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+if not devtree_file then
+    local mach
+    mach = os.getenv("RASP_MACHINE")
+    if mach == "car" then
+        --devtree_file = "/root/raspberry/raspd/devtree_car.lua"
+        devtree_file = config_path .. "devtree_car.lua"
+    elseif mach == "tank" then
+        --devtree_file = "/root/raspberry/raspd/devtree_tank.lua"
+        devtree_file = config_path .. "devtree_tank.lua"
+    elseif mach == "quadrotor" then
+        --devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
+        devtree_file = config_path .. "devtree_quadrotor.lua"
+    else
+        --devtree_file = "/root/raspberry/raspd/devtree.lua"
+        devtree_file = config_path .. "devtree.lua"
+    end
+end
+
+if not dofile(devtree_file) then
+    io.stderr:write("load devtree error: " .. devtree_file .. "\n")
+    os.exit(1)
+end
 
 -- init device tree
 devicetree_init(devroot)
-
--- default is output
-lr.gpio_fsel(pin_laser)
-
-lr.gpio_signal(pin_infrared_sensor, function(pin, level)
-        --lev = lr.gpio_level(pin_infrared_sensor)
-        lr.gpio_set(pin_laser, level)
-        return 0
-    end, -1)
 
 
 local stepmotor_done

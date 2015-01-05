@@ -10,30 +10,7 @@ script = "/root/raspberry/raspd/control.lua"
 
 -- devtree
 --devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
-devtree_file = config_path .. "devtree_quadrotor.lua"
-
-if not devtree_file then
-    local mach
-    mach = os.getenv("RASP_MACHINE")
-    if mach == "car" then
-        --devtree_file = "/root/raspberry/raspd/devtree_car.lua"
-        devtree_file = config_path .. "devtree_car.lua"
-    elseif mach == "tank" then
-        --devtree_file = "/root/raspberry/raspd/devtree_tank.lua"
-        devtree_file = config_path .. "devtree_tank.lua"
-    elseif mach == "quadrotor" then
-        --devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
-        devtree_file = config_path .. "devtree_quadrotor.lua"
-    else
-        --devtree_file = "/root/raspberry/raspd/devtree.lua"
-        devtree_file = config_path .. "devtree.lua"
-    end
-end
-
-if not dofile(devtree_file) then
-    io.stderr:write("load devtree error: " .. devtree_file .. "\n")
-    os.exit(1)
-end
+devtree_file = config_path .. "devtree_car.lua"
 
 -- automatic function
 automatic = "automatic_v1"
@@ -42,11 +19,6 @@ automatic = "automatic_v1"
 -- channel-0  12 18
 -- channel-1  13 19
 
--- pin of peripherals
-pin_led_warn = 16
-pin_infrared_sensor = 23
-pin_laser = 24
-pin_voice_sensor = 25
 
 -- l298n
 l298n = {

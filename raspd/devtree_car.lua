@@ -50,6 +50,21 @@ devroot = {
                 pwm_div = 16,
             }
         },
+
+        simpledev = {
+            { ID = 31, NAME = "led_warn",        pin = 16 },
+            { ID = 32, NAME = "laster",          pin = 24 },
+            { ID = 33, NAME = "infrared_sensor", pin = 23,
+                cb = function(pin, level)
+                    lr.gpio_set(__DEV("laster"), level)
+                    return 0
+                end
+            },
+            { ID = 34, NAME = "voice_sensor",    pin = 25,
+                cb = function(pin, level)
+                end
+            }
+        }
     },
 
     i2c = {},
