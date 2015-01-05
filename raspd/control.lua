@@ -91,7 +91,19 @@ function devicetree_init(dt)
                         end
                     end
                 elseif class == "esc" and type(devlist) == "table" then
-                    -- TODO
+                    for index, d in ipairs(devlist) do
+                        local esc
+
+                        request_gpio(d, d.pin)
+
+                        esc = lr.esc_new(d.pin, d.refresh_rate, d.start_time,
+                                    d.min_throttle_time, d.max_throttle_time)
+                        if esc then
+                            register_device(esc, d.ID, d.NAME)
+                        else
+                            io.stderr:write("esc_new() error\n")
+                        end
+                    end
                 end
             end
         elseif k == "i2c" and type(v) == "table" then
