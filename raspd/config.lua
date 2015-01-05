@@ -100,7 +100,7 @@ devroot = {
                 ID = 11,
                 NAME = "esc_a",
 
-                pin = 18
+                pin = 18,
 
                 refresh_rate = 50,      -- frequency (hz)
                 start_time = 5000,      -- 5s
@@ -111,7 +111,7 @@ devroot = {
                 ID = 12,
                 NAME = "esc_b",
 
-                pin = 19
+                pin = 19,
 
                 refresh_rate = 50,      -- frequency (hz)
                 start_time = 5000,      -- 5s
@@ -122,7 +122,7 @@ devroot = {
                 ID = 13,
                 NAME = "esc_c",
 
-                pin = 20
+                pin = 20,
 
                 refresh_rate = 50,      -- frequency (hz)
                 start_time = 5000,      -- 5s
@@ -133,7 +133,7 @@ devroot = {
                 ID = 14,
                 NAME = "esc_d",
 
-                pin = 21
+                pin = 21,
 
                 refresh_rate = 50,      -- frequency (hz)
                 start_time = 5000,      -- 5s

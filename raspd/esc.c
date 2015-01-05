@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <event2/event.h>
 
 #include <bcm2835.h>
@@ -21,13 +23,13 @@ static void timer_refresh(int fd, short what, void *arg)
 {
     struct esc_dev *dev = arg;
     struct timeval tv;
-    tv.tv_sec = env-> throttle_time / 1000000;
-    tv.tv_usec = env-> throttle_time % 1000000;
-    bcm2835_gpio_write(env->pin, HIGH);
-    evtimer_add(env->ev_throttle, &tv);
+    tv.tv_sec = dev-> throttle_time / 1000000;
+    tv.tv_usec = dev-> throttle_time % 1000000;
+    bcm2835_gpio_write(dev->pin, HIGH);
+    evtimer_add(dev->ev_throttle, &tv);
 }
 
-static void esc_started(int fd, short what, void *arg)
+static void cb_esc_started(int fd, short what, void *arg)
 {
     struct esc_dev *dev = arg;
     if (dev->cb_started)
@@ -74,7 +76,7 @@ void esc_del(struct esc_dev *dev)
         if (dev->ev_throttle)
             eventfd_del(dev->ev_throttle);
         if (dev->ev_started)
-            eventfd_del(dev->ev_started)
+            eventfd_del(dev->ev_started);
         free(dev);
     }
 }
@@ -98,7 +100,7 @@ int esc_start(struct esc_dev *dev, __cb_esc_started cb_started, void *opaque)
 {
     struct timeval tv;
 
-    if (event_pending(dev->ev_timer))
+    if (evtimer_pending(dev->ev_timer, NULL))
         return EEXIST;
     /* us */
     tv.tv_sec = dev->period / 1000000;
@@ -109,7 +111,7 @@ int esc_start(struct esc_dev *dev, __cb_esc_started cb_started, void *opaque)
     /* set started callback */
     if (cb_started) {
         if (dev->ev_started == NULL)
-            dev->ev_started = evtimer_new(base, esc_start, dev);
+            dev->ev_started = evtimer_new(base, cb_esc_started, dev);
         if (dev->ev_started == NULL)
             return -ENOMEM;
         dev->cb_started = cb_started;
@@ -125,7 +127,7 @@ int esc_start(struct esc_dev *dev, __cb_esc_started cb_started, void *opaque)
 
 int esc_stop(struct esc_dev *dev)
 {
-    if (!event_pending(dev->ev_timer))
+    if (!evtimer_pending(dev->ev_timer, NULL))
         return ENOENT;
     if (event_del(dev->ev_timer) < 0)
         return -ENOSPC;
