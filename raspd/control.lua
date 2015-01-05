@@ -150,12 +150,6 @@ function automatic_v1()
     io.stderr:write("automatic leave\n")
 end
 
-function cb_ultrasonic_urgent(fd, distance)
-    io.stderr:write("distance = " .. distance .. " cm\n")
-    lr.blink(pin_led_warn, 5, 300)
-    lr.modexec(fd, "l298n_lbrake; l298n_rbrake")
-end
-
 
 -- init device tree
 devicetree_init(devroot)

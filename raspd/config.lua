@@ -20,15 +20,6 @@ pin_infrared_sensor = 23
 pin_laser = 24
 pin_voice_sensor = 25
 
--- ultrasonic
-ultrasonic = {
-    ["TRIG"] = 20,
-    ["ECHO"] = 21,
-    -- urgent scope, 15 cm
-    ["threshold"] = 15,
-    ["callback"] = "cb_ultrasonic_urgent"
-}
-
 -- l298n
 l298n = {
     ["ENA"] = 18,
