@@ -2,10 +2,38 @@
 
 pid_file = "/var/run/raspd.pid"
 sock_file = "/var/run/raspd.sock"
-chroot = ""
+
+config_path = "/root/raspberry/raspd/"
 
 -- control script
 script = "/root/raspberry/raspd/control.lua"
+
+-- devtree
+--devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
+devtree_file = config_path .. "devtree_quadrotor.lua"
+
+if not devtree_file then
+    local mach
+    mach = os.getenv("RASP_MACHINE")
+    if mach == "car" then
+        --devtree_file = "/root/raspberry/raspd/devtree_car.lua"
+        devtree_file = config_path .. "devtree_car.lua"
+    elseif mach == "tank" then
+        --devtree_file = "/root/raspberry/raspd/devtree_tank.lua"
+        devtree_file = config_path .. "devtree_tank.lua"
+    elseif mach == "quadrotor" then
+        --devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
+        devtree_file = config_path .. "devtree_quadrotor.lua"
+    else
+        --devtree_file = "/root/raspberry/raspd/devtree.lua"
+        devtree_file = config_path .. "devtree.lua"
+    end
+end
+
+if not dofile(devtree_file) then
+    io.stderr:write("load devtree error: " .. devtree_file .. "\n")
+    os.exit(1)
+end
 
 -- automatic function
 automatic = "automatic_v1"
@@ -42,107 +70,4 @@ l298n = {
 -- tank
 tank = {
     ["PIN"] = 7
-}
-
-devroot = {
-    gpio = {
-        ultrasonic = {
-            {
-                ID = 1,
-                NAME = "ultrasonic",
-
-                pin_trig = 20,
-                pin_echo = 21,
-
-                -- keeping pin_trig 10 us in HIGH level
-                trig_time = 10
-            }
-        },
-
-        stepmotor = {
-            {
-                ID = 2,
-                NAME = "stepmotor",
-
-                pin1 = 2,
-                pin2 = 3,
-                pin3 = 4,
-                pin4 = 17,
-
-                step_angle = 5.625,
-                reduction_ratio = 64,
-                pullin_freq = 500,
-                pullout_freq = 900,
-                flags = 2           -- SMF_PULSE_EIGHT
-            }
-        },
-
-        l298n = {
-            {
-                ID = 3,
-                NAME = "l298n",
-
-                ena = 18,
-                enb = 13,
-                in1 = 27,
-                in2 = 22,
-                in3 = 5,
-                in4 = 6,
-
-                max_speed = 5,
-                range = 50000,
-                pwm_div = 16,
-            }
-        },
-
-        esc = {
-            {
-                ID = 11,
-                NAME = "esc_a",
-
-                pin = 18,
-
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
-            },
-            {
-                ID = 12,
-                NAME = "esc_b",
-
-                pin = 19,
-
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
-            },
-            {
-                ID = 13,
-                NAME = "esc_c",
-
-                pin = 20,
-
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
-            },
-            {
-                ID = 14,
-                NAME = "esc_d",
-
-                pin = 21,
-
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
-            }
-        }
-    },
-
-    i2c = {},
-    spi = {}
 }
