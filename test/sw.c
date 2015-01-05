@@ -5,159 +5,114 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
+#include <termios.h>
 #include <event2/event.h>
 
 #include <xmalloc.h>
 #include <bcm2835.h>
-
-#define PRIORITY_MAXIMUM    10
-
-static struct event_base *base;
-static int s_switch = 0;
+#include "../raspd/event.h"
 
 #define INVALID_PIN(x)      ((x) < 0 || (x) >= NR_BCM2835_GPIO)
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
 
-struct blink {
-    double len;
-    int ctrl;
-    int count;
-    int counted;
+struct esc_env {
+    int pin;
+    int keep_time;
+    int min_keep_time; /* 900 us */
+    int max_keep_time; /* 2100 us */
     int interval;
     struct event *timer;
     struct event *ev_done;
-    int gpio;
 };
-
-int rasp_event_init(void)
-{
-    base = event_base_new();
-    if (base == NULL)
-        return -ENOMEM;
-
-    event_base_priority_init(base, PRIORITY_MAXIMUM);
-    return 0;
-}
-
-void rasp_event_exit(void)
-{
-    /* FIXME */
-    event_base_free(base);
-}
-
-void eventfd_del(struct event *ev)
-{
-    if (ev) {
-        event_del(ev);
-        event_free(ev);
-    }
-}
-
-int eventfd_add(int fd, short flags, struct timeval *timeout,
-        event_callback_fn cb, void *opaque, struct event **eventp)
-{
-    struct event *ev;
-
-    ev = event_new(base, fd, flags, cb, opaque);
-    if (ev == NULL)
-        return -ENOMEM;
-
-    if (event_add(ev, timeout) < 0) {
-        event_free(ev);
-        return -EIO;
-    }
-
-    if (eventp)
-        *eventp = ev;
-
-    return 0;
-}
-
-int register_timer(short flags, struct timeval *timeout,
-        event_callback_fn cb, void *opaque, struct event **eventp)
-{
-    return eventfd_add(-1, flags, timeout, cb, opaque, eventp);
-}
 
 static void trig_done(int fd, short what, void *arg)
 {
-    struct blink *bl = arg;
-    bcm2835_gpio_write(bl->gpio, LOW);
-    /* FIXME  need ? */
-    /*evtimer_del(bl->ev_done);*/
+    struct esc_env *env = arg;
+    bcm2835_gpio_write(env->pin, LOW);
 }
 
 static void cb_timer(int fd, short what, void *arg)
 {
-    struct blink *bl = arg;
+    struct esc_env *env = arg;
     struct timeval tv;
-    int pin;
 
-    if (bl->count != -1 && bl->counted++ >= bl->count) {
-        eventfd_del(bl->timer);
-        eventfd_del(bl->ev_done);
-        free(bl);
-        return;
-    }
-
-    pin = bl->gpio;
-
-    bcm2835_gpio_write(pin, HIGH);
-    /*
-    usleep(bl->len);
-    bcm2835_gpio_write(pin, LOW);
-    */
+    bcm2835_gpio_write(env->pin, HIGH);
  
-    if (s_switch != 0) {
-        bl->ctrl = (bl->ctrl == 0) ? 200 : 0;
-        s_switch = 0;
-    }
-    printf("cb_timer pin = %d, ctrl = %d\n", pin, bl->ctrl);
-
-    bl->len = 1000 * (0.9 + bl->ctrl * (2.1 - 0.9) / 200.0);
-    tv.tv_sec = (int)bl->len / 1000000;
-    tv.tv_usec = (int)bl->len % 1000000;
-    evtimer_add(bl->ev_done, &tv);
+    tv.tv_sec = env->keep_time / 1000000;
+    tv.tv_usec = env->keep_time % 1000000;
+    evtimer_add(env->ev_done, &tv);
 }
 
 static void cb_read(int fd, short what, void *arg)
 {
-    struct event *ev = *(void **)arg;
-
+    struct esc_env *env = arg;
     char buffer[512];
     int size;
 
     size = read(fd, buffer, sizeof(buffer));
-    s_switch = 1;
-    printf("input: %s", buffer);
+    if (size < 1)
+        return;
+    switch (buffer[0]) {
+    case 'k': env->keep_time += 100; break; /* up */
+    case 'j': env->keep_time -= 100; break; /* down */
+    case 'l': env->keep_time += 400; break; /* right */
+    case 'h': env->keep_time -= 400; break; /* left */
+    case 'a': env->keep_time = env->min_keep_time; break; /* lowest */
+    case 'z': env->keep_time = env->max_keep_time; break; /* highest */
+    default:
+        return;
+    }
+    env->keep_time = min(env->keep_time, env->max_keep_time);
+    env->keep_time = max(env->keep_time, env->min_keep_time);
+    fprintf(stdout, "keep_time = %d\n", env->keep_time);
+}
+
+static struct termios old, new;
+
+static void init_termios(int echo) 
+{
+	tcgetattr(0, &old); /* grab old terminal i/o settings */
+	new = old; /* make new settings same as old settings */
+	new.c_lflag &= ~ICANON; /* disable buffered i/o */
+	new.c_lflag &= echo ? ECHO : ~ECHO; /* set echo mode */
+	tcsetattr(0, TCSANOW, &new); /* use these new terminal i/o settings now */
+}
+
+/* Restore old terminal i/o settings */
+static void reset_termios(void) 
+{
+	tcsetattr(0, TCSANOW, &old);
 }
 
 /*
  * usage:
- *   skywalker --ctrlnum [0-200] --count [num] --interval 20 18
+ *   sw --hz 50 --min 900 --max 2100 18
  */
 int main(int argc, char *argv[])
 {
     static struct option options[] = {
-        { "ctrlnum",  required_argument, NULL, 'c' },
-        { "count",    required_argument, NULL, 'n' },
-        { "interval", required_argument, NULL, 't' },
+        { "hz",  required_argument, NULL, 'f' },
+        { "min", required_argument, NULL, 'l' },
+        { "max", required_argument, NULL, 'h' },
         { 0, 0, 0, 0 }
     };
-    int pin;
     int c;
-    int count = 200000;
-    int interval = 20;  /* millisecond */
-    int ctrl = 0;
-    struct blink *bl;
+    int pin;
+    int interval;  /* millisecond */
+    struct esc_env *env;
     struct timeval timeout;
     struct event *ev_stdin;
+    int hz = 50; /* 50 Hz, 20 ms */
+    int min_keep_time = 900;
+    int max_keep_time = 2100;
     int err = -EFAULT;
 
-    while ((c = getopt_long(argc, argv, "c:n:t:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "f:l:h:", options, NULL)) != -1) {
         switch (c) {
-        case 'c': ctrl = atoi(optarg); break;
-        case 'n': count = atoi(optarg); break;
-        case 't': interval = atoi(optarg); break;
+        case 'f': hz = atoi(optarg); break;
+        case 'l': min_keep_time = atoi(optarg); break;
+        case 'h': max_keep_time = atoi(optarg); break;
         default:
             return 1;
         }
@@ -166,58 +121,63 @@ int main(int argc, char *argv[])
     if (optind >= argc)
         return 1;
 
+    init_termios(0);
     if (!bcm2835_init())
         return 1;
     rasp_event_init();
+
     pin = atoi(argv[optind]);
     bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
 
+    interval = 1000 / hz;
+
     do {
-        bl = xmalloc(sizeof(*bl));
-        memset(bl, 0, sizeof(*bl));
-        bl->len = 1000 * (0.9 + ctrl * (2.1 - 0.9) / 200.0);
-        bl->ctrl = ctrl;
-        bl->count = count;
-        bl->interval = interval;
-        bl->gpio = pin;
+        env = xmalloc(sizeof(*env));
+        memset(env, 0, sizeof(*env));
+        env->min_keep_time = min_keep_time;
+        env->max_keep_time = max_keep_time;
+        env->keep_time = min_keep_time;
+        env->interval = interval;
+        env->pin = pin;
         timeout.tv_sec = interval / 1000;
         timeout.tv_usec = (interval % 1000) * 1000;
 
         err = -ENOMEM;
-        bl->ev_done = evtimer_new(base, trig_done, bl);
-        if (bl->ev_done == NULL)
+        env->ev_done = evtimer_new(base, trig_done, env);
+        if (env->ev_done == NULL)
             break;
 
         err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
-                        NULL, cb_read, (void *)&ev_stdin, &ev_stdin);
+                                NULL, cb_read, env, &ev_stdin);
         if (err < 0) {
             fprintf(stderr, "eventfd_add(STDIN_FILENO), err = %d\n", err);
             return 1;
         }
 
         err = -EIO;
-        if (register_timer(EV_PERSIST, &timeout, cb_timer, bl, &bl->timer) < 0)
+        if (register_timer(EV_PERSIST, &timeout, cb_timer, env, &env->timer) < 0)
             break;
 
         event_base_dispatch(base);
-
-        rasp_event_exit();
 
         err = 0;
     } while (0);
 
     if (err != 0) {
-        if (bl) {
-            if (bl->ev_done)
-                event_free(bl->ev_done);
-            if (bl->timer)
-                event_free(bl->timer);
-            free(bl);
+        if (env) {
+            if (env->ev_done)
+                event_free(env->ev_done);
+            if (env->timer)
+                event_free(env->timer);
+            free(env);
         }
 
         return 1;
     }
 
+    rasp_event_exit();
     bcm2835_close();
+    reset_termios();
+
     return 0;
 }

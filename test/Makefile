@@ -13,6 +13,7 @@ $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
 SRCS_test_gpioint += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_hcsr04 += ../raspd/event.c ../raspd/gpiolib.c
+SRCS_sw += ../raspd/event.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a))

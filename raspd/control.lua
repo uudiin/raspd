@@ -35,56 +35,67 @@ end
 function devicetree_init(dt)
     for k, v in pairs(dt) do
         if k == "gpio" and type(v) == "table" then
-            for d, c in pairs(v) do
-                if d == "stepmotor" and type(c) == "table" then
-                    local stepmotor
+            for class, devlist in pairs(v) do
+                if class == "stepmotor" and type(devlist) == "table" then
+                    for index, d in ipairs(devlist) do
+                        local stepmotor
 
-                    request_gpio(c, c.pin1)
-                    request_gpio(c, c.pin2)
-                    request_gpio(c, c.pin3)
-                    request_gpio(c, c.pin4)
+                        request_gpio(d, d.pin1)
+                        request_gpio(d, d.pin2)
+                        request_gpio(d, d.pin3)
+                        request_gpio(d, d.pin4)
 
-                    -- new object
-                    stepmotor = lr.stepmotor_new(c.pin1, c.pin2, c.pin3, c.pin4,
-                                        c.step_angle, c.reduction_ratio,
-                                        c.pullin_freq, c.pullout_freq, c.flags)
-                    if stepmotor then
-                        register_device(stepmotor, c.ID, c.NAME)
-                    else
-                        io.stderr:write("stepmotor_new() error\n")
+                        -- new object
+                        stepmotor = lr.stepmotor_new(d.pin1, d.pin2, d.pin3,
+                                        d.pin4, d.step_angle, d.reduction_ratio,
+                                        d.pullin_freq, d.pullout_freq, d.flags)
+                        if stepmotor then
+                            register_device(stepmotor, d.ID, d.NAME)
+                        else
+                            io.stderr:write("stepmotor_new() error\n")
+                        end
                     end
-                elseif d == "ultrasonic" and type(c) == "table" then
-                    local ultrasonic
+                elseif class == "ultrasonic" and type(devlist) == "table" then
+                    for index, d in ipairs(devlist) do
+                        local ultrasonic
 
-                    request_gpio(c, c.pin_trig)
-                    request_gpio(c, c.pin_echo)
-                    -- new object
-                    ultrasonic = lr.ultrasonic_new(c.pin_trig,
-                                                c.pin_echo, c.trig_time)
-                    if ultrasonic then
-                        register_device(ultrasonic, c.ID, c.NAME)
-                    else
-                        io.stderr:write("ultrasonic_new() error\n")
-                elseif d == "l298n" and type(c) == "table" then
-                    local l298n
-
-                    request_gpio(c, c.ena)
-                    request_gpio(c, c.enb)
-                    request_gpio(c, c.in1)
-                    request_gpio(c, c.in2)
-                    request_gpio(c, c.in3)
-                    request_gpio(c, c.in4)
-
-                    -- new object
-                    l298n = lr.l298n_new(c.ena, c.enb, c.in1, c.in2, c.in3, c.in4, c.max_speed, c.range, c.pwm_div)
-                    if l298n then
-                        register_device(l298n, c.ID, c.NAME)
-                    else
-                        io.stderr:write("l298n_new() error\n")
+                        request_gpio(d, d.pin_trig)
+                        request_gpio(d, d.pin_echo)
+                        -- new object
+                        ultrasonic = lr.ultrasonic_new(d.pin_trig,
+                                                    d.pin_echo, d.trig_time)
+                        if ultrasonic then
+                            register_device(ultrasonic, d.ID, d.NAME)
+                        else
+                            io.stderr:write("ultrasonic_new() error\n")
+                        end
                     end
+                elseif class == "l298n" and type(devlist) == "table" then
+                    for index, d in ipairs(devlist) do
+                        local l298n
+
+                        request_gpio(d, d.ena)
+                        request_gpio(d, d.enb)
+                        request_gpio(d, d.in1)
+                        request_gpio(d, d.in2)
+                        request_gpio(d, d.in3)
+                        request_gpio(d, d.in4)
+
+                        -- new object
+                        l298n = lr.l298n_new(d.ena, d.enb, d.in1, d.in2, d.in3,
+                                        d.in4, d.max_speed, d.range, d.pwm_div)
+                        if l298n then
+                            register_device(l298n, d.ID, d.NAME)
+                        else
+                            io.stderr:write("l298n_new() error\n")
+                        end
+                    end
+                elseif class == "esc" and type(devlist) == "table" then
+                    -- TODO
                 end
             end
-        elseif k == "i2c" then
+        elseif k == "i2c" and type(v) == "table" then
+        elseif k == "spi" and type(v) == "table" then
         end
     end
 end
