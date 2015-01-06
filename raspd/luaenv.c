@@ -215,7 +215,7 @@ static int lr_gpio_signal(lua_State *L)
     int err;
 
     pin = (int)luaL_checkinteger(L, 1);
-    count = (int)luaL_optint(L, 3, 1);
+    count = (int)luaL_optint(L, 3, -1);
     if (!lua_isfunction(L, 2) || lua_iscfunction(L, 2))
         return 0;
     /* set lua handler */

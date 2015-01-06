@@ -106,12 +106,15 @@ function devicetree_init(dt)
                     end
                 elseif class == "simpledev" and type(devlist) == "table" then
                     for index, d in ipairs(devlist) do
+
+                        request_gpio(d, d.pin)
+
                         if d.cb then
-                            lr.gpio_signal(d.pin, d.cb, -1)
+                            lr.gpio_signal(d.pin, d.cb)
                         else
                             lr.gpio_fsel(d.pin)
                         end
-                        request_gpio(d, d.pin)
+
                         -- use pin as dev pointer
                         register_device(d.pin, d.ID, d.NAME)
                     end
@@ -147,11 +150,11 @@ ultrasonic_done = function(distance)
         --lr.modexec(-1, "l298n_lbrake; l298n_rbrake")
 
         -- turn right
-        lr.modexec(-1, "l298n_rdown; tank_right")
+        --lr.modexec(-1, "l298n_rdown; tank_right")
         l298n_stat = 1
     elseif l298n_stat == 1 and distance > 50 then
         l298n_stat = 0
-        lr.modexec(-1, "l298n_rup; tank_brake; tank_fwd")
+        --lr.modexec(-1, "l298n_rup; tank_brake; tank_fwd")
     end
     -- start again
     --lr.ultrasonic(__DEV("ultrasonic"), ultrasonic_done)
@@ -167,10 +170,10 @@ function automatic_v1()
 
     lr.ultrasonic_scope(__DEV("ultrasonic"), ultrasonic_done)
 
-    lr.modexec(-1, "l298n_lup; l298n_rup; tank_sup; tank_fwd")
-    lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
-    lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
-    lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
+    --lr.modexec(-1, "l298n_lup; l298n_rup; tank_sup; tank_fwd")
+    --lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
+    --lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
+    --lr.modexec(-1, "l298n_lspeedup; l298n_rspeedup")
 
     io.stderr:write("automatic leave\n")
 end
@@ -182,24 +185,22 @@ if not devtree_file then
     local mach
     mach = os.getenv("RASP_MACHINE")
     if mach == "car" then
-        --devtree_file = "/root/raspberry/raspd/devtree_car.lua"
         devtree_file = config_path .. "devtree_car.lua"
     elseif mach == "tank" then
-        --devtree_file = "/root/raspberry/raspd/devtree_tank.lua"
         devtree_file = config_path .. "devtree_tank.lua"
     elseif mach == "quadrotor" then
-        --devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
         devtree_file = config_path .. "devtree_quadrotor.lua"
     else
-        --devtree_file = "/root/raspberry/raspd/devtree.lua"
         devtree_file = config_path .. "devtree.lua"
     end
 end
 
-if not dofile(devtree_file) then
-    io.stderr:write("load devtree error: " .. devtree_file .. "\n")
-    os.exit(1)
-end
+dofile(devtree_file)
+
+--if not dofile(devtree_file) then
+--    io.stderr:write("load devtree error: " .. devtree_file .. "\n")
+--    os.exit(1)
+--end
 
 -- init device tree
 devicetree_init(devroot)
