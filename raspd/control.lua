@@ -106,12 +106,15 @@ function devicetree_init(dt)
                     end
                 elseif class == "simpledev" and type(devlist) == "table" then
                     for index, d in ipairs(devlist) do
+
+                        request_gpio(d, d.pin)
+
                         if d.cb then
                             lr.gpio_signal(d.pin, d.cb)
                         else
                             lr.gpio_fsel(d.pin)
                         end
-                        request_gpio(d, d.pin)
+
                         -- use pin as dev pointer
                         register_device(d.pin, d.ID, d.NAME)
                     end
