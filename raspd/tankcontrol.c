@@ -174,7 +174,7 @@ struct tank_dev *tank_new(int pin)
         dev->pin = pin;
 
         dev->qh.tqh_last = &dev->qh.tqh_first;
-        dev->ev = evtimer_new(base, cb_send_bit, dev);
+        dev->ev = evtimer_new(evbase, cb_send_bit, dev);
         if (dev->ev == NULL) {
             return;
         }

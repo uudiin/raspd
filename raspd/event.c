@@ -6,14 +6,14 @@
 
 #include "event.h"
 
-struct event_base *base;
+struct event_base *evbase;
 
 int eventfd_add(int fd, short flags, struct timeval *timeout,
         event_callback_fn cb, void *opaque, struct event **eventp)
 {
     struct event *ev;
 
-    ev = event_new(base, fd, flags, cb, opaque);
+    ev = event_new(evbase, fd, flags, cb, opaque);
     if (ev == NULL)
         return -ENOMEM;
 
@@ -50,26 +50,26 @@ int register_signal(int signum, event_callback_fn cb, void *opaque)
 
 int rasp_event_loop(void)
 {
-    return event_base_dispatch(base);
+    return event_base_dispatch(evbase);
 }
 
 int rasp_event_loopexit(void)
 {
-    return event_base_loopexit(base, NULL);
+    return event_base_loopexit(evbase, NULL);
 }
 
 int rasp_event_init(void)
 {
-    base = event_base_new();
-    if (base == NULL)
+    evbase = event_base_new();
+    if (evbase == NULL)
         return -ENOMEM;
 
-    event_base_priority_init(base, PRIORITY_MAXIMUM);
+    event_base_priority_init(evbase, PRIORITY_MAXIMUM);
     return 0;
 }
 
 void rasp_event_exit(void)
 {
     /* FIXME */
-    event_base_free(base);
+    event_base_free(evbase);
 }

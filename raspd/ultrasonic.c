@@ -114,12 +114,12 @@ struct ultrasonic_dev *ultrasonic_new(int pin_trig,
         dev->tv_trig.tv_usec = trig_time;
 
         /* only new, no add */
-        dev->ev_over_trig = evtimer_new(base, trig_done, dev);
+        dev->ev_over_trig = evtimer_new(evbase, trig_done, dev);
         if (dev->ev_over_trig == NULL) {
             ultrasonic_del(dev);
             return NULL;
         }
-        dev->ev_timer = event_new(base, -1, EV_PERSIST, timer_scope, dev);
+        dev->ev_timer = event_new(evbase, -1, EV_PERSIST, timer_scope, dev);
         if (dev->ev_timer == NULL) {
             ultrasonic_del(dev);
             return NULL;

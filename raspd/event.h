@@ -6,7 +6,7 @@
 
 #define PRIORITY_MAXIMUM    10
 
-extern struct event_base *base;
+extern struct event_base *evbase;
 
 int eventfd_add(int fd, short flags, struct timeval *timeout,
         event_callback_fn cb, void *opaque, struct event **eventp);

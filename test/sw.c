@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
             env->keep_time = min_keep_time;
 
         err = -ENOMEM;
-        env->ev_done = evtimer_new(base, trig_done, env);
+        env->ev_done = evtimer_new(evbase, trig_done, env);
         if (env->ev_done == NULL)
             break;
 
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
         if (register_timer(EV_PERSIST, &timeout, cb_timer, env, &env->timer) < 0)
             break;
 
-        event_base_dispatch(base);
+        event_base_dispatch(evbase);
 
         err = 0;
     } while (0);

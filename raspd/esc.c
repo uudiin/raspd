@@ -52,12 +52,12 @@ struct esc_dev *esc_new(int pin, int refresh_rate, int start_time,
         dev->throttle_time = min_throttle_time;
         dev->period = 1000000 / refresh_rate; /* us */
 
-        dev->ev_throttle= evtimer_new(base, trig_done, dev);
+        dev->ev_throttle= evtimer_new(evbase, trig_done, dev);
         if (dev->ev_throttle == NULL) {
             esc_del(dev);
             return NULL;
         }
-        dev->ev_timer = event_new(base, -1, EV_PERSIST, timer_refresh, dev);
+        dev->ev_timer = event_new(evbase, -1, EV_PERSIST, timer_refresh, dev);
         if (dev->ev_timer == NULL) {
             esc_del(dev);
             return NULL;
@@ -111,7 +111,7 @@ int esc_start(struct esc_dev *dev, __cb_esc_started cb_started, void *opaque)
     /* set started callback */
     if (cb_started) {
         if (dev->ev_started == NULL)
-            dev->ev_started = evtimer_new(base, cb_esc_started, dev);
+            dev->ev_started = evtimer_new(evbase, cb_esc_started, dev);
         if (dev->ev_started == NULL)
             return -ENOMEM;
         dev->cb_started = cb_started;

@@ -64,7 +64,7 @@ struct stepmotor_dev *stepmotor_new(int pin1, int pin2, int pin3,
         FSEL_OUT(pin3);
         FSEL_OUT(pin4);
 
-        dev->ev = event_new(base, -1, EV_PERSIST, cb_timer, dev);
+        dev->ev = event_new(evbase, -1, EV_PERSIST, cb_timer, dev);
         if (dev->ev == NULL) {
             free(dev);
             return NULL;

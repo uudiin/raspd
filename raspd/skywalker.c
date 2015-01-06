@@ -110,7 +110,7 @@ static int sw_main(int wfd, int argc, char *argv[])
             timeout.tv_usec = (interval % 1000) * 1000;
 
             err = -ENOMEM;
-            bl->ev_done = evtimer_new(base, trig_done, bl);
+            bl->ev_done = evtimer_new(evbase, trig_done, bl);
             if (bl->ev_done == NULL)
                 break;
 
