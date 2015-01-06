@@ -94,7 +94,7 @@ static void cb_read(int fd, short what, void *arg)
         return;
 
     env->keep_time = min(new, env->max_keep_time);
-    env->keep_time = max(new, env->min_keep_time);
+    env->keep_time = max(env->keep_time, env->min_keep_time);
     fprintf(stdout, "keep_time = %d\n", env->keep_time);
 }
 
