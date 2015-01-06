@@ -21,6 +21,7 @@
 #include "motor.h"
 #include "l298n.h"
 #include "esc.h"
+#include "tankcontrol.h"
 
 #include "luaenv.h"
 
@@ -588,6 +589,106 @@ static int lr_esc_stop(lua_State *L)
     return 1;
 }
 
+static int lr_tank_new(lua_State *L)
+{
+    int pin;
+    struct tank_dev **devp;
+
+    pin = (int)luaL_checkinteger(L, 1);
+
+    devp = lua_newuserdata(L, sizeof(struct tank_dev *));
+    *devp = tank_new(pin);
+    if (*devp == NULL) {
+        /* TODO:  return 0; */
+        luaL_error(L, "tank_new() error\n");
+    }
+    return 1;
+}
+
+static int lr_tank_del(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_del(*devp);
+    return 0;
+}
+
+static int lr_tank_sdown(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_sdown(*devp);
+    return 0;
+}
+
+static int lr_tank_sup(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_sup(*devp);
+    return 0;
+}
+
+static int lr_tank_brake(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_brake(*devp);
+    return 0;
+}
+
+static int lr_tank_fwd(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_fwd(*devp);
+    return 0;
+}
+
+static int lr_tank_rev(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_rev(*devp);
+    return 0;
+}
+
+static int lr_tank_left(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_left(*devp);
+    return 0;
+}
+
+static int lr_tank_right(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_right(*devp);
+    return 0;
+}
+
+static int lr_tank_turret_left(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_turret_left(*devp);
+    return 0;
+}
+
+static int lr_tank_turret_right(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_turret_right(*devp);
+    return 0;
+}
+
+static int lr_tank_turret_elev(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_turret_elev(*devp);
+    return 0;
+}
+
+static int lr_tank_fire(lua_State *L)
+{
+    struct tank_dev **devp = lua_touserdata(L, 1);
+    tank_fire(*devp);
+    return 0;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
@@ -631,6 +732,21 @@ static const luaL_Reg luaraspd_lib[] = {
     { "esc_set",   lr_esc_set   },
     { "esc_start", lr_esc_start },
     { "esc_stop",  lr_esc_stop  },
+
+    /* tank */
+    { "tank_new",   lr_tank_new   },
+    { "tank_del",   lr_tank_del   },
+    { "tank_sdown", lr_tank_sdown },
+    { "tank_sup",   lr_tank_sup   },
+    { "tank_brake", lr_tank_brake },
+    { "tank_fwd",   lr_tank_fwd   },
+    { "tank_rev",   lr_tank_rev   },
+    { "tank_left",  lr_tank_left  },
+    { "tank_right", lr_tank_right },
+    { "tank_turret_left",  lr_tank_turret_left  },
+    { "tank_turret_right", lr_tank_turret_right },
+    { "tank_turret_elev",  lr_tank_turret_elev  },
+    { "tank_fire",  lr_tank_fire  },
 
     { NULL, NULL }
 };

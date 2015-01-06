@@ -21,8 +21,11 @@
 
 #include "module.h"
 #include "event.h"
+#include "luaenv.h"
 
-#define MODNAME     "tank"
+#include "tankcontrol.h"
+
+#define MODNAME "tank"
 
 /*
  * N.B. These have been reversed compared to Gert & Dom's original code!
@@ -32,14 +35,6 @@
  */
 #define GPIO_CLR *(bcm2835_gpio + 7)
 #define GPIO_SET *(bcm2835_gpio + 10)
-
-/*
- * GPIO pin that connects to the Heng Long main board
- * (Pin 7 is the top right pin on the Pi's GPIO, next to the yellow video-out)
- */
-#define PIN_DEFAULT	7
-
-static int pin = PIN_DEFAULT;
 
 /* Heng Long tank bit-codes */
 static int idle         = 0xFE40121C;
@@ -59,57 +54,30 @@ static int fire         = 0xFE442F34;
 static int machine_gun  = 0xFE440F78;
 static int recoil       = 0xFE420F24;
 
-static int current_code = 0;
-static int speed = 0;
-static struct event *ev = NULL;
-
-struct code_entry { 
-    TAILQ_ENTRY(code_entry) link;
-    int code;
-    int count;
-};
-
-TAILQ_HEAD(code_qh, code_entry);
-struct code_qh code_qh = TAILQ_HEAD_INITIALIZER(code_qh);
-
-struct code_env {
-	int code;
-	int step;
-};
-
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
-static void env_del(struct code_env *env)
-{
-    if (ev != NULL) {
-        eventfd_del(ev);
-        ev = NULL;
-    }
-    free(env);
-}
-
-static int get_code(void)
+static int get_code(struct tank_dev *dev)
 {
     int code = 0;
-    struct code_entry *q = TAILQ_FIRST(&code_qh);
+    struct code_entry *q = TAILQ_FIRST(&dev->qh);
     if (q != NULL) {
-        current_code = 0;
+        dev->current_code = 0;
         if (q->count > 0) {
             q->count--;
             code = q->code;
         } else if (q->count == -1) {
-            current_code = q->code;
-            code = current_code;
+            dev->current_code = q->code;
+            code = dev->current_code;
         }
 
-        if (q->count == 0) {
-            TAILQ_REMOVE(&code_qh, q, link);
+        if (q->count <= 0) {
+            TAILQ_REMOVE(&dev->qh, q, link);
             free(q);
         }
 
     } else {
-        code = current_code;
+        code = dev->current_code;
     }
 
     return code;
@@ -119,39 +87,39 @@ static void cb_send_bit(int fd, short what, void *arg)
 {
     int tv_end = 0;
 	struct timeval tv = {0, 250};
-	struct code_env *env = arg;
+	struct tank_dev *dev = arg;
 
     do {
 
-        env->step++;
-        if (env->step == 32 * 2 + 1) {
+        dev->step++;
+        if (dev->step == 32 * 2 + 1) {
 
             /* Force a 4ms gap between messages */
-            GPIO_CLR = 1 << pin;
+            GPIO_CLR = 1 << dev->pin;
 
             tv.tv_usec = 3333;
-            env->code = get_code();
-            env->step = 0;
-            if (env->code == 0) {
+            dev->code = get_code(dev);
+            dev->step = 0;
+            if (dev->code == 0) {
                 tv_end = 1;
             }
         } else {
 
             int bit, i, set;
-            i = ((env->step - 1) / 2);
-            bit = (env->code >> (31 - i)) & 0x1;
-            set = env->step % 2;
+            i = ((dev->step - 1) / 2);
+            bit = (dev->code >> (31 - i)) & 0x1;
+            set = dev->step % 2;
             if (bit == 1) {
                 if (set == 1) {
-                    GPIO_SET = 1 << pin;
+                    GPIO_SET = 1 << dev->pin;
                 } else {
-                    GPIO_CLR = 1 << pin;
+                    GPIO_CLR = 1 << dev->pin;
                 }
             } else {
                 if (set == 1) {
-                    GPIO_CLR = 1 << pin;
+                    GPIO_CLR = 1 << dev->pin;
                 } else {
-                    GPIO_SET = 1 << pin;
+                    GPIO_SET = 1 << dev->pin;
                 }
             }
         }
@@ -159,40 +127,28 @@ static void cb_send_bit(int fd, short what, void *arg)
     } while (0);
 
     if (tv_end != 0) {
-        env_del(env);
+        eventfd_del(dev->ev);
     } else {
-        evtimer_add(ev, &tv);
+        evtimer_add(dev->ev, &tv);
     }
 }
 
 /* Sends one individual code to the main tank controller */
-void send_code(int code)
+void send_code(struct tank_dev *dev, int code)
 {
 	struct code_env *env;
 	struct timeval tv = {0, 500};
 
 	/* Send header "bit" (not a valid Manchester code) */
-	GPIO_SET = 1 << pin;
+	GPIO_SET = 1 << dev->pin;
 
-    env = xmalloc(sizeof(*env));
-	if (env == NULL) {
-		return;
-	}
-	env->code = code;
-	env->step = 0;
-    ev = evtimer_new(base, cb_send_bit, env);
-    if (ev == NULL) {
-        env_del(env);
-        return;
-    }
+	dev->code = code;
+	dev->step = 0;
 
-    if (evtimer_add(ev, &tv) < 0) {
-        env_del(env);
-        return;
-    }
+    evtimer_add(dev->ev, &tv);
 }
 
-void insert_code(int code, int count)
+static void insert_code(struct tank_dev *dev, int code, int count)
 {
 	struct code_entry *entry;
         entry = xmalloc(sizeof(*entry));
@@ -201,154 +157,161 @@ void insert_code(int code, int count)
 	}
 	entry->code = code;
 	entry->count = count;
-	TAILQ_INSERT_TAIL(&code_qh, entry, link);
+	TAILQ_INSERT_TAIL(&dev->qh, entry, link);
 
-    if (ev == NULL) {
-        send_code(get_code());
+    if (dev->ev == NULL) {
+        send_code(dev, get_code(dev));
     }
 }
 
-int tank_sdown_main(int wfd, int argc, char *argv[])
+struct tank_dev *tank_new(int pin)
 {
-	speed--;
-	speed = max(0, speed);
-	if (speed == 0) {
-		insert_code(ignition, 10);
-		insert_code(idle, 40);
+    struct tank_dev *dev;
+
+    dev = malloc(sizeof(*dev));
+    if (dev) {
+        memset(dev, 0, sizeof(*dev));
+        dev->pin = pin;
+
+        dev->qh.tqh_last = &dev->qh.tqh_first;
+        dev->ev = evtimer_new(base, cb_send_bit, dev);
+        if (dev->ev == NULL) {
+            return;
+        }
+
+        /* must use INP_GPIO before we can use OUT_GPIO */
+        bcm2835_gpio_fsel(dev->pin, BCM2835_GPIO_FSEL_INPT);
+        bcm2835_gpio_fsel(dev->pin, BCM2835_GPIO_FSEL_OUTP);
+
+        GPIO_CLR = 1 << dev->pin;
+    }
+
+    return dev;
+}
+
+void tank_del(struct tank_dev *dev)
+{
+    if (dev) {
+        if (dev->ev)
+            eventfd_del(dev->ev);
+        free(dev);
+    }
+}
+
+void tank_sdown(struct tank_dev *dev)
+{
+	dev->speed--;
+	dev->speed = max(0, dev->speed);
+	if (dev->speed == 0) {
+		insert_code(dev, ignition, 10);
+		insert_code(dev, idle, 40);
 	}
-	return 0;
 }
-DEFINE_MODULE(tank_sdown);
 
-int tank_sup_main(int wfd, int argc, char *argv[])
+void tank_sup(struct tank_dev *dev)
 {
-	if (speed ==0) {
-		
-		insert_code(idle, 40);
-		insert_code(ignition, 10);
-		insert_code(idle, 300);
+	if (dev->speed ==0) {
+		insert_code(dev, idle, 40);
+		insert_code(dev, ignition, 10);
+		insert_code(dev, idle, 300);
 	}
 
-	speed++;
-	speed = min(2, speed);
-	return 0;
+	dev->speed++;
+	dev->speed = min(2, dev->speed);
 }
-DEFINE_MODULE(tank_sup);
 
-int tank_brake_main(int wfd, int argc, char *argv[])
+void tank_brake(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	return 0;
+	insert_code(dev, idle, 10);
 }
-DEFINE_MODULE(tank_brake);
 
-int tank_fwd_main(int wfd, int argc, char *argv[])
+void tank_fwd(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	if (speed == 1) {
-		insert_code(fwd_slow, -1);
-	} else if (speed == 2) {
-		insert_code(fwd_fast, -1);
+	insert_code(dev, idle, 10);
+	if (dev->speed == 1) {
+		insert_code(dev, fwd_slow, -1);
+	} else if (dev->speed == 2) {
+		insert_code(dev, fwd_fast, -1);
 	}
-	return 0;
 }
-DEFINE_MODULE(tank_fwd);
 
-int tank_rev_main(int wfd, int argc, char *argv[])
+void tank_rev(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	if (speed == 1) {
-		insert_code(rev_slow, -1);
-	} else if (speed == 2) {
-		insert_code(rev_fast, -1);
+	insert_code(dev, idle, 10);
+	if (dev->speed == 1) {
+		insert_code(dev, rev_slow, -1);
+	} else if (dev->speed == 2) {
+		insert_code(dev, rev_fast, -1);
 	}
-	return 0;
 }
-DEFINE_MODULE(tank_rev);
 
-int tank_left_main(int wfd, int argc, char *argv[])
+void tank_left(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	if (speed == 1) {
-		insert_code(left_slow, -1);
-	} else if (speed == 2) {
-		insert_code(left_fast, -1);
+	insert_code(dev, idle, 10);
+	if (dev->speed == 1) {
+		insert_code(dev, left_slow, -1);
+	} else if (dev->speed == 2) {
+		insert_code(dev, left_fast, -1);
 	}
-	return 0;
 }
-DEFINE_MODULE(tank_left);
 
-int tank_right_main(int wfd, int argc, char *argv[])
+void tank_right(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	if (speed == 1) {
-		insert_code(right_slow, -1);
-	} else if (speed == 2) {
-		insert_code(right_fast, -1);
+	insert_code(dev, idle, 10);
+	if (dev->speed == 1) {
+		insert_code(dev, right_slow, -1);
+	} else if (dev->speed == 2) {
+		insert_code(dev, right_fast, -1);
 	}
-	return 0;
 }
-DEFINE_MODULE(tank_right);
 
-int tank_turret_left_main(int wfd, int argc, char *argv[])
+void tank_turret_left(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	insert_code(turret_left, 25);
-	insert_code(idle, 10);
-	return 0;
+	insert_code(dev, idle, 10);
+	insert_code(dev, turret_left, 25);
+	insert_code(dev, idle, 10);
 }
-DEFINE_MODULE(tank_turret_left);
 
-int tank_turret_right_main(int wfd, int argc, char *argv[])
+void tank_turret_right(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	insert_code(turret_right, 25);
-	insert_code(idle, 10);
-	return 0;
+	insert_code(dev, idle, 10);
+	insert_code(dev, turret_right, 25);
+	insert_code(dev, idle, 10);
 }
-DEFINE_MODULE(tank_turret_right);
 
-int tank_turret_elev_main(int wfd, int argc, char *argv[])
+void tank_turret_elev(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	insert_code(turret_elev, 50);
-	insert_code(idle, 10);
-	return 0;
+	insert_code(dev, idle, 10);
+	insert_code(dev, turret_elev, 50);
+	insert_code(dev, idle, 10);
 }
-DEFINE_MODULE(tank_turret_elev);
 
-int tank_fire_main(int wfd, int argc, char *argv[])
+void tank_fire(struct tank_dev *dev)
 {
-	insert_code(idle, 10);
-	insert_code(fire, 50);
-	insert_code(idle, 10);
-	return 0;
-}
-DEFINE_MODULE(tank_fire);
-
-int tank_init(void)
-{
-	luaenv_getconf_int(MODNAME, "PIN", &pin);
-
-	/* must use INP_GPIO before we can use OUT_GPIO */
-	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
-	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
-
-	GPIO_CLR = 1 << pin;
-
-	return 0;
+	insert_code(dev, idle, 10);
+	insert_code(dev, fire, 50);
+	insert_code(dev, idle, 10);
 }
 
-/*
- * DEFINE_MODULE(tank);
- */
-static struct module __module_tank = {
-    .name = "tank",
-    .init = tank_init,
-    .main = NULL,
-};
+#define DEFINE_TANK_CMD(_name_) \
+    int _name_ ## _main(int wfd, int argc, char *argv[]) \
+    { \
+        struct tank_dev *dev = luaenv_getdev(MODNAME); \
+        if (dev == NULL) \
+            return 1; \
+        _name_ (dev); \
+        return 0; \
+    } \
+    DEFINE_MODULE(_name_);
 
-static __init void __reg_module_tank(void)
-{
-    register_module(&__module_tank);
-}
+DEFINE_TANK_CMD(tank_sdown);
+DEFINE_TANK_CMD(tank_sup);
+DEFINE_TANK_CMD(tank_brake);
+DEFINE_TANK_CMD(tank_fwd);
+DEFINE_TANK_CMD(tank_rev);
+DEFINE_TANK_CMD(tank_left);
+DEFINE_TANK_CMD(tank_right);
+DEFINE_TANK_CMD(tank_turret_left);
+DEFINE_TANK_CMD(tank_turret_right);
+DEFINE_TANK_CMD(tank_turret_elev);
+DEFINE_TANK_CMD(tank_fire);
