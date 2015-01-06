@@ -9,7 +9,6 @@ config_path = "/root/raspberry/raspd/"
 script = "/root/raspberry/raspd/control.lua"
 
 -- devtree
---devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
 devtree_file = config_path .. "devtree_car.lua"
 
 -- automatic function
