@@ -20,6 +20,7 @@
 #include "ultrasonic.h"
 #include "motor.h"
 #include "l298n.h"
+#include "esc.h"
 
 #include "luaenv.h"
 
@@ -496,6 +497,97 @@ static int lr_ultrasonic_is_busy(lua_State *L)
     return 1;
 }
 
+/*
+ * esc
+ */
+static int lr_esc_new(lua_State *L)
+{
+    int pin, refresh_rate, start_time;
+    int min_throttle_time, max_throttle_time;
+    struct esc_dev **devp;
+
+    pin = (int)luaL_checkinteger(L, 1);
+    refresh_rate = (int)luaL_checkinteger(L, 2);
+    start_time = (int)luaL_checkinteger(L, 3);
+    min_throttle_time = (int)luaL_checkinteger(L, 4);
+    max_throttle_time = (int)luaL_checkinteger(L, 5);
+
+    devp = lua_newuserdata(L, sizeof(struct esc_dev *));
+    *devp = esc_new(pin, refresh_rate, start_time,
+                    min_throttle_time, max_throttle_time);
+    if (*devp == NULL) {
+        luaL_error(L, "esc_new() error\n");
+        return 0;
+    }
+    return 1;
+}
+
+static int lr_esc_del(lua_State *L)
+{
+    struct esc_dev **devp = lua_touserdata(L, 1);
+    esc_del(*devp);
+    return 0;
+}
+
+static int lr_esc_get(lua_State *L)
+{
+    struct esc_dev **devp = lua_touserdata(L, 1);
+    lua_pushinteger(L, esc_get(*devp));
+    return 1;
+}
+
+static int lr_esc_set(lua_State *L)
+{
+    struct esc_dev **devp = lua_touserdata(L, 1);
+    int throttle_time = (int)luaL_checkinteger(L, 2);
+    lua_pushinteger(L, esc_set(*devp, throttle_time));
+    return 1;
+}
+
+static int esc_started_wrap(struct esc_dev *dev, void *opaque)
+{
+    /* get table */
+    lua_pushlightuserdata(_L, &_L);
+    lua_rawget(_L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(_L, dev);
+    lua_gettable(_L, -2);
+
+    /* call lua handler */
+    if (lua_pcall(_L, 0, 0, 0) == 0) {
+        /* TODO */
+    }
+    return 0;
+}
+
+static int lr_esc_start(lua_State *L)
+{
+    struct esc_dev **devp = lua_touserdata(L, 1);
+    int err;
+
+    if (lua_gettop(L) >= 2 && lua_isfunction(L, 2) && !lua_iscfunction(L, 2)) {
+        /* set lua handler */
+        lua_pushlightuserdata(L, &_L);
+        lua_rawget(L, LUA_REGISTRYINDEX);
+        lua_pushlightuserdata(L, *devp); /* key: dev */
+        lua_pushvalue(L, 2);             /* value: callback */
+        lua_rawset(L, -3);
+        lua_pop(L, 1);
+
+        err = esc_start(*devp, esc_started_wrap, NULL);
+    } else {
+        err = esc_start(*devp, NULL, NULL);
+    }
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+static int lr_esc_stop(lua_State *L)
+{
+    struct esc_dev **devp = lua_touserdata(L, 1);
+    lua_pushinteger(L, esc_stop(*devp));
+    return 1;
+}
+
 static const luaL_Reg luaraspd_lib[] = {
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
@@ -531,6 +623,14 @@ static const luaL_Reg luaraspd_lib[] = {
     { "ultrasonic_del",     lr_ultrasonic_del     },
     { "ultrasonic_scope",   lr_ultrasonic_scope   },
     { "ultrasonic_is_busy", lr_ultrasonic_is_busy },
+
+    /* esc */
+    { "esc_new",   lr_esc_new   },
+    { "esc_del",   lr_esc_del   },
+    { "esc_get",   lr_esc_get   },
+    { "esc_set",   lr_esc_set   },
+    { "esc_start", lr_esc_start },
+    { "esc_stop",  lr_esc_stop  },
 
     { NULL, NULL }
 };

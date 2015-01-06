@@ -222,14 +222,7 @@ unsigned int ultrasonic_is_busy(struct ultrasonic_dev *dev)
 
 /************************************************************/
 
-/* urgent scope, double ? */
-static int threshold;
-
-#define MAX_LFUNCNAME   64
-static char callback[MAX_LFUNCNAME];
-
-
-static int urgent_cb(double distance/* cm */, void *opaque)
+static int cb_main(struct ultrasonic_dev *dev, double distance, void *opaque)
 {
     int wfd = (intptr_t)opaque;
     char buffer[128];
@@ -241,22 +234,10 @@ static int urgent_cb(double distance/* cm */, void *opaque)
         write(wfd, buffer, len);
     }
 
-    /* call the lua function urgent_cb */
-    if (threshold && distance <= (double)threshold && callback[0]) {
-        int err;
-
-        if ((err = luaenv_call_va(callback, "id:", wfd, distance)) < 0)
-            fprintf(stderr, "luaenv_call_va(%s), err = %d\n", callback, err);
-    }
     return 0;
 }
 
-static int cb(struct ultrasonic_dev *dev, double distance, void *opaque)
-{
-    return urgent_cb(distance, opaque);
-}
-
-static int ultrasonic_main(int wfd, int argc, char *argv[])
+static int ultrasonic_main(int fd, int argc, char *argv[])
 {
     int count = 1;
     int interval = 2000;
@@ -284,39 +265,11 @@ static int ultrasonic_main(int wfd, int argc, char *argv[])
     if (dev == NULL)
         return 1;
 
-    if (ultrasonic_scope(dev, count, interval, cb, (void *)(intptr_t)wfd) < 0)
+    if (ultrasonic_scope(dev, count, interval,
+                cb_main, (void *)(intptr_t)fd) < 0)
         return 1;
 
     return 0;
 }
 
-static int ultrasonic_init(void)
-{
-    const char *script = NULL;
-    const char *cb = NULL;
-    int err;
-
-    luaenv_getconf_int(MODNAME, "threshold", &threshold);
-
-    luaenv_getconf_str(MODNAME, "callback", &cb);
-    if (cb) {
-        strncpy(callback, cb, MAX_LFUNCNAME);
-        luaenv_pop(1);
-    }
-
-    return 0;
-}
-
-/*
- * DEFINE_MODULE(ultrasonic);
- */
-static struct module __module_ultrasonic = {
-    .name = "ultrasonic",
-    .init = ultrasonic_init,
-    .main = ultrasonic_main
-};
-
-static __init void __reg_module_ultrasonic(void)
-{
-    register_module(&__module_ultrasonic);
-}
+DEFINE_MODULE(ultrasonic);
