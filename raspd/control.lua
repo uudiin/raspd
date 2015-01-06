@@ -115,6 +115,20 @@ function devicetree_init(dt)
                         -- use pin as dev pointer
                         register_device(d.pin, d.ID, d.NAME)
                     end
+                elseif class == "tank" and type(devlist) == "table" then
+                    for index, d in ipairs(devlist) do
+                        local tank
+
+                        request_gpio(d, d.pin)
+
+                        -- new object
+                        tank = lr.tank_new(d.pin)
+                        if tank then
+                            register_device(tank, d.ID, d.NAME)
+                        else
+                            io.stderr:write("tank_new() error\n")
+                        end
+                    end
                 end
             end
         elseif k == "i2c" and type(v) == "table" then
