@@ -112,7 +112,7 @@ int module_main(int fd, int argc, char *argv[])
 
     TAILQ_FOREACH(m, &list_head, list) {
         int n = snprintf(buffer, sizeof(buffer), "%s\n", m->name);
-        write(fd, buffer, n)
+        write(fd, buffer, n);
     }
     return 0;
 }

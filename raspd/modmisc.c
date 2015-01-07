@@ -72,14 +72,16 @@ DEFINE_MODULE(exit);
  */
 static int luamisc_main(int fd, int argc, char *argv[])
 {
+    int err;
     err = luaenv_call_va(argv[1], "");
     if (err < 0)
-        fprintf(stderr, "luaenv_call_va(%s), err = %d\n", luaf, err);
+        fprintf(stderr, "luaenv_call_va(%s), err = %d\n", argv[1], err);
 }
 
 static int luamisc_init(void)
 {
     const char *lua_file = NULL;
+    int err;
     luaenv_getconf_str("_G", "steer", &lua_file);
     if (lua_file) {
         if ((err = luaenv_run_file(lua_file)) < 0)
