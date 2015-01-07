@@ -46,6 +46,8 @@ int module_execv(int wfd, int argc, char *argv[])
     struct module *m;
 
     if ((m = find_module(argv[0])) == NULL)
+        m = find_module("luamisc");
+    if (m == NULL)
         return -ENOENT;
 
     /* FIXME  needed? */
@@ -100,3 +102,19 @@ int module_cmdexec(int wfd, const char *cmdexec)
     free_cmd_argv(cmd_argv);
     return err;
 }
+
+/*********************************************************/
+
+int module_main(int fd, int argc, char *argv[])
+{
+    struct module *m;
+    char buffer[128];
+
+    TAILQ_FOREACH(m, &list_head, list) {
+        int n = snprintf(buffer, sizeof(buffer), "%s\n", m->name);
+        write(fd, buffer, n)
+    }
+    return 0;
+}
+
+DEFINE_MODULE(module);

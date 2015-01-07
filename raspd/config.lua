@@ -5,8 +5,11 @@ sock_file = "/var/run/raspd.sock"
 
 config_path = "/root/raspberry/raspd/"
 
--- control script
-script = "/root/raspberry/raspd/control.lua"
+-- device resources
+devres = config_path .. "devres.lua"
+
+-- steer
+steer = config_path .. "steer_car.lua"
 
 -- devtree
 --devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"

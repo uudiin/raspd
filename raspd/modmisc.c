@@ -59,10 +59,33 @@ static __init void __reg_module_automatic(void)
 /*
  * exit module
  */
-static exit_main(int fd, int argc, char *argv[])
+static int exit_main(int fd, int argc, char *argv[])
 {
     /* TODO  retval */
     return rasp_event_loopexit();
 }
 
 DEFINE_MODULE(exit);
+
+/*
+ * lua misc module
+ */
+static int luamisc_main(int fd, int argc, char *argv[])
+{
+    err = luaenv_call_va(argv[1], "");
+    if (err < 0)
+        fprintf(stderr, "luaenv_call_va(%s), err = %d\n", luaf, err);
+}
+
+static int luamisc_init(void)
+{
+    const char *lua_file = NULL;
+    luaenv_getconf_str("_G", "steer", &lua_file);
+    if (lua_file) {
+        if ((err = luaenv_run_file(lua_file)) < 0)
+            fprintf(stderr, "luaenv_run_fle(%s), err = %d\n", lua_file, err);
+        luaenv_pop(1);
+    }
+}
+
+DEFINE_MODULE_INIT(luamisc);

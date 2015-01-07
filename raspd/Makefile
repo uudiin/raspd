@@ -10,7 +10,7 @@ PROGS = raspd
 
 SRCS_raspd = raspd.c module.c event.c luaenv.c \
 	gpiolib.c gpio.c pwm.c l298n.c ultrasonic.c \
-	tankcontrol.c motor.c automatic.c esc.c
+	tankcontrol.c motor.c modmisc.c esc.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 

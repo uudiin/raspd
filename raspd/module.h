@@ -30,4 +30,14 @@ int module_cmdexec(int wfd, const char *cmdexec);
         register_module(&__module_ ## mod);         \
     }
 
+#define DEFINE_MODULE_INIT(mod)                     \
+    static struct module __module_ ## mod = {       \
+        .name = # mod,                              \
+        .init = mod ## _init,                       \
+        .main = mod ## _main                        \
+    };                                              \
+    static __init void __reg_moudle_ ## mod(void) { \
+        register_module(&__module_ ## mod);         \
+    }
+
 #endif /* __MODULE_H__ */

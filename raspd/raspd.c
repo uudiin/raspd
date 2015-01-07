@@ -185,31 +185,27 @@ int main(int argc, char *argv[])
         }
     }
 
+    /*
+     * luaenv
+     * config
+     * daemon
+     * pidfile
+     * event
+     */
+
+    /* initialize luaenv */
+    if ((err = luaenv_init()) < 0) {
+        fprintf(stderr, "luaenv_init(), err = %d\n", err);
+        return 1;
+    }
+    if ((err = luaenv_run_file(lua_conf)) < 0)
+        fprintf(stderr, "luaenv_run_file(%s), err = %d\n", lua_conf, err);
+
     /* if run as daemon ? */
     if (daemon) {
         err = daemonize("raspd");
         if (err < 0) {
             fprintf(stderr, "daemonize(), err = %d\n", err);
-            return 1;
-        }
-    }
-
-    /* init gpiolib */
-    gpiolib_init();
-
-    /* initialize event base */
-    if (rasp_event_init() < 0) {
-        fprintf(stderr, "event_init(), err = %d\n", err);
-        return 1;
-    }
-
-    /* if not daemon, get data from stdin */
-    if (!daemon) {
-        static struct event *ev_stdin;
-        err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
-                        NULL, cb_read, (void *)&ev_stdin, &ev_stdin);
-        if (err < 0) {
-            fprintf(stderr, "eventfd_add(STDIN_FILENO), err = %d\n", err);
             return 1;
         }
     }
@@ -229,18 +225,39 @@ int main(int argc, char *argv[])
         fprintf(stderr, "bcm2835_init() error\n");
         return 1;
     }
+    /* init gpiolib */
+    gpiolib_init();
 
-    /* initialize luaenv */
-    if ((err = luaenv_init()) < 0) {
-        fprintf(stderr, "luaenv_init(), err = %d\n", err);
+    /* initialize event base */
+    if (rasp_event_init() < 0) {
+        fprintf(stderr, "event_init(), err = %d\n", err);
         return 1;
     }
-    if ((err = luaenv_run_file(lua_conf)) < 0)
-        fprintf(stderr, "luaenv_run_file(%s), err = %d\n", lua_conf, err);
 
-    /* initialize all modules */
-    if ((err = foreach_module(modexec_init, NULL)) < 0)
-        return 1;
+    /*
+     * run the lua file
+     * initialize devtree
+     */
+    do {
+        const char *lua_file = NULL;
+        luaenv_getconf_str("_G", "devres", &lua_file);
+        if (lua_file) {
+            if ((err = luaenv_run_file(lua_file)) < 0)
+                fprintf(stderr, "luaenv_run_fle(%s), err = %d\n", lua_file, err);
+            luaenv_pop(1);
+        }
+    } while (0);
+
+    /* if not daemon, get data from stdin */
+    if (!daemon) {
+        static struct event *ev_stdin;
+        err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
+                        NULL, cb_read, (void *)&ev_stdin, &ev_stdin);
+        if (err < 0) {
+            fprintf(stderr, "eventfd_add(STDIN_FILENO), err = %d\n", err);
+            return 1;
+        }
+    }
 
     if (listen_port > 0 && listen_port < 65535) {
         size_t ss_len;
@@ -288,16 +305,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* run the lua script file */
-    do {
-        const char *script = NULL;
-        luaenv_getconf_str("_G", "script", &script);
-        if (script) {
-            if ((err = luaenv_run_file(script)) < 0)
-                fprintf(stderr, "luaenv_run_fle(%s), err = %d\n", script, err);
-            luaenv_pop(1);
-        }
-    } while (0);
+    /* initialize all modules */
+    if ((err = foreach_module(modexec_init, NULL)) < 0)
+        return 1;
 
     /* main loop */
     rasp_event_loop();
