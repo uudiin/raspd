@@ -13,7 +13,7 @@
 #include "esc.h"
 
 
-static void trig_done(int fd, short what, void *arg)
+static void throttle_done(int fd, short what, void *arg)
 {
     struct esc_dev *dev = arg;
     bcm2835_gpio_write(dev->pin, LOW);
@@ -52,11 +52,14 @@ struct esc_dev *esc_new(int pin, int refresh_rate, int start_time,
         dev->throttle_time = min_throttle_time;
         dev->period = 1000000 / refresh_rate; /* us */
 
-        dev->ev_throttle= evtimer_new(evbase, trig_done, dev);
+        dev->ev_throttle= evtimer_new(evbase, throttle_done, dev);
         if (dev->ev_throttle == NULL) {
             esc_del(dev);
             return NULL;
         }
+        /* set high priority */
+        event_priority_set(dev->ev_throttle, 8);
+
         dev->ev_timer = event_new(evbase, -1, EV_PERSIST, timer_refresh, dev);
         if (dev->ev_timer == NULL) {
             esc_del(dev);

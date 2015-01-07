@@ -213,6 +213,9 @@ static pwm_main(int wfd, int argc, char *argv[])
 
     if (clock != clk) {
         clock = clk;
+        /* FIXME FIXME FIXME  use delay */
+        /* FIXME FIXME FIXME  use delay */
+        /* FIXME FIXME FIXME  use delay */
         bcm2835_pwm_set_clock(clock);
     }
 
