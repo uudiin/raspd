@@ -3,11 +3,11 @@
 include ../rules.mak
 
 CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast
-CFLAGS += -I ../lib -I ../libbcm2835 -I ../librf24 -I../libevent/include
+CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include
 LIBS =
 
 
-PROGS = blink_act motor breath_led pwm l298n test_unix rt_ssh test_gpioint sw
+PROGS = blink_act motor breath_led pwm l298n test_unix rt_ssh test_gpioint sw rf24_test
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
@@ -16,7 +16,7 @@ SRCS_hcsr04 += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_sw += ../raspd/event.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a))
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a))
 
 .PHONY: all clean
 
