@@ -3,10 +3,7 @@
 devroot = {
     gpio = {
         ultrasonic = {
-            {
-                ID = 1,
-                NAME = "ultrasonic",
-
+            ultrasonic = {
                 pin_trig = 20,
                 pin_echo = 21,
 
@@ -16,10 +13,7 @@ devroot = {
         },
 
         stepmotor = {
-            {
-                ID = 2,
-                NAME = "stepmotor",
-
+            stepmotor = {
                 pin1 = 2,
                 pin2 = 3,
                 pin3 = 4,
@@ -34,10 +28,7 @@ devroot = {
         },
 
         l298n = {
-            {
-                ID = 3,
-                NAME = "l298n",
-
+            l298n = {
                 ena = 18,
                 enb = 13,
                 in1 = 27,
@@ -52,15 +43,15 @@ devroot = {
         },
 
         simpledev = {
-            { ID = 31, NAME = "led_warn",        pin = 16 },
-            { ID = 32, NAME = "laster",          pin = 24 },
-            { ID = 33, NAME = "infrared_sensor", pin = 23,
+            led_warn = { pin = 16 },
+            laster =   { pin = 24 },
+            infrared_sensor = { pin = 23,
                 cb = function(pin, level)
                     lr.gpio_set(__DEV("laster"), level)
                     return 0
                 end
             },
-            { ID = 34, NAME = "voice_sensor",    pin = 25,
+            voice_sensor = { pin = 25,
                 cb = function(pin, level)
                 end
             }

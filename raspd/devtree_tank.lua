@@ -3,10 +3,7 @@
 devroot = {
     gpio = {
         ultrasonic = {
-            {
-                ID = 1,
-                NAME = "ultrasonic",
-
+            ultrasonic = {
                 pin_trig = 20,
                 pin_echo = 21,
 
@@ -16,12 +13,7 @@ devroot = {
         },
 
         tank = {
-            {
-                ID = 3,
-                NAME = "tank",
-
-                pin = 7,
-            }
+            tank = { pin = 7 }
         },
     },
 

@@ -3,7 +3,6 @@
 local lr = luaraspd
 
 resources_gpio = {}
-devid = {}
 devname = {}
 
 local function request_gpio(config, pin)
@@ -14,22 +13,12 @@ local function request_gpio(config, pin)
     resources_gpio[pin] = config
 end
 
-local function register_device(dev, id, name)
-    if id then
-        devid[id] = dev
-    end
-
-    if name then
-        devname[name] = dev
-    end
+local function register_device(dev, name)
+    devname[name] = dev
 end
 
-function __DEV(id)
-    if devid[id] then
-        return devid[id]
-    else
-        return devname[id]
-    end
+function __DEV(name)
+    return devname[name]
 end
 
 function devicetree_init(dt)
@@ -37,7 +26,7 @@ function devicetree_init(dt)
         if k == "gpio" and type(v) == "table" then
             for class, devlist in pairs(v) do
                 if class == "stepmotor" and type(devlist) == "table" then
-                    for index, d in ipairs(devlist) do
+                    for name, d in pairs(devlist) do
                         local stepmotor
 
                         request_gpio(d, d.pin1)
@@ -50,28 +39,28 @@ function devicetree_init(dt)
                                         d.pin4, d.step_angle, d.reduction_ratio,
                                         d.pullin_freq, d.pullout_freq, d.flags)
                         if stepmotor then
-                            register_device(stepmotor, d.ID, d.NAME)
+                            register_device(stepmotor, name)
                         else
                             io.stderr:write("stepmotor_new() error\n")
                         end
                     end
                 elseif class == "ultrasonic" and type(devlist) == "table" then
-                    for index, d in ipairs(devlist) do
+                    for name, d in pairs(devlist) do
                         local ultrasonic
 
                         request_gpio(d, d.pin_trig)
                         request_gpio(d, d.pin_echo)
                         -- new object
                         ultrasonic = lr.ultrasonic_new(d.pin_trig,
-                                                    d.pin_echo, d.trig_time)
+                                                d.pin_echo, d.trig_time)
                         if ultrasonic then
-                            register_device(ultrasonic, d.ID, d.NAME)
+                            register_device(ultrasonic, name)
                         else
                             io.stderr:write("ultrasonic_new() error\n")
                         end
                     end
                 elseif class == "l298n" and type(devlist) == "table" then
-                    for index, d in ipairs(devlist) do
+                    for name, d in pairs(devlist) do
                         local l298n
 
                         request_gpio(d, d.ena)
@@ -85,13 +74,13 @@ function devicetree_init(dt)
                         l298n = lr.l298n_new(d.ena, d.enb, d.in1, d.in2, d.in3,
                                         d.in4, d.max_speed, d.range, d.pwm_div)
                         if l298n then
-                            register_device(l298n, d.ID, d.NAME)
+                            register_device(l298n, name)
                         else
                             io.stderr:write("l298n_new() error\n")
                         end
                     end
                 elseif class == "esc" and type(devlist) == "table" then
-                    for index, d in ipairs(devlist) do
+                    for name, d in pairs(devlist) do
                         local esc
 
                         request_gpio(d, d.pin)
@@ -99,13 +88,27 @@ function devicetree_init(dt)
                         esc = lr.esc_new(d.pin, d.refresh_rate, d.start_time,
                                     d.min_throttle_time, d.max_throttle_time)
                         if esc then
-                            register_device(esc, d.ID, d.NAME)
+                            register_device(esc, name)
                         else
                             io.stderr:write("esc_new() error\n")
                         end
                     end
+                elseif class == "tank" and type(devlist) == "table" then
+                    for name, d in pairs(devlist) do
+                        local tank
+
+                        request_gpio(d, d.pin)
+
+                        -- new object
+                        tank = lr.tank_new(d.pin)
+                        if tank then
+                            register_device(tank, name)
+                        else
+                            io.stderr:write("tank_new() error\n")
+                        end
+                    end
                 elseif class == "simpledev" and type(devlist) == "table" then
-                    for index, d in ipairs(devlist) do
+                    for name, d in pairs(devlist) do
 
                         request_gpio(d, d.pin)
 
@@ -116,21 +119,7 @@ function devicetree_init(dt)
                         end
 
                         -- use pin as dev pointer
-                        register_device(d.pin, d.ID, d.NAME)
-                    end
-                elseif class == "tank" and type(devlist) == "table" then
-                    for index, d in ipairs(devlist) do
-                        local tank
-
-                        request_gpio(d, d.pin)
-
-                        -- new object
-                        tank = lr.tank_new(d.pin)
-                        if tank then
-                            register_device(tank, d.ID, d.NAME)
-                        else
-                            io.stderr:write("tank_new() error\n")
-                        end
+                        register_device(d.pin, name)
                     end
                 end
             end

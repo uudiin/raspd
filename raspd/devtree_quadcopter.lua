@@ -3,10 +3,7 @@
 devroot = {
     gpio = {
         ultrasonic = {
-            {
-                ID = 1,
-                NAME = "ultrasonic",
-
+            ultrasonic = {
                 pin_trig = 20,
                 pin_echo = 21,
 
@@ -16,10 +13,7 @@ devroot = {
         },
 
         stepmotor = {
-            {
-                ID = 2,
-                NAME = "stepmotor",
-
+            stepmotor = {
                 pin1 = 2,
                 pin2 = 3,
                 pin3 = 4,
@@ -34,40 +28,31 @@ devroot = {
         },
 
         esc = {
-            {
-                ID = 11,
-                NAME = "esc1",
-
+            esc1 = {
                 pin = 27,
 
                 refresh_rate = 50,      -- frequency (hz)
                 start_time = 5000,      -- 5s
                 min_throttle_time = 900,    -- 900us
                 max_throttle_time = 2100,   -- 2100us
-            }, {
-                ID = 12,
-                NAME = "esc2",
-
+            },
+            esc2 = {
                 pin = 22,
 
                 refresh_rate = 50,      -- frequency (hz)
                 start_time = 5000,      -- 5s
                 min_throttle_time = 900,    -- 900us
                 max_throttle_time = 2100,   -- 2100us
-            }, {
-                ID = 13,
-                NAME = "esc3",
-
+            },
+            esc3 = {
                 pin = 5,
 
                 refresh_rate = 50,      -- frequency (hz)
                 start_time = 5000,      -- 5s
                 min_throttle_time = 900,    -- 900us
                 max_throttle_time = 2100,   -- 2100us
-            }, {
-                ID = 14,
-                NAME = "esc4",
-
+            },
+            esc4 = {
                 pin = 6,
 
                 refresh_rate = 50,      -- frequency (hz)
