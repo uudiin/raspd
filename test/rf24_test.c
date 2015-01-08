@@ -5,8 +5,8 @@
 
 #include "nrf24.h"
 
-static int ce_pin = 8;
-static int csn_pin = 23;
+static int ce_pin = 23;
+static int csn_pin = 8;
 
 #define set_bit(reg,bit) reg |= (1<<bit)
 #define clr_bit(reg,bit) reg &= ~(1<<bit)
