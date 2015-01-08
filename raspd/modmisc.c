@@ -23,9 +23,14 @@ DEFINE_MODULE(exit);
 static int luamisc_main(int fd, int argc, char *argv[])
 {
     int err;
+    if (argc < 2)
+        return 1;
     err = luaenv_call_va(argv[1], "");
-    if (err < 0)
+    if (err < 0) {
         fprintf(stderr, "luaenv_call_va(%s), err = %d\n", argv[1], err);
+        return 1;
+    }
+    return 0;
 }
 
 static int luamisc_init(void)
