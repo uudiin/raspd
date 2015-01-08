@@ -12,6 +12,7 @@ PROGS = blink_act motor breath_led pwm l298n test_unix rt_ssh test_gpioint sw rf
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
 SRCS_test_gpioint += ../raspd/event.c ../raspd/gpiolib.c
+SRCS_rf24_test += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_hcsr04 += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_sw += ../raspd/event.c
 
