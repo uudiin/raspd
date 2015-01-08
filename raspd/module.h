@@ -2,14 +2,14 @@
 #define __MODULE_H__
 
 #include <queue.h>
+#include <tree.h>
 
 struct module {
     const char *name;
     int (*init)(void);
     void (*exit)(void);
-    /*int (*lua_config)(lua_State *L);*/
     int (*main)(int wfd, int argc, char *argv[]);
-    TAILQ_ENTRY(module) list;
+    RB_ENTRY(module) node;
 };
 
 #define __init  __attribute__((constructor))

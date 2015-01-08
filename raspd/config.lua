@@ -15,9 +15,6 @@ steer = config_path .. "steer_car.lua"
 --devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
 devtree_file = config_path .. "devtree_tank.lua"
 
--- automatic function
-automatic = "automatic_v1"
-
 -- pin pwm
 -- channel-0  12 18
 -- channel-1  13 19

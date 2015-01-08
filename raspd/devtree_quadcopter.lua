@@ -36,7 +36,7 @@ devroot = {
         esc = {
             {
                 ID = 11,
-                NAME = "esc_a",
+                NAME = "esc1",
 
                 pin = 27,
 
@@ -46,7 +46,7 @@ devroot = {
                 max_throttle_time = 2100,   -- 2100us
             }, {
                 ID = 12,
-                NAME = "esc_b",
+                NAME = "esc2",
 
                 pin = 22,
 
@@ -56,7 +56,7 @@ devroot = {
                 max_throttle_time = 2100,   -- 2100us
             }, {
                 ID = 13,
-                NAME = "esc_c",
+                NAME = "esc3",
 
                 pin = 5,
 
@@ -66,7 +66,7 @@ devroot = {
                 max_throttle_time = 2100,   -- 2100us
             }, {
                 ID = 14,
-                NAME = "esc_d",
+                NAME = "esc4",
 
                 pin = 6,
 

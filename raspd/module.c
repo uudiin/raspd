@@ -5,27 +5,32 @@
 #include <errno.h>
 
 #include <queue.h>
+#include <tree.h>
 #include <xmalloc.h>
 #include <unix.h>
 
 #include "module.h"
 
-static TAILQ_HEAD(module_list, module) list_head = TAILQ_HEAD_INITIALIZER(list_head);
+static RB_HEAD(modtree, module) modroot = RB_INITIALIZER(0);
+static int mod_comp(struct module *m1, struct module *m2)
+{
+    return strcmp(m1->name, m2->name);
+}
+RB_GENERATE_STATIC(modtree, module, node, mod_comp);
+
 
 void register_module(struct module *m)
 {
-    TAILQ_INSERT_TAIL(&list_head, m, list);
+    RB_INSERT(modtree, &modroot, m);
 }
 
 static struct module *find_module(const char *name)
 {
     struct module *m;
-
-    TAILQ_FOREACH(m, &list_head, list) {
+    RB_FOREACH(m, modtree, &modroot) {
         if (strcmp(m->name, name) == 0)
             return m;
     }
-
     return NULL;
 }
 
@@ -34,7 +39,7 @@ int foreach_module(int (*fn)(struct module *m, void *opaque), void *opaque)
     struct module *m;
     int err = 0;
 
-    TAILQ_FOREACH(m, &list_head, list) {
+    RB_FOREACH(m, modtree, &modroot) {
         if ((err = fn(m, opaque)) < 0)
             break;
     }
@@ -110,8 +115,8 @@ int module_main(int fd, int argc, char *argv[])
     struct module *m;
     char buffer[128];
 
-    TAILQ_FOREACH(m, &list_head, list) {
-        int n = snprintf(buffer, sizeof(buffer), "%s\n", m->name);
+    RB_FOREACH(m, modtree, &modroot) {
+        int n = snprintf(buffer, sizeof(buffer), "--> %s\n", m->name);
         write(fd, buffer, n);
     }
     return 0;
