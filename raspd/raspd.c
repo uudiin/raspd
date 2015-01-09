@@ -110,6 +110,13 @@ static void cb_listen(int fd, short what, void *arg)
     }
 }
 
+static int modexec_early_init(struct module *m, void *opaque)
+{
+    if (m->early_init)
+        return m->early_init();
+    return ENOENT;
+}
+
 static int modexec_init(struct module *m, void *opaque)
 {
     if (m->init)
@@ -227,6 +234,10 @@ int main(int argc, char *argv[])
     }
     /* init gpiolib */
     gpiolib_init();
+
+    /* early init */
+    if ((err = foreach_module(modexec_early_init, NULL)) < 0)
+        return 1;
 
     /* initialize event base */
     if (rasp_event_init() < 0) {

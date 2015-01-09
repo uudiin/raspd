@@ -6,7 +6,8 @@
 
 struct module {
     const char *name;
-    int (*init)(void);
+    int (*early_init)(void); /* run after bcm2835_init */
+    int (*init)(void);       /* run after event_init & eve loop */
     void (*exit)(void);
     int (*main)(int wfd, int argc, char *argv[]);
     RB_ENTRY(module) node;

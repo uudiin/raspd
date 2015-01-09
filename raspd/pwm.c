@@ -180,7 +180,6 @@ static pwm_main(int wfd, int argc, char *argv[])
 {
     static struct option options[] = {
         { "range", required_argument, NULL, 'r' },
-        { "clock", required_argument, NULL, 'c' },
         { "step",  required_argument, NULL, 't' },
         { "set",   required_argument, NULL, 's' },
         { "up",    no_argument,       NULL, 'u' },
@@ -189,15 +188,13 @@ static pwm_main(int wfd, int argc, char *argv[])
     };
     int c;
     uint32_t range = 1000;
-    uint32_t clk = BCM2835_PWM_CLOCK_DIVIDER_16;
     uint32_t _step = 100;
     int data = 0;
     int incre = 0;
 
-    while ((c = getopt_long(argc, argv, "r:c:t:s:ud", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "r:t:s:ud", options, NULL)) != -1) {
         switch (c) {
         case 'r': range = (uint32_t)atoi(optarg); break;
-        case 'c': clk = (uint32_t)atoi(optarg); break;
         case 't': _step = (uint32_t)atoi(optarg); break;
         case 's': data = atoi(optarg); break;
         case 'u': incre = 1; break;
@@ -205,18 +202,6 @@ static pwm_main(int wfd, int argc, char *argv[])
         default:
             return 1;
         }
-    }
-
-    /* check clock is equal 2^N */
-    if ((clk & (clk - 1)) || clk <= 1)
-        clk = BCM2835_PWM_CLOCK_DIVIDER_16;
-
-    if (clock != clk) {
-        clock = clk;
-        /* FIXME FIXME FIXME  use delay */
-        /* FIXME FIXME FIXME  use delay */
-        /* FIXME FIXME FIXME  use delay */
-        bcm2835_pwm_set_clock(clock);
     }
 
     if (step != _step)
@@ -237,7 +222,7 @@ static pwm_main(int wfd, int argc, char *argv[])
     return 0;
 }
 
-static int pwm_init(void)
+static int pwm_early_init(void)
 {
     clock = BCM2835_PWM_CLOCK_DIVIDER_16;
     bcm2835_pwm_set_clock(clock);
@@ -249,7 +234,7 @@ static int pwm_init(void)
  */
 static struct module __module_pwm = {
     .name = "pwm",
-    .init = pwm_init,
+    .early_init = pwm_early_init,
     .main = pwm_main
 };
 
