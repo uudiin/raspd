@@ -70,7 +70,7 @@ static void cb_timeout_wrap(int fd, short what, void *arg)
     /* get lua handler */
     lua_pushlightuserdata(_L, &_L);
     lua_rawget(_L, LUA_REGISTRYINDEX);
-    lua_pushinteger(_L, env);
+    lua_pushinteger(_L, (int)env);
     lua_gettable(_L, -2);
 
     /* call lua handler */
@@ -120,7 +120,7 @@ static int lr_timeout(lua_State *L)
 
         err = 0;
     }
-    lua_pushinteger(err);
+    lua_pushinteger(L, err);
     return 1;
 }
 
