@@ -1,6 +1,5 @@
 /*
     Copyright (c) 2007 Stefan Engelke <mbox@stefanengelke.de>
-    Portions Copyright (C) 2011 Greg Copeland
 
     Permission is hereby granted, free of charge, to any person 
     obtaining a copy of this software and associated documentation 
@@ -21,6 +20,8 @@
     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
     DEALINGS IN THE SOFTWARE.
+
+    $Id$
 */
 
 /* Memory Map */
@@ -48,10 +49,11 @@
 #define RX_PW_P4    0x15
 #define RX_PW_P5    0x16
 #define FIFO_STATUS 0x17
-#define DYNPD	    0x1C
-#define FEATURE	    0x1D
+#define DYNPD       0x1C
 
 /* Bit Mnemonics */
+
+/* configuratio nregister */
 #define MASK_RX_DR  6
 #define MASK_TX_DS  5
 #define MASK_MAX_RT 4
@@ -59,69 +61,70 @@
 #define CRCO        2
 #define PWR_UP      1
 #define PRIM_RX     0
+
+/* enable auto acknowledgment */
 #define ENAA_P5     5
 #define ENAA_P4     4
 #define ENAA_P3     3
 #define ENAA_P2     2
 #define ENAA_P1     1
 #define ENAA_P0     0
+
+/* enable rx addresses */
 #define ERX_P5      5
 #define ERX_P4      4
 #define ERX_P3      3
 #define ERX_P2      2
 #define ERX_P1      1
 #define ERX_P0      0
-#define AW          0
-#define ARD         4
-#define ARC         0
+
+/* setup of address width */
+#define AW          0 /* 2 bits */
+
+/* setup of auto re-transmission */
+#define ARD         4 /* 4 bits */
+#define ARC         0 /* 4 bits */
+
+/* RF setup register */
 #define PLL_LOCK    4
 #define RF_DR       3
-#define RF_PWR      6
+#define RF_PWR      1 /* 2 bits */   
+
+/* general status register */
 #define RX_DR       6
 #define TX_DS       5
 #define MAX_RT      4
-#define RX_P_NO     1
+#define RX_P_NO     1 /* 3 bits */
 #define TX_FULL     0
-#define PLOS_CNT    4
-#define ARC_CNT     0
+
+/* transmit observe register */
+#define PLOS_CNT    4 /* 4 bits */
+#define ARC_CNT     0 /* 4 bits */
+
+/* fifo status */
 #define TX_REUSE    6
 #define FIFO_FULL   5
 #define TX_EMPTY    4
 #define RX_FULL     1
 #define RX_EMPTY    0
-#define DPL_P5	    5
-#define DPL_P4	    4
-#define DPL_P3	    3
-#define DPL_P2	    2
-#define DPL_P1	    1
-#define DPL_P0	    0
-#define EN_DPL	    2
-#define EN_ACK_PAY  1
-#define EN_DYN_ACK  0
+
+/* dynamic length */
+#define DPL_P0      0
+#define DPL_P1      1
+#define DPL_P2      2
+#define DPL_P3      3
+#define DPL_P4      4
+#define DPL_P5      5
 
 /* Instruction Mnemonics */
-#define R_REGISTER    0x00
-#define W_REGISTER    0x20
+#define R_REGISTER    0x00 /* last 4 bits will indicate reg. address */
+#define W_REGISTER    0x20 /* last 4 bits will indicate reg. address */
 #define REGISTER_MASK 0x1F
-#define ACTIVATE      0x50
-#define R_RX_PL_WID   0x60
 #define R_RX_PAYLOAD  0x61
 #define W_TX_PAYLOAD  0xA0
-#define W_ACK_PAYLOAD 0xA8
 #define FLUSH_TX      0xE1
 #define FLUSH_RX      0xE2
 #define REUSE_TX_PL   0xE3
+#define ACTIVATE      0x50 
+#define R_RX_PL_WID   0x60
 #define NOP           0xFF
-
-/* Non-P omissions */
-#define LNA_HCURR   0
-
-/* P model memory Map */
-#define RPD         0x09
-#define W_TX_PAYLOAD_NO_ACK  0xB0
-
-/* P model bit Mnemonics */
-#define RF_DR_LOW   5
-#define RF_DR_HIGH  3
-#define RF_PWR_LOW  1
-#define RF_PWR_HIGH 2
