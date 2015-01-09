@@ -203,3 +203,57 @@ DEFINE_L298N_CMD(l298n_rdown);
 DEFINE_L298N_CMD(l298n_rbrake);
 DEFINE_L298N_CMD(l298n_rspeedup);
 DEFINE_L298N_CMD(l298n_rspeeddown);
+
+static void set_speed(int speed, int intx, int inty, int enx)
+{
+	if (speed > 0) {
+		bcm2835_gpio_write(intx, HIGH);
+		bcm2835_gpio_write(inty, LOW);
+	} else if (speed < 0) {
+		bcm2835_gpio_write(intx, LOW);
+		bcm2835_gpio_write(inty, HIGH);
+	} else {
+		bcm2835_gpio_write(intx, LOW);
+		bcm2835_gpio_write(inty, LOW);
+	}
+	bcm2835_pwm_set_data(pwm_ios[enx].channel, speed > 0 ? speed : -speed);
+}
+
+void l298n_set(struct l298n_dev *dev, int left_speed, int right_speed)
+{
+    if (dev->left_speed != left_speed) {
+        dev->left_speed = min(left_speed, dev->range);
+        dev->left_speed = max(dev->left_speed, -dev->range);
+        set_speed(dev->left_speed, dev->in1, dev->in2, dev->ena);
+    }
+    if (dev->right_speed != right_speed) {
+        dev->right_speed = min(right_speed, dev->range);
+        dev->right_speed = max(dev->right_speed, -dev->range);
+        set_speed(dev->right_speed, dev->in3, dev->in4, dev->enb);
+    }
+}
+
+void l298n_get(struct l298n_dev *dev, int *left_speed, int *right_speed)
+{
+    if (left_speed)
+        *left_speed = dev->left_speed;
+    if (right_speed)
+        *right_speed = dev->right_speed;
+}
+
+void l298n_change(struct l298n_dev *dev, int left, int right)
+{
+    int new_speed;
+    if (left) {
+        new_speed = dev->left_speed + left;
+        new_speed = min(new_speed, dev->range);
+        dev->left_speed = max(new_speed, -dev->range);
+        set_speed(dev->left_speed, dev->in1, dev->in2, dev->ena);
+    }
+    if (right) {
+        new_speed = dev->right_speed + right;
+        new_speed = min(new_speed, dev->range);
+        dev->right_speed = max(new_speed, -dev->range);
+        set_speed(dev->right_speed, dev->in3, dev->in4, dev->enb);
+    }
+}

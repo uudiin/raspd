@@ -35,4 +35,8 @@ int l298n_rbrake(struct l298n_dev *dev);
 int l298n_rspeedup(struct l298n_dev *dev);
 int l298n_rspeeddown(struct l298n_dev *dev);
 
+void l298n_set(struct l298n_dev *dev, int left_speed, int right_speed);
+void l298n_get(struct l298n_dev *dev, int *left_speed, int *right_speed);
+void l298n_change(struct l298n_dev *dev, int left, int right);
+
 #endif /* __L298N_H__ */

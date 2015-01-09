@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -19,7 +20,9 @@
 #define NR_GPIOS    54
 #define SYSFS_GPIO_DIR  "/sys/class/gpio/"
 
-#define GPIO_BASE       (256 - 54)  /* 202 */
+#define DEFAULT_GPIO_BASE       (256 - 54)  /* 202 */
+static int GPIO_BASE = DEFAULT_GPIO_BASE;
+
 #define GPIO2EXPORT(x)  ((x) + GPIO_BASE)
 
 static char *edge_str[4] = {
@@ -210,12 +213,46 @@ int bcm2835_gpio_signal(unsigned int pin, enum trigger_edge edge,
     return err;
 }
 
+static int get_gpio_base(void)
+{
+    struct dirent *dirp;
+    DIR *dp;
+    int fd;
+    char basefile[256] = SYSFS_GPIO_DIR;
+    char base[32] = { 0 };
+
+    if ((dp = opendir(SYSFS_GPIO_DIR)) == NULL)
+        return -ENOENT;
+    while ((dirp = readdir(dp)) != NULL) {
+        if (strncmp(dirp->d_name, "gpiochip", 8) != 0)
+            continue;
+        break;
+    }
+
+    closedir(dp);
+    if (dirp == NULL)
+        return -ENFILE;
+
+    strcat(basefile, dirp->d_name);
+    strcat(basefile, "/base");
+    if ((fd = open(basefile, O_RDONLY)) >= 0) {
+        read(fd, base, sizeof(base) - 1);
+        GPIO_BASE = atoi(base);
+        close(fd);
+        return 0;
+    }
+
+    return -ENODEV;
+}
+
 void gpiolib_init(void)
 {
     fd_export = open(SYSFS_GPIO_DIR "export", O_WRONLY);
     fd_unexport = open(SYSFS_GPIO_DIR "unexport", O_WRONLY);
     if (fd_export == -1 || fd_unexport == -1)
         perror("open (un)export");
+    if (get_gpio_base() < 0)
+        perror("get_gpio_base()");
 }
 
 void gpiolib_exit(void)

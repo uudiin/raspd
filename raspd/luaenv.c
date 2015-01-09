@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <event2/event.h>
 
 #include <lua.h>
 #include <lualib.h>
@@ -48,6 +49,80 @@ static void stack_dump(lua_State *L, FILE *fp)
 }
 
 #endif
+
+struct timeout_env {
+    int timeout;    /* ms */
+    int count;
+    int counted;
+    struct event *ev;
+};
+
+static void cb_timeout_wrap(int fd, short what, void *arg)
+{
+    struct timeout_env *env = arg;
+
+    if (env->counted != -1 && env->counted++ >= env->count) {
+        eventfd_del(env->ev);
+        free(env);
+        return;
+    }
+
+    /* get lua handler */
+    lua_pushlightuserdata(_L, &_L);
+    lua_rawget(_L, LUA_REGISTRYINDEX);
+    lua_pushinteger(_L, env);
+    lua_gettable(_L, -2);
+
+    /* call lua handler */
+    if (lua_pcall(_L, 0, 1, 0) == 0) {
+        int retval = luaL_checkinteger(_L, -1);
+        if (retval < 0) {
+            eventfd_del(env->ev);
+            free(env);
+        }
+        lua_pop(_L, 1);
+    }
+}
+
+/* timeout, cb, count */
+static int lr_timeout(lua_State *L)
+{
+    struct timeout_env *env;
+    struct timeval tv;
+    int timeout = (int)luaL_checkinteger(L, 1);
+    int count = (int)luaL_optint(L, 3, 1); /* default once */
+    int err = -ENOMEM;
+
+    if (timeout <= 0)
+        return 0;
+    if (!lua_isfunction(L, 2) || lua_iscfunction(L, 2))
+        return 0;
+    env = malloc(sizeof(*env));
+    if (env) {
+        memset(env, 0, sizeof(*env));
+        env->timeout = timeout;
+        env->count = count;
+
+        /* set lua handler */
+        lua_pushlightuserdata(L, &_L);
+        lua_rawget(L, LUA_REGISTRYINDEX);
+        lua_pushinteger(L, (int)env);   /* key: env   TODO */
+        lua_pushvalue(L, 2);            /* value: callback */
+        lua_rawset(L, -3);
+        lua_pop(L, 1);
+
+        tv.tv_sec = timeout / 1000;
+        tv.tv_usec = (timeout % 1000) * 1000;
+        if ((err = register_timer(EV_PERSIST, &tv,
+                    cb_timeout_wrap, env, &env->ev)) < 0) {
+            free(env);
+        }
+
+        err = 0;
+    }
+    lua_pushinteger(err);
+    return 1;
+}
 
 /*
  * int blink(gpio, n (times), t (interval))
@@ -418,6 +493,34 @@ static int lr_l298n_rspeeddown(lua_State *L)
     return 0;
 }
 
+static int lr_l298n_set(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    int left_speed = (int)luaL_checkinteger(L, 2);
+    int right_speed = (int)luaL_checkinteger(L, 3);
+    l298n_set(*devp, left_speed, right_speed);
+    return 0;
+}
+
+static int lr_l298n_get(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    int left_speed = 0, right_speed = 0;
+    l298n_get(*devp, &left_speed, &right_speed);
+    lua_pushinteger(L, left_speed);
+    lua_pushinteger(L, right_speed);
+    return 2;
+}
+
+static int lr_l298n_change(lua_State *L)
+{
+    struct l298n_dev **devp = lua_touserdata(L, 1);
+    int left = (int)luaL_checkinteger(L, 2);
+    int right = (int)luaL_checkinteger(L, 3);
+    l298n_change(*devp, left, right);
+    return 0;
+}
+
 static int lr_ultrasonic_new(lua_State *L)
 {
     int pin_trig, pin_echo;
@@ -690,6 +793,7 @@ static int lr_tank_fire(lua_State *L)
 }
 
 static const luaL_Reg luaraspd_lib[] = {
+    { "timeout", lr_timeout },
     { "blink",   lr_blink   },
     { "pwm",     lr_pwm     },
     { "breath",  lr_breath  },
@@ -718,6 +822,9 @@ static const luaL_Reg luaraspd_lib[] = {
     { "l298n_rbrake", lr_l298n_rbrake },
     { "l298n_rspeedup", lr_l298n_rspeedup },
     { "l298n_rspeeddown", lr_l298n_rspeeddown },
+    { "l298n_set", lr_l298n_set },
+    { "l298n_get", lr_l298n_get },
+    { "l298n_change", lr_l298n_change },
 
     /* ultrasonic */
     { "ultrasonic_new",     lr_ultrasonic_new     },
