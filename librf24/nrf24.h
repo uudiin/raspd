@@ -22,7 +22,7 @@
 
 #include "RF24_config.h"
 #include <bcm2835.h>
-
+#include <stdbool.h>
 
 /**
  * Power Amplifier level.
@@ -45,195 +45,8 @@ typedef enum { RF24_1MBPS = 0, RF24_2MBPS, RF24_250KBPS } rf24_datarate_e;
  */
 typedef enum { RF24_CRC_DISABLED = 0, RF24_CRC_8, RF24_CRC_16 } rf24_crclength_e;
 
+
 /**
- * Driver for nRF24L01(+) 2.4GHz Wireless Transceiver
- */
-
-class RF24
-{
-public:
-  /**
-   * If a failure has been detected, it usually indicates a hardware issue. By default the library
-   * will cease operation when a failure is detected.  
-   * This should allow advanced users to detect and resolve intermittent hardware issues.  
-   *   
-   * In most cases, the radio must be re-enabled via radio.begin(); and the appropriate settings
-   * applied after a failure occurs, if wanting to re-enable the device immediately.
-   * 
-   * Usage: (Failure handling must be enabled per above)
-   *  @code
-   *  if(radio.failureDetected){ 
-   *    radio.begin(); 					     // Attempt to re-configure the radio with defaults
-   *    radio.failureDetected = 0;		     // Reset the detection value
-   *	radio.openWritingPipe(addresses[1]); // Re-configure pipe addresses
-    *   radio.openReadingPipe(1,addresses[0]);
-   *    report_failure();               	 // Blink leds, send a message, etc. to indicate failure
-   *  }
-   * @endcode
-   **/
-private:
-  uint8_t ce_pin; /**< "Chip Enable" pin, activates the RX or TX role */
-  uint8_t csn_pin; /**< SPI Chip select */
-  uint16_t spi_speed; /**< SPI Bus Speed */
-  bool wide_band; /* 2Mbs data rate in use? */
-  bool p_variant; /* False for RF24L01 and true for RF24L01P */
-  uint8_t payload_size; /**< Fixed size of payloads */
-
-  bool dynamic_payloads_enabled; /**< Whether dynamic payloads are enabled. */
-  uint8_t pipe0_reading_address[5]; /**< Last address set on pipe 0 for reading. */
-  uint8_t addr_width;
-
-  uint8_t debug ; /* Debug flag */
-  uint8_t spi_rxbuff[32+1] ; //SPI receive buffer (payload max 32 bytes)
-  uint8_t spi_txbuff[32+1] ; //SPI transmit buffer (payload max 32 bytes + 1 byte for the command)
-
-protected:
-  /**
-   * @name Low-level internal interface.
-   *
-   *  Protected methods that address the chip directly.  Regular users cannot
-   *  ever call these.  They are documented for completeness and for developers who
-   *  may want to extend this class.
-   */
-  /**@{*/
-
-
-  /**
-   * Read a chunk of data in from a register
-   *
-   * @param reg Which register. Use constants from nRF24L01.h
-   * @param buf Where to put the data
-   * @param len How many bytes of data to transfer
-   * @return Current value of status register
-   */
-  uint8_t read_register_buf(uint8_t reg, uint8_t *buf, uint8_t len);
-  
-  /**
-   * Read single byte from a register
-   *
-   * @param reg Which register. Use constants from nRF24L01.h
-   * @return Current value of register @p reg
-   */
-  uint8_t read_register(uint8_t reg);
-  
-  /**
-   * Write a chunk of data to a register
-   *
-   * @param reg Which register. Use constants from nRF24L01.h
-   * @param buf Where to get the data
-   * @param len How many bytes of data to transfer
-   * @return Current value of status register
-   */
-  uint8_t write_register_buf(uint8_t reg, const uint8_t *buf, uint8_t len);
-
-  /**
-   * Write a single byte to a register
-   *
-   * @param reg Which register. Use constants from nRF24L01.h
-   * @param value The new value to write
-   * @return Current value of status register
-   */
-  uint8_t write_register(uint8_t reg, uint8_t value);
-
-  /**
-   * Write the transmit payload
-   *
-   * The size of data written is the fixed payload size, see getPayloadSize()
-   *
-   * @param buf Where to get the data
-   * @param len Number of bytes to be sent
-   * @return Current value of status register
-   */
-  uint8_t write_payload(const void* buf, uint8_t len, const uint8_t writeType);
-
-  /**
-   * Read the receive payload
-   *
-   * The size of data read is the fixed payload size, see getPayloadSize()
-   *
-   * @param buf Where to put the data
-   * @param len Maximum number of bytes to read
-   * @return Current value of status register
-   */
-  uint8_t read_payload(void* buf, uint8_t len);
-
-  /**
-   * Empty the receive buffer
-   *
-   * @return Current value of status register
-   */
-  uint8_t flush_rx(void);
-
-  /**
-   * Retrieve the current status of the chip
-   *
-   * @return Current value of status register
-   */
-  uint8_t get_status(void);
-
-  /**
-   * Decode and print the given status to stdout
-   *
-   * @param status Status value to print
-   *
-   * @warning Does nothing if stdout is not defined.  See fdevopen in stdio.h
-   */
-  void print_status(uint8_t status);
-
-  /**
-   * Decode and print the given 'observe_tx' value to stdout
-   *
-   * @param value The observe_tx value to print
-   *
-   * @warning Does nothing if stdout is not defined.  See fdevopen in stdio.h
-   */
-  void print_observe_tx(uint8_t value);
-
-  /**
-   * Print the name and value of an 8-bit register to stdout
-   *
-   * Optionally it can print some quantity of successive
-   * registers on the same line.  This is useful for printing a group
-   * of related registers on one line.
-   *
-   * @param name Name of the register
-   * @param reg Which register. Use constants from nRF24L01.h
-   * @param qty How many successive registers to print
-   */
-  void print_byte_register(const char* name, uint8_t reg, uint8_t qty = 1);
-
-  /**
-   * Print the name and value of a 40-bit address register to stdout
-   *
-   * Optionally it can print some quantity of successive
-   * registers on the same line.  This is useful for printing a group
-   * of related registers on one line.
-   *
-   * @param name Name of the register
-   * @param reg Which register. Use constants from nRF24L01.h
-   * @param qty How many successive registers to print
-   */
-  void print_address_register(const char* name, uint8_t reg, uint8_t qty = 1);
-
-  /**
-   * Turn on or off the special features of the chip
-   *
-   * The chip has certain 'features' which are only available when the 'features'
-   * are enabled.  See the datasheet for details.
-   */
-  void toggle_features(void);
-  
-  /**@}*/
-
-public:
-  /**
-   * @name Primary public interface
-   *
-   *  These are the main methods you need to operate the chip
-   */
-  /**@{*/
-
-  /**
    * Constructor
    *
    * Creates a new instance of this driver.  Before using, you create an instance
@@ -242,7 +55,7 @@ public:
    * @param _cepin The pin attached to Chip Enable on the RF module
    * @param _cspin The pin attached to Chip Select
    */
-  RF24(uint8_t _cepin, uint8_t _cspin, uint32_t spispeed);
+  void RF24(uint8_t _cepin, uint8_t _cspin, uint32_t spispeed);
 
   /**
    * Begin operation of the chip
@@ -848,7 +661,7 @@ public:
    * @param[out] tx_fail The send failed, too many retries (MAX_RT)
    * @param[out] rx_ready There is a message waiting to be read (RX_DS)
    */
-  void rf24_whatHappened(bool& tx_ok,bool& tx_fail,bool& rx_ready);
+  void rf24_whatHappened(bool *tx_ok, bool *tx_fail,bool *rx_ready);
 
   /**
    * Test whether there was a carrier on the line for the
@@ -879,7 +692,7 @@ public:
    *
    * @return true if this is a legitimate radio
    */
-  bool rf24_isValid() { return ce_pin != 0xff && csn_pin != 0xff; }
+  bool rf24_isValid();
 
   /**
   * The radio will generate interrupt signals when a transmission is complete,
@@ -906,9 +719,6 @@ public:
   */
 
   void rf24_setAddressWidth(uint8_t a_width);
-
-  /**@}*/
-};
 
 /**
  * @example GettingStarted.pde

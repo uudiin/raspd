@@ -24,15 +24,13 @@ TMRh20 2014 - Updated to work with optimized RF24 Arduino library
 #include <string.h>
 #include <unistd.h>
 
-#include <RF24.h>
-using namespace std;
+#include <nrf24.h>
+
 //
 // Hardware configuration
 //
 
-// CE Pin, CSN Pin, SPI Speed
-// Setup for GPIO 22 CE and CE0 CSN with SPI Speed @ 8Mhz
-RF24 radio(23, 8, BCM2835_SPI_SPEED_8MHZ);
+
 
 
 // Radio pipe addresses for the 2 nodes to communicate.
@@ -52,13 +50,17 @@ int main(int argc, char **argv)
   // Print preamble:
   printf("RF24/examples/pingtest/\n");
 
+	// CE Pin, CSN Pin, SPI Speed
+// Setup for GPIO 22 CE and CE0 CSN with SPI Speed @ 8Mhz
+	RF24(23, 8, BCM2835_SPI_SPEED_8MHZ);
+
   // Setup and configure rf radio
-  radio.rf24_begin();
+  rf24_begin();
 
   // optionally, increase the delay between retries & # of retries
-  radio.rf24_setRetries(15,15);
+  rf24_setRetries(15,15);
   // Dump the configuration of the rf unit for debugging
-  radio.rf24_printDetails();
+  rf24_printDetails();
 
 
 /********* Role chooser ***********/
@@ -70,8 +72,8 @@ int main(int argc, char **argv)
   //getline(cin,input);
 
 	if(c == 0){
-		printf("Role: Pong Back, awaiting transmission ");
-	}else{  printf("Role: Ping Out, starting transmission ");
+		printf("Role: Pong Back, awaiting transmission \n\n");
+	}else{  printf("Role: Ping Out, starting transmission \n\n");
 		role = role_ping_out;
 	}
 
@@ -80,12 +82,12 @@ int main(int argc, char **argv)
   // back and forth.
 
     if ( role == role_ping_out )    {
-      radio.rf24_openWritingPipe(pipes[0]);
-      radio.rf24_openReadingPipe(1,pipes[1]);
+      rf24_openWritingPipe(pipes[0]);
+      rf24_openReadingPipe(1,pipes[1]);
     } else {
-      radio.rf24_openWritingPipe(pipes[1]);
-      radio.rf24_openReadingPipe(1,pipes[0]);
-      radio.rf24_startListening();
+      rf24_openWritingPipe(pipes[1]);
+      rf24_openReadingPipe(1,pipes[0]);
+      rf24_startListening();
 
     }
 	
@@ -95,27 +97,27 @@ int main(int argc, char **argv)
 		if (role == role_ping_out)
 		{
 			// First, stop listening so we can talk.
-			radio.rf24_stopListening();
+			rf24_stopListening();
 
 			// Take the time, and send it.  This will block until complete
 
 			printf("Now sending...\n");
 			unsigned long time = 8888;
 
-			bool ok = radio.rf24_write( &time, sizeof(unsigned long) );
+			bool ok = rf24_write( &time, sizeof(unsigned long) );
 
 			if (!ok){
 				printf("failed.\n");
 			}
 			// Now, continue listening
-			radio.rf24_startListening();
+			rf24_startListening();
 
-			while ( ! radio.rf24_available()) {
+			while ( ! rf24_available()) {
 			}
 
 		//		// Grab the response, compare, and send to debugging spew
 				unsigned long got_time;
-				radio.rf24_read( &got_time, sizeof(unsigned long) );
+				rf24_read( &got_time, sizeof(unsigned long) );
 
 				// Spew it
 				printf("Got response %lu\n",got_time);
@@ -137,22 +139,22 @@ int main(int argc, char **argv)
 			// if there is data ready
 			//printf("Check available...\n");
 
-			if ( radio.rf24_available() )
+			if ( rf24_available() )
 			{
 				// Dump the payloads until we've gotten everything
 				unsigned long got_time;
 
 
 				// Fetch the payload, and see if this was the last one.
-				radio.rf24_read( &got_time, sizeof(unsigned long) );
+				rf24_read( &got_time, sizeof(unsigned long) );
 				printf("Got response %lu\n",got_time);
 
-				radio.rf24_stopListening();
+				rf24_stopListening();
 				
-				radio.rf24_write( &got_time, sizeof(unsigned long) );
+				rf24_write( &got_time, sizeof(unsigned long) );
 
 				// Now, resume listening so we catch the next packets.
-				radio.rf24_startListening();
+				rf24_startListening();
 
 				// Spew it
 				printf("Got payload(%d) %lu...\n",sizeof(unsigned long), got_time);

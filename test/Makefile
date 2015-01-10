@@ -7,11 +7,9 @@ CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include -I../librf24 -Wall
 LIBS =
 
 
-PROGS = blink_act motor breath_led pwm l298n test_unix rt_ssh test_gpioint sw
+PROGS = blink_act motor breath_led pwm l298n test_unix rt_ssh test_gpioint sw rf24_test
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
-
-SRCS_rf24_test = rf24_test.cpp
 
 SRCS_test_gpioint += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_hcsr04 += ../raspd/event.c ../raspd/gpiolib.c
@@ -19,13 +17,12 @@ SRCS_sw += ../raspd/event.c
 
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
-$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a))
+$(foreach prog, $(PROGS), $(eval OBJS_$(prog) += ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a \
+	../librf24/librf24.a))
 
 .PHONY: all clean
 
-all: $(PROGS) rf24_test
-
-rf24_test: rf24_test.o ../librf24/librf24.a ../libbcm2835/libbcm2835.a
+all: $(PROGS)
 
 define PROG_template
 $(1): $$(OBJS_$(1))
