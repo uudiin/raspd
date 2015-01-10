@@ -126,7 +126,6 @@ static int listen_fork_loop(union sockaddr_u *addr)
     union sockaddr_u remoteaddr;
     socklen_t len;
     int fd, clifd;
-    int err;
 
     fd = do_listen(SOCK_STREAM, IPPROTO_TCP/* XXX 0 */, addr);
     if (fd < 0)
@@ -200,8 +199,6 @@ int stream_listen(unsigned short portno)
 int unixsock_listen(const char *unixsock)
 {
     union sockaddr_u addr;
-    socklen_t len;
-    int err;
 
     unlink(unixsock);
 

@@ -51,8 +51,10 @@ static int turret_left  = 0xFE408F0C;
 static int turret_right = 0xFE410F28;
 static int turret_elev  = 0xFE404F3C;
 static int fire         = 0xFE442F34;
+/*
 static int machine_gun  = 0xFE440F78;
 static int recoil       = 0xFE420F24;
+*/
 
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
@@ -136,7 +138,6 @@ static void cb_send_bit(int fd, short what, void *arg)
 /* Sends one individual code to the main tank controller */
 void send_code(struct tank_dev *dev, int code)
 {
-	struct code_env *env;
 	struct timeval tv = {0, 500};
 
 	/* Send header "bit" (not a valid Manchester code) */
@@ -176,7 +177,8 @@ struct tank_dev *tank_new(int pin)
         dev->qh.tqh_last = &dev->qh.tqh_first;
         dev->ev = evtimer_new(evbase, cb_send_bit, dev);
         if (dev->ev == NULL) {
-            return;
+            free(dev);
+            return NULL;
         }
 
         /* must use INP_GPIO before we can use OUT_GPIO */

@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
+
+#include "client.h"
+
 static int select = 0;
 
 static void l298n_up(void)
@@ -138,7 +141,7 @@ void speed_up(void)
 
 void speed_down(void)
 {
-	select ? tank_down() : l298n_down();
+	select ? tank_speed_down() : l298n_speed_down();
 }
 
 void turret_left(void)

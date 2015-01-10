@@ -12,6 +12,9 @@
 #include <sock.h>
 #include <utils.h>
 
+int listen_stream(unsigned short portno, const char *cmdexec);
+int connect_stream(const char *hostname, unsigned short portno);
+
 static int listen_mode;
 static int daemon_mode;
 static int udp;

@@ -43,6 +43,7 @@ static int luamisc_init(void)
             fprintf(stderr, "luaenv_run_fle(%s), err = %d\n", lua_file, err);
         luaenv_pop(1);
     }
+    return 0;
 }
 
 DEFINE_MODULE_INIT(luamisc);

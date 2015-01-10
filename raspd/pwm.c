@@ -176,7 +176,7 @@ int pwm_breath(int gpio, int count, int range,
                     range, init_data, step, interval);
 }
 
-static pwm_main(int wfd, int argc, char *argv[])
+static int pwm_main(int wfd, int argc, char *argv[])
 {
     static struct option options[] = {
         { "range", required_argument, NULL, 'r' },

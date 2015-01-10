@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <bcm2835.h>
 
@@ -90,7 +91,7 @@ void sendCode(int code)
 int main(int argc, char **argv)
 { 
 
-	int g,rep,i;
+	int i;
 	char inchar;
 
 	if (!bcm2835_init())
