@@ -105,7 +105,7 @@ typedef enum { RF24_CRC_DISABLED = 0, RF24_CRC_8, RF24_CRC_16 } rf24_crclength_e
    *
    * @return True if there is a payload available, false if none is
    */
-  int rf24_available(void);
+  bool rf24_available(void);
 
   /**
    * Read the payload
@@ -547,7 +547,7 @@ typedef enum { RF24_CRC_DISABLED = 0, RF24_CRC_8, RF24_CRC_16 } rf24_crclength_e
    * @param[out] pipe_num Which pipe has the payload available
    * @return True if there is a payload available, false if none is
    */
-  int rf24_available_pipe(uint8_t* pipe_num);
+  bool rf24_available_pipe(uint8_t* pipe_num);
 
 /**
    * Non-blocking write to the open writing pipe used for buffered writes

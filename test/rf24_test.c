@@ -1,16 +1,16 @@
 /*
- Copyright (C) 2011 J. Coliz <maniacbug@ymail.com>
+   Copyright (C) 2011 J. Coliz <maniacbug@ymail.com>
 
- This program is free software; you can redistribute it and/or
- modify it under the terms of the GNU General Public License
- version 2 as published by the Free Software Foundation.
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   version 2 as published by the Free Software Foundation.
 
- 03/17/2013 : Charles-Henri Hallard (http://hallard.me)
-              Modified to use with Arduipi board http://hallard.me/arduipi
-						  Changed to use modified bcm2835 and RF24 library
-TMRh20 2014 - Updated to work with optimized RF24 Arduino library
+   03/17/2013 : Charles-Henri Hallard (http://hallard.me)
+   Modified to use with Arduipi board http://hallard.me/arduipi
+   Changed to use modified bcm2835 and RF24 library
+   TMRh20 2014 - Updated to work with optimized RF24 Arduino library
 
- */
+*/
 
 /**
  * Example RF Radio Ping Pair
@@ -23,150 +23,110 @@ TMRh20 2014 - Updated to work with optimized RF24 Arduino library
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include <nrf24.h>
 
-//
-// Hardware configuration
-//
+#include "../raspd/event.h"
+#include "../raspd/gpiolib.h"
 
-
-
+static int irq_pin = 18;
+static unsigned long magic = 0;
 
 // Radio pipe addresses for the 2 nodes to communicate.
 const uint8_t pipes[][6] = {"1Node","2Node"};
 
+void tx_test(void)
+{
+    rf24_openWritingPipe(pipes[0]);
+
+    // forever loop
+    while (1) {
+        // Take the time, and send it.  This will block until complete
+
+        printf("Now sending...\n");
+        magic++;
+        bool ok = rf24_write(&magic, sizeof(unsigned long));
+        if (!ok){
+            printf("failed.\n");
+        }
+
+        sleep(1);
+
+    } // forever loop
+}
+
+static void gpio_interrupt(int fd, short what, void *arg)
+{
+    if (rf24_available()) {
+
+        // Fetch the payload, and see if this was the last one.
+        rf24_read(&magic, sizeof(unsigned long));
+        printf("Got response %lu\n", magic);
+    }
+}
+
+void rx_test(void)
+{
+    int err;
+
+    rf24_openReadingPipe(1, pipes[0]);
+    rf24_startListening();
+
+    gpiolib_init();
+
+    err = rasp_event_init();
+    assert(err >= 0);
+
+    err = bcm2835_gpio_signal(irq_pin, EDGE_falling, gpio_interrupt, (void *)irq_pin, NULL);
+    assert(err >= 0);
+
+    err = rasp_event_loop();
+    assert(err == 0);
+
+    rasp_event_exit();
+
+    gpiolib_exit();
+}
+
+
 int main(int argc, char **argv)
 {
-  bool role_ping_out = true, role_pong_back = false;
-  bool role = role_pong_back;
-  int c;
+    int c;
 
-  if (argc < 2)
-	  return 1;
+    if (argc < 2)
+        return 1;
 
-	c = atoi(argv[1]);
+    c = atoi(argv[1]);
 
-  // Print preamble:
-  printf("RF24/examples/pingtest/\n");
+    // Print preamble:
+    printf("RF24/examples/pingtest/\n");
 
-	// CE Pin, CSN Pin, SPI Speed
-// Setup for GPIO 22 CE and CE0 CSN with SPI Speed @ 8Mhz
-	RF24(23, 8, BCM2835_SPI_SPEED_8MHZ);
+    // CE Pin, CSN Pin, SPI Speed
+    // Setup for GPIO 22 CE and CE0 CSN with SPI Speed @ 8Mhz
+    RF24(23, 8, BCM2835_SPI_SPEED_8MHZ);
 
-  // Setup and configure rf radio
-  rf24_begin();
+    // Setup and configure rf radio
+    rf24_begin();
 
-  // optionally, increase the delay between retries & # of retries
-  rf24_setRetries(15,15);
-  // Dump the configuration of the rf unit for debugging
-  rf24_printDetails();
+    // optionally, increase the delay between retries & # of retries
+    rf24_setRetries(15, 15);
+    // Dump the configuration of the rf unit for debugging
+    rf24_printDetails();
 
 
-/********* Role chooser ***********/
+    /********* Role chooser ***********/
 
-  printf("\n ************ Role Setup ***********\n");
-  //string input = "";
-  //char myChar = {0};
-  //cout << "Choose a role: Enter 0 for pong_back, 1 for ping_out (CTRL+C to exit) \n>";
-  //getline(cin,input);
+    printf("\n ************ Role Setup ***********\n");
 
-	if(c == 0){
-		printf("Role: Pong Back, awaiting transmission \n\n");
-	}else{  printf("Role: Ping Out, starting transmission \n\n");
-		role = role_ping_out;
-	}
-
-/***********************************/
-  // This simple sketch opens two pipes for these two nodes to communicate
-  // back and forth.
-
-    if ( role == role_ping_out )    {
-      rf24_openWritingPipe(pipes[0]);
-      rf24_openReadingPipe(1,pipes[1]);
+    if (c == 0){
+        printf("Role: Pong Back, awaiting transmission \n\n");
+        rx_test();
     } else {
-      rf24_openWritingPipe(pipes[1]);
-      rf24_openReadingPipe(1,pipes[0]);
-      rf24_startListening();
-
+        printf("Role: Ping Out, starting transmission \n\n");
+        tx_test();
     }
-	
-	// forever loop
-	while (1)
-	{
-		if (role == role_ping_out)
-		{
-			// First, stop listening so we can talk.
-			rf24_stopListening();
 
-			// Take the time, and send it.  This will block until complete
-
-			printf("Now sending...\n");
-			unsigned long time = 8888;
-
-			bool ok = rf24_write( &time, sizeof(unsigned long) );
-
-			if (!ok){
-				printf("failed.\n");
-			}
-			// Now, continue listening
-			rf24_startListening();
-
-			while ( ! rf24_available()) {
-			}
-
-		//		// Grab the response, compare, and send to debugging spew
-				unsigned long got_time;
-				rf24_read( &got_time, sizeof(unsigned long) );
-
-				// Spew it
-				printf("Got response %lu\n",got_time);
-
-			// Try again 1s later
-			// delay(1000);
-
-			sleep(1);
-
-		}
-
-		//
-		// Pong back role.  Receive each packet, dump it out, and send it back
-		//
-
-		if ( role == role_pong_back )
-		{
-			
-			// if there is data ready
-			//printf("Check available...\n");
-
-			if ( rf24_available() )
-			{
-				// Dump the payloads until we've gotten everything
-				unsigned long got_time;
-
-
-				// Fetch the payload, and see if this was the last one.
-				rf24_read( &got_time, sizeof(unsigned long) );
-				printf("Got response %lu\n",got_time);
-
-				rf24_stopListening();
-				
-				rf24_write( &got_time, sizeof(unsigned long) );
-
-				// Now, resume listening so we catch the next packets.
-				rf24_startListening();
-
-				// Spew it
-				printf("Got payload(%d) %lu...\n",sizeof(unsigned long), got_time);
-				
-				delay(925); //Delay after payload responded to, minimize RPi CPU time
-				
-			}
-		
-		}
-
-	} // forever loop
-
-  return 0;
+    return 0;
 }
 
