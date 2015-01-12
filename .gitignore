@@ -52,3 +52,4 @@ test/test_gpioint
 test/hcsr04
 test/rf24_test
 test/rt_ssh
+test/esc_test

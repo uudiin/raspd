@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <getopt.h>
+#include <termios.h>
 #include <bcm2835.h>
 
 #define min(x, y) (((x) < (y)) ? (x) : (y))
@@ -86,11 +87,13 @@ int main(int argc, char *argv[])
     int min_keep_time = 900;   /* 900 us,  270 */
     int max_keep_time = 2100;  /* 2100 us, 630 */
     int period;
+    int range;
     int min_throttle;
     int max_throttle;
     int throttle;
     unsigned long channel = 0;
     int full_speed = 0;
+    char inchar;
 
     init_termios(0);
     if (!bcm2835_init())
@@ -162,7 +165,6 @@ int main(int argc, char *argv[])
         );
 
     do {
-        char inchar;
         int new_throttle = throttle;
 
         if (channel & 0b01)
@@ -186,7 +188,7 @@ int main(int argc, char *argv[])
             throttle = min(new_throttle, max_throttle);
             throttle = max(throttle, min_throttle);
             fprintf(stdout, "throttle = %d, keep_time = %d us\n",
-                    throttle, THROTTLE2US);
+                    throttle, THROTTLE2US(throttle));
         }
     } while (inchar != '.');
 
