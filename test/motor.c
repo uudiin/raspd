@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <bcm2835.h>
 
@@ -41,7 +43,6 @@ int main(int argc, char *argv[])
     uint32_t *pulse = pulse_eight;
     int pulse_nr = 8;
     unsigned int total_pulse = -1;
-    unsigned int n = 0;
     int i = 0;
 
     if (argc >= 2)

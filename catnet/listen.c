@@ -8,6 +8,7 @@
 
 #include <tree.h>
 #include <sock.h>
+#include <unix.h>
 #include <xmalloc.h>
 
 #include "catnet.h"
@@ -36,17 +37,6 @@ static struct fdinfo *client_fd_find(int fd)
     temp.fd = fd;
     ret = RB_FIND(fdroot, &tree_clients, &temp);
     return ret;
-}
-
-static int foreach_client(int (*fn)(struct fdinfo *info, void *opaque), void *opaque)
-{
-    struct fdinfo *info;
-    int retval = 0;
-    RB_FOREACH(info, fdroot, &tree_clients) {
-        if (fn(info, opaque) < 0)
-            retval = -1;
-    }
-    return retval;
 }
 
 static void client_add(int fd, union sockaddr_u *sockaddr, socklen_t ss_len)

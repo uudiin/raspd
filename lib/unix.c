@@ -5,10 +5,12 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <syslog.h>
+#include <ctype.h>
 
 #include "xmalloc.h"
 #include "unix.h"

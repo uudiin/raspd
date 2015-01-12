@@ -88,8 +88,6 @@ int client_connect(const char *hostname, unsigned short portno)
 {
 	union sockaddr_u addr;
 	size_t ss_len;
-	fd_set master_readfds;
-	int maxfd;
 	int err;
 
 	ss_len = sizeof(addr);

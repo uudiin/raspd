@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include <getopt.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <queue.h>
 #include <tree.h>

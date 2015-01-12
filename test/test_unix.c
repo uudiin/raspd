@@ -22,7 +22,6 @@ int main(int argc, char *argv[])
     union sockaddr_u addr;
     socklen_t len;
     char buffer[BUF_SIZE];
-    int err;
 
     while ((c = getopt_long(argc, argv, "u:", options, NULL)) != -1) {
         switch (c) {

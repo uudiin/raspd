@@ -249,7 +249,6 @@ static int ultrasonic_main(int fd, int argc, char *argv[])
         { 0, 0, 0, 0 }
     };
     int c;
-    int err;
 
     while ((c = getopt_long(argc, argv, "en:t:", options, NULL)) != -1) {
         switch (c) {

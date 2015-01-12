@@ -13,9 +13,11 @@
 #include <xmalloc.h>
 #include <unix.h>
 #include <bcm2835.h>
+#include <sock.h>
 
 #include "module.h"
 #include "gpiolib.h"
+#include "event.h"
 
 #define NR_GPIOS    54
 #define SYSFS_GPIO_DIR  "/sys/class/gpio/"
