@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
     int min_keep_time = 900;
     int max_keep_time = 2100;
     int full_speed = 0;
-    int err = -EFAULT;
+    int err;
 
     while ((c = getopt_long(argc, argv, "f:l:h:u", options, NULL)) != -1) {
         switch (c) {
@@ -157,10 +157,13 @@ int main(int argc, char *argv[])
     init_termios(0);
     if (!bcm2835_init())
         return 1;
+    if ((err = sched_realtime()) < 0)
+    	fprintf(stderr, "sched_realtime(), err = %d\n", err);
     rasp_event_init();
 
     interval = 1000 / hz;
 
+    err = -EFAULT;
     do {
         env = xmalloc(sizeof(*env));
         memset(env, 0, sizeof(*env));
