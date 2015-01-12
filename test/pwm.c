@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     static struct option options[] = {
         { "range", required_argument, NULL, 'r' },
         { "skew",  required_argument, NULL, 's' },
+        { "min",   required_argument, NULL, 'l' },
         { "max",   required_argument, NULL, 'm' },
         { "delay", required_argument, NULL, 'd' },
         { "clock", required_argument, NULL, 'c' },
@@ -49,9 +50,9 @@ int main(int argc, char *argv[])
         { 0, 0, 0, 0 }
     };
     int c;
-    int opt_index;
     uint32_t range = 1024;
     uint32_t skewing = 100;
+    unsigned int min = 0;
     unsigned int max = 1024;
     unsigned int delay = 10;
     uint32_t clock = BCM2835_PWM_CLOCK_DIVIDER_16;
@@ -67,11 +68,12 @@ int main(int argc, char *argv[])
         return 1;
     pwm_ios_map_init();
 
-    while ((c = getopt_long(argc, argv, "r:s:m:d:c:n:", options, &opt_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "r:s:l:m:d:c:n:", options, NULL)) != -1) {
         switch (c) {
         /* FIXME  use strtol */
         case 'r': range = atoi(optarg); break;
         case 's': skewing = atoi(optarg); break;
+        case 'l': min = atoi(optarg); break;
         case 'm': max = atoi(optarg); break;
         case 'd': delay = atoi(optarg); break;
         case 'c': clock = atoi(optarg); break;
@@ -79,6 +81,13 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (optind >= argc) {
+        fprintf(stderr, "must specify the pin\n");
+        return 1;
+    }
+
+    if (min < 0)
+        min = 0;
     if (max > range)
         max = range;
     /* check clock is equal 2^N */
@@ -110,7 +119,7 @@ int main(int argc, char *argv[])
     phase_diff = max * skewing / 100;
 
     direction0 = direction1 = 1;
-    data0 = data1 = 1;
+    data0 = data1 = min;
     if ((channel & 0b11) == 0b11) {
         data1 = data0 - phase_diff;
         if (data1 < 0) {
