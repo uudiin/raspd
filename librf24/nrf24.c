@@ -14,9 +14,18 @@
    TMRh20 2014: Updated to work with optimized RF24 and RF24 Network Arduino libs.
    */
 
-#include "RF24_config.h"
+#include <stdio.h>
+#include <string.h>
+
 #include "nrf24.h"
 #include "nRF24L01.h"
+
+// GCC a Arduino Missing
+#define max(a,b) (a>b?a:b)
+#define min(a,b) (a<b?a:b)
+#define _BV(x) (1<<(x))
+#define pgm_read_word(p) (*(p))
+#define pgm_read_byte(p) (*(p))
 
 /**
  * Read a chunk of data in from a register
@@ -618,7 +627,7 @@ bool rf24_begin(void)
     rf24_setChannel(76);
 
     // Flush buffers
-    //flush_rx();
+    flush_rx();
     rf24_flush_tx();
 
     rf24_powerUp();

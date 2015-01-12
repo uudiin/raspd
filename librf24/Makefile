@@ -2,7 +2,7 @@
 
 include ../rules.mak
 
-CFLAGS += -I ../libbcm2835
+CFLAGS += -I ../libbcm2835 -Wall
 
 LIBS = librf24.a
 
