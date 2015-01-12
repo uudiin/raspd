@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sched.h>
+#include <sys/mman.h>
 
 #include <event2/event.h>
 
@@ -72,4 +74,17 @@ void rasp_event_exit(void)
 {
     /* FIXME */
     event_base_free(evbase);
+}
+
+int sched_realtime(void)
+{
+	struct sched_param sp;
+	int err = 0;
+	memset(&sp, 0, sizeof(sp));
+	sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
+	if (sched_setscheduler(0, SCHED_FIFO, &sp) < 0)
+		err = -EPERM;
+	if (mlockall(MCL_CURRENT | MCL_FUTURE) < 0)
+		err = -EACCES;
+	return err;
 }

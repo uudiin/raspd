@@ -239,6 +239,10 @@ int main(int argc, char *argv[])
     if ((err = foreach_module(modexec_early_init, NULL)) < 0)
         return 1;
 
+    /* set realtime task */
+    if ((err = sched_realtime()) < 0)
+    	fprintf(stderr, "sched_realtime(), err = %d\n", err);
+
     /* initialize event base */
     if (rasp_event_init() < 0) {
         fprintf(stderr, "event_init(), err = %d\n", err);

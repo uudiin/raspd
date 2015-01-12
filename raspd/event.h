@@ -21,4 +21,6 @@ int rasp_event_loopexit(void);
 int rasp_event_init(void);
 void rasp_event_exit(void);
 
+int sched_realtime(void);
+
 #endif /* __EVENT_H__ */
