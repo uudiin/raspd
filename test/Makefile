@@ -7,7 +7,8 @@ CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include -I ../librf24
 LIBS =
 
 
-PROGS = blink_act motor breath_led pwm l298n test_unix rt_ssh test_gpioint sw rf24_test
+PROGS = blink_act motor breath_led pwm l298n test_unix \
+		rt_ssh test_gpioint sw rf24_test esc_test
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
