@@ -95,7 +95,6 @@ int main(int argc, char *argv[])
     int full_speed = 0;
     char inchar;
 
-    init_termios(0);
     if (!bcm2835_init())
         return 1;
     pwm_ios_map_init();
@@ -157,7 +156,7 @@ int main(int argc, char *argv[])
         "  pwm range: %d\n"
         "  throttle min: range = %d  (%d us)\n"
         "  throttle max: range = %d  (%d us)\n"
-        "  throttle first: %d  (%d us)\n",
+        "  throttle first: %d  (%d us)\n\n",
         hz, divider, range,
         min_throttle, THROTTLE2US(min_throttle),
         max_throttle, THROTTLE2US(max_throttle),
@@ -190,7 +189,7 @@ int main(int argc, char *argv[])
             fprintf(stdout, "throttle = %d, keep_time = %d us\n",
                     throttle, THROTTLE2US(throttle));
         }
-    } while (inchar != '.');
+    } while (inchar != 'q');
 
     if (channel & 0b01)
         bcm2835_pwm_set_data(0, 0);
@@ -198,7 +197,6 @@ int main(int argc, char *argv[])
         bcm2835_pwm_set_data(1, 0);
 
     bcm2835_close();
-    reset_termios();
 
     return 0;
 }
