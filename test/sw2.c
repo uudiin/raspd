@@ -68,8 +68,8 @@ static uint8_t *pin2gpio;
 // will use too much memory bandwidth.  10us is a good value, though you
 // might be ok setting it as low as 2us.
 
-#define CYCLE_TIME_US		20000
-#define SAMPLE_US		600
+#define CYCLE_TIME_US		10000
+#define SAMPLE_US		10
 #define NUM_SAMPLES		(CYCLE_TIME_US/SAMPLE_US)
 #define NUM_CBS			(NUM_SAMPLES*2)
 
@@ -477,7 +477,7 @@ init_hardware(void)
 		udelay(10);
 		clk_reg[PWMCLK_CNTL] = 0x5A000006;		// Source=PLLD (500MHz)
 		udelay(100);
-		clk_reg[PWMCLK_DIV] = 0x5A000000 | (64<<12);	// set pwm div to 64, giving 300kHz
+		clk_reg[PWMCLK_DIV] = 0x5A000000 | (50<<12);	// set pwm div to 50, giving 300kHz
 		udelay(100);
 		clk_reg[PWMCLK_CNTL] = 0x5A000016;		// Source=PLLD and enable
 		udelay(100);
@@ -600,11 +600,9 @@ int
 main(int argc, char *argv[])
 {
 	int i;
-    int throttle;
-    int min_throttle;
-    int max_throttle;
-    int min_keep_time = 900;   /* 900 us,  270 */
-    int max_keep_time = 2100;  /* 2100 us, 630 */
+    float throttle;
+    float min_throttle = 0.1;
+    float max_throttle = 1;
     char inchar;
 
 	channels = argc-1;
@@ -659,37 +657,33 @@ main(int argc, char *argv[])
 	init_hardware();
 	init_channel_pwm();
 
-    min_throttle = SAMPLE_US * 10 * min_keep_time / CYCLE_TIME_US;
-    max_throttle = SAMPLE_US * 10 * max_keep_time / CYCLE_TIME_US;
-
     throttle = min_throttle;
 
+	for (i = 0; i < NUM_CHANNELS; i++)
+		set_pwm(i, 1);
     do {
         int i;
-        int new_throttle = throttle;
+        float new_throttle = throttle;
 
 	    for (i = 0; i < NUM_CHANNELS; i++)
-			set_pwm(i, (throttle - min_throttle) / 360);
+			set_pwm(i, throttle);
 
         inchar = getch_(0);
         switch (inchar) {
-        case 'k': new_throttle += 1; break;
-        case 'j': new_throttle -= 1; break;
-        case 'l': new_throttle += 5; break;
-        case 'h': new_throttle -= 5; break;
-        case 'u': new_throttle += 50; break;
-        case 'd': new_throttle -= 50; break;
+        case 'k': new_throttle += 0.01; break;
+        case 'j': new_throttle -= 0.01; break;
+        case 'l': new_throttle += 0.05; break;
+        case 'h': new_throttle -= 0.05; break;
+        case '.': new_throttle += 0.10; break;
+        case ',': new_throttle -= 0.10; break;
         case 'a': new_throttle = min_throttle; break;
         case 'z': new_throttle = max_throttle; break;
         }
 
-#define THROTTLE2US(x) ((x) * CYCLE_TIME_US / (SAMPLE_US * 10))
-
         if (new_throttle != throttle) {
             throttle = min(new_throttle, max_throttle);
             throttle = max(throttle, min_throttle);
-            fprintf(stdout, "throttle = %d, keep_time = %d us\n",
-                    throttle, THROTTLE2US(throttle));
+            fprintf(stdout, "throttle = %f\n", throttle);
         }
     } while (inchar != 'q');
 
