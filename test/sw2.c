@@ -684,7 +684,7 @@ main(int argc, char *argv[])
             if (new_throttle[i] != throttle[i]) {
                 throttle[i] = min(new_throttle[i], max_throttle);
                 throttle[i] = max(throttle[i], min_throttle);
-                fprintf(stdout, "throttle = %f\n", throttle[i]);
+                fprintf(stdout, "[%d]throttle = %f\n", i, throttle[i]);
             }
         }
     } while (inchar != 'q');
