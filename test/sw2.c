@@ -600,9 +600,9 @@ int
 main(int argc, char *argv[])
 {
 	int i;
-    float throttle;
     float min_throttle = 0.1;
     float max_throttle = 1;
+    float throttle[4] = { min_throttle, min_throttle, min_throttle, min_throttle };
     char inchar;
 
 	channels = argc-1;
@@ -657,33 +657,35 @@ main(int argc, char *argv[])
 	init_hardware();
 	init_channel_pwm();
 
-    throttle = min_throttle;
-
 	for (i = 0; i < NUM_CHANNELS; i++)
 		set_pwm(i, 1);
     do {
         int i;
-        float new_throttle = throttle;
+        float new_throttle[4];
+
+        memcpy(new_throttle, throttle, 4 * sizeof(float));
 
 	    for (i = 0; i < NUM_CHANNELS; i++)
-			set_pwm(i, throttle);
+			set_pwm(i, throttle[i]);
 
         inchar = getch_(0);
         switch (inchar) {
-        case 'k': new_throttle += 0.01; break;
-        case 'j': new_throttle -= 0.01; break;
-        case 'l': new_throttle += 0.05; break;
-        case 'h': new_throttle -= 0.05; break;
-        case '.': new_throttle += 0.10; break;
-        case ',': new_throttle -= 0.10; break;
-        case 'a': new_throttle = min_throttle; break;
-        case 'z': new_throttle = max_throttle; break;
+        case 'a': new_throttle[0] += 0.01; break;
+        case 'z': new_throttle[0] -= 0.01; break;
+        case 's': new_throttle[1] += 0.01; break;
+        case 'x': new_throttle[1] -= 0.01; break;
+        case 'd': new_throttle[2] += 0.01; break;
+        case 'c': new_throttle[2] -= 0.01; break;
+        case 'f': new_throttle[3] += 0.01; break;
+        case 'v': new_throttle[3] -= 0.01; break;
         }
 
-        if (new_throttle != throttle) {
-            throttle = min(new_throttle, max_throttle);
-            throttle = max(throttle, min_throttle);
-            fprintf(stdout, "throttle = %f\n", throttle);
+	    for (i = 0; i < NUM_CHANNELS; i++) {
+            if (new_throttle[i] != throttle[i]) {
+                throttle[i] = min(new_throttle[i], max_throttle);
+                throttle[i] = max(throttle[i], min_throttle);
+                fprintf(stdout, "throttle = %f\n", throttle[i]);
+            }
         }
     } while (inchar != 'q');
 
