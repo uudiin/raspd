@@ -8,7 +8,7 @@ LIBS =
 
 
 PROGS = blink_act motor breath_led pwm l298n test_unix \
-		rt_ssh test_gpioint sw2 rf24_test esc_test
+		rt_ssh test_gpioint sw2 rf24_test esc_test test_file
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
