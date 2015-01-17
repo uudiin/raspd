@@ -106,6 +106,8 @@ int main(int argc, char *argv[])
         min_data, min_us, max_data, max_us);
 
     init_termios(0);
+    if (bcm2835_init() < 0)
+        return 1;
     if ((err = softpwm_init(cycle * 1000, step_us, 0)) < 0) {
         fprintf(stderr, "softpwm_init(), err = %d\n", err);
         return 1;
@@ -118,6 +120,8 @@ int main(int argc, char *argv[])
             pwm_data[i] = max_data;
         else
             pwm_data[i] = min_data;
+
+        softpwm_set(i, 1);
     }
 
     do {
@@ -139,6 +143,7 @@ int main(int argc, char *argv[])
     } while (inchar != '0');
 
     softpwm_exit();
+    bcm2835_close();
     reset_termios();
     return 0;
 }

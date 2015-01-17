@@ -254,6 +254,9 @@ int softpwm_set_data(int pin, int data)
             channel_mask &= ~(1 << pin);
     }
 
+    bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_write(pin, invert_mode ? HIGH : LOW);
+
     update_pwm();
     return 0;
 }
