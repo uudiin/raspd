@@ -1,11 +1,24 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 #include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include <bcm2835.h>
 
-/* lack in bcm2835.h */
-#define DMA_BASE    0x20007000
+#include "softpwm.h"
 
+#define PAGE_SIZE   4096
+#define PAGE_SHIFT  12
+
+/* kernel mapped address */
+#define DMA_BASE    0x20007000
+#define DMA_LEN     0x24
+
+/* bus address */
 #define PHYS_GPIO       0x7e200000
 #define PHYS_GPCLR0     (PHYS_GPIO + 0x28)
 #define PHYS_GPSET0     (PHYS_GPIO + 0x1c)
@@ -58,44 +71,47 @@ struct page_map {
 
 volatile static unsigned long *ioreg_clk;
 volatile static unsigned long *ioreg_pwm;
-volatile static unsigned long *ioreg_dma;
+volatile static unsigned long *ioreg_dma = MAP_FAILED;
 
-static unsigned char *virtbase;
-static unsigned long *sample;
+static unsigned char *virtbase = MAP_FAILED;
 static struct control_blk *cb;
-static int nr_pages;
+static unsigned long *sample;
 static struct page_map *pagemaps;
+
+static int invert_mode;
+static int cycle_time_us;  /* us */
+static int sample_time_us; /* us */
+
+static int nr_samples;
+//static int nr_channels;
+static int nr_pages;
 
 #define MAX_CHANNEl     32
 
+static unsigned long channel_all_mask;
 static unsigned long channel_mask;
-static int channel_data[MAX_CHANNEl];
-
-/* FIXME TODO */
-void softpwm_set_data(int pin, int data);
+static int channel_data[MAX_CHANNEl];   /* pin1 - pin32 */
 
 static unsigned long virt_to_phys(void *virt)
 {
     unsigned long offset = (unsigned char *)virt - virtbase;
-    return pagemaps[offset >> PAGE_SHIEFT].phys_addr + (offset % PAGE_SIZE);
+    return pagemaps[offset >> PAGE_SHIFT].phys_addr + (offset % PAGE_SIZE);
 }
 
-static int init_ctrl_data(void)
+static void init_ctrl_data(void)
 {
     struct control_blk *cbp;
     unsigned long phys_fifo_addr;
-    unsigned long mask;
     int i;
 
     cbp = cb;
-    phys_fifo_addr = (BCM2835_GPIO_PWM | 7e000000) + 0x18;
+    /* XXX  ??? */
+    phys_fifo_addr = (BCM2835_GPIO_PWM | 0x7e000000) + 0x18;
 
-    memset(sample, 0, nr_samples * sizeof(*sample));
+    memset(sample, 0, nr_samples * sizeof(unsigned long));
 
-    for (i = 0; i < nr_channels; i++)
-        mask |= 1 << channel[i];
     for (i = 0; i < nr_samples; i++)
-        sample[i] = mask;
+        sample[i] = channel_all_mask;
 
 	/*
      * Initialize all the DMA commands. They come in pairs.
@@ -119,7 +135,7 @@ static int init_ctrl_data(void)
         /* second DMA command */
         cbp->info = DMA_NO_WIDE_BURSTS | DMA_WAIT_RESP
                             | DMA_D_DREQ | DMA_PER_MAP(5/*PWM*/);
-        cbp->src = virt_to_phys(sample); /* FIXME */
+        cbp->src = virt_to_phys(sample);    /* XXX  ??? */
         cbp->dst = phys_fifo_addr;
         cbp->length = sizeof(unsigned long);
         cbp->stride = 0;
@@ -130,29 +146,26 @@ static int init_ctrl_data(void)
     cbp->next = virt_to_phys(cb); /* do loop */
 }
 
+#define reg_write(r, v) bcm2835_peri_write((volatile uint32_t *)(r), (v))
+
 static void init_hardware(void)
 {
     /* initialize PWM */
-    bcm2835_peri_write(ioreg_pwm + PWM_CTL, 0);
-    /*
-     * src = PLLD (500MHz)
-     * div = 50, giving 10MHz
-     * src = PLLD, enable
-     */
-    bcm2835_peri_write(ioreg_clk + PWMCLK_CNTL, 0x5a000006);
-    bcm2835_peri_write(ioreg_clk + PWMCLK_DIV, 0x5a000000 | (50 << 12));
-    bcm2835_peri_write(ioreg_clk + PWMCLK_CNTL, 0x5a000016);
-    bcm2835_peri_write(ioreg_pwm + PWM_RNG1, SAMPLE_US * 10); /* FIXME */
-    bcm2835_peri_write(ioreg_pwm + PWM_DMAC, PWMDMAC_ENAB | PWMDMAC_THRSHLD);
-    bcm2835_peri_write(ioreg_pwm + PWM_CTL, PWMCTL_CLRF);
-    bcm2835_peri_write(ioreg_pwm + PWM_CTL, PWMCTL_USEF1 | PWMCTL_PWEN1);
+    reg_write(ioreg_pwm + PWM_CTL, 0);
+    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000006);   /* src = PLLD (500MHz) */
+    reg_write(ioreg_clk + PWMCLK_DIV, 0x5a000000 | (50 << 12));  /* 10MHz */
+    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000016);   /* src = PLLD, enable */
+    reg_write(ioreg_pwm + PWM_RNG1, sample_time_us * 10);  /* XXX  ??? */
+    reg_write(ioreg_pwm + PWM_DMAC, PWMDMAC_ENAB | PWMDMAC_THRSHLD);
+    reg_write(ioreg_pwm + PWM_CTL, PWMCTL_CLRF);
+    reg_write(ioreg_pwm + PWM_CTL, PWMCTL_USEF1 | PWMCTL_PWEN1);
 
     /* initialize DMA */
-    bcm2835_peri_write(ioreg_dma + DMA_CS, DMA_RESET);
-    bcm2835_peri_write(ioreg_dma + DMA_CS, DMA_INT | DMA_END);
-    bcm2835_peri_write(ioreg_dma + DMA_CONBLK_AD, virt_to_phys(cb));
-    bcm2835_peri_write(ioreg_dma + DMA_DEBUG, 7);
-    bcm2835_peri_write(ioreg_dma + DMA_CS, 0x10880001); /* go */
+    reg_write(ioreg_dma + DMA_CS, DMA_RESET);
+    reg_write(ioreg_dma + DMA_CS, DMA_INT | DMA_END);
+    reg_write(ioreg_dma + DMA_CONBLK_AD, virt_to_phys(cb));
+    reg_write(ioreg_dma + DMA_DEBUG, 7);
+    reg_write(ioreg_dma + DMA_CS, 0x10880001); /* go */
 }
 
 /*
@@ -174,7 +187,7 @@ static void init_hardware(void)
  */
 static void update_pwm(void)
 {
-    unsigned long mask = 0;
+    unsigned long mask = channel_mask;
     int i, j;
 
 	/*
@@ -186,29 +199,63 @@ static void update_pwm(void)
     else
         cb[0].dst = PHYS_GPSET0;
 
-	/* Now create a mask of all the pins that should be on */
-    for (i = 0; i < nr_channels; i++) {
-        if (channels[i] > 0)
-            mask |= 1 << pin2gpio[i];
-    }
-
 	/* And give that to the DMA controller to write */
-    samples[0] = mask;
+    sample[0] = mask;
 
+    /* TODO  optimize this, 64000 loops */
 	/* Now we go through all the samples and turn the pins off when needed */
     for (j = 1; j < nr_samples; j++) {
+        /* TODO  omit it */
         if (invert_mode)
             cb[j * 2].dst = PHYS_GPSET0;
         else
             cb[j * 2].dst = PHYS_GPCLR0;
 
         mask = 0;
-        for (i = 0; i < nr_channels; i++) {
-            if ((float)j / nr_samples > channels[i])
-                mask |= 1 << pin2gpio[i];
+        for (i = 0; i < MAX_CHANNEl; i++) {
+            if (j > channel_data[i])
+                mask |= (1 << i);
         }
-        samples[j] = mask;
+
+        sample[j] = mask;
     }
+    /*
+     * TODO  use this, update_pwm(pin, data)
+
+    for (i = data; i < nr_samples; i++)
+        sample[i] |= (1 << pin);
+    */
+}
+
+/*
+ * data:
+ *   < 0 : delete pwm
+ *   = 0 : set 0 & clear enable mask
+ *   > 0 : set data
+ */
+int softpwm_set_data(int pin, int data)
+{
+    if (pin >= MAX_CHANNEl)
+        return -EINVAL;
+
+    if (data > nr_samples)
+        data = nr_samples;
+
+    if (data < 0) {
+        channel_all_mask &= ~(1 << pin);
+        channel_mask &= ~(1 << pin);
+        channel_data[pin] = 0;
+    } else {
+        channel_all_mask |= (1 << pin);
+        channel_data[pin] = data;
+        if (data > 0)
+            channel_mask |= (1 << pin);
+        else if (data == 0)
+            channel_mask &= ~(1 << pin);
+    }
+
+    update_pwm();
+    return 0;
 }
 
 /*
@@ -230,39 +277,51 @@ static int make_pagemap(void)
     char pagemap_file[128];
     pid_t pid;
     int fd, memfd;
+    unsigned int offset;
     int i;
+    int err = 0;
 
     pagemaps = malloc(nr_pages * sizeof(struct page_map));
     if (pagemaps == NULL)
         return -ENOMEM;
-
     if ((memfd = open("/dev/mem", O_RDWR)) < 0)
         return -EIO;
+
     pid = getpid();
-    snprintf(pagemap_file, "/proc/%d/pagemap", pid);
+    snprintf(pagemap_file, sizeof(pagemap_file), "/proc/%d/pagemap", pid);
+    err = -EPERM;
     if ((fd = open(pagemap_file, O_RDONLY)) < 0)
-        return -EPERM;
+        goto fail_open;
 
     /* (virt >> 12) * 8 */
-    if (lseek(fd,  virtbase >> 9, SEEK_SET) != (virtbase >> 9))
-        return -ERANGE;
+    offset = (unsigned int)virtbase >> 9;
+    err = -ERANGE;
+    if (lseek(fd, offset, SEEK_SET) != offset)
+        goto ret;
 
     for (i = 0; i < nr_pages; i++) {
         unsigned long long pfn;
-        pagemaps[i].virt_addr = virt_addr + i * PAGE_SIZE;
+        pagemaps[i].virt_addr = virtbase + i * PAGE_SIZE;
         /* following line forces page to be allocated */
         pagemaps[i].virt_addr[0] = 0;
 
+        err = -EFAULT;
         if (read(fd, &pfn, sizeof(pfn)) != sizeof(pfn))
-            return -EFAULT;
+            goto ret;
+        err = -ESRCH;
         if (((pfn >> 55) & 0x1bf) != 0x10c)
-            return -ESRCH;
+            goto ret;
 
         pagemaps[i].phys_addr = (unsigned long)pfn << PAGE_SHIFT | 0x40000000;
     }
+
+    err = 0;
+
+ret:
     close(fd);
+fail_open:
     close(memfd);
-    return 0;
+    return err;
 }
 
 static void *map_peripheral(unsigned long base, size_t len)
@@ -270,46 +329,93 @@ static void *map_peripheral(unsigned long base, size_t len)
     int fd;
     void *virt_addr;
     if ((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0)
-        return NULL;
+        return MAP_FAILED;
     virt_addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, base);
     close(fd);
     return virt_addr;
 }
 
-int softpwm_init(void)
+void softpwm_stop(void)
 {
+    int i;
+    if (ioreg_dma == MAP_FAILED || virtbase == MAP_FAILED)
+        return;
+
+    for (i = 0; i < MAX_CHANNEl; i++)
+        channel_data[i] = 0;
+    update_pwm();
+    reg_write(ioreg_dma + DMA_CS, DMA_RESET);
+}
+
+/*#endef reg_write*/
+
+void softpwm_exit(void)
+{
+    softpwm_stop();
+    if (ioreg_dma != MAP_FAILED)
+        munmap((void *)ioreg_dma, DMA_LEN);
+    if (virtbase != MAP_FAILED)
+        munmap(virtbase, nr_pages * PAGE_SIZE);
+    if (pagemaps)
+        free(pagemaps);
+}
+
+int softpwm_init(int cycle_time, int step_time, int invert)
+{
+    int size, i;
     int err;
 
+    /*
+     * 10 ms (100Hz), step = 5us
+     * range (0, 2000)
+     * (1ms, 2ms) : (200, 400)
+     */ 
+    cycle_time_us = cycle_time ?: 10000;
+    sample_time_us = step_time ?: 5;
+    invert_mode = invert;
+
+    nr_samples = cycle_time / step_time;
+
+    assert(sizeof(struct control_blk) == 32);
+    size = nr_samples * 2 * sizeof(struct control_blk)
+            + nr_samples * sizeof(unsigned long);
+    nr_pages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+
     /* get io reg mapped */
+    err = -ENOMEM;
     ioreg_dma = map_peripheral(DMA_BASE, DMA_LEN);
-    ioreg_clk = bcm2835_regbase(BCM2835_REGBASE_CLK);
-    ioreg_pwm = bcm2835_regbase(BCM2835_REGBASE_PWM);
+    ioreg_clk = (volatile unsigned long *)bcm2835_regbase(BCM2835_REGBASE_CLK);
+    ioreg_pwm = (volatile unsigned long *)bcm2835_regbase(BCM2835_REGBASE_PWM);
     if (ioreg_dma == MAP_FAILED
             || ioreg_clk == MAP_FAILED || ioreg_pwm == MAP_FAILED)
-        return -ENOMEM;
+        goto fail;
 
     /* alloc mem */
     virtbase = mmap(NULL, nr_pages * PAGE_SIZE, PROT_READ | PROT_WRITE,
-            MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_LOCKED, -1 0);
+            MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_LOCKED, -1, 0);
     err = -ENOMEM;
     if (virtbase == MAP_FAILED)
-        goto fail_maped;
+        goto fail;
     err = -EFAULT;
     if ((unsigned long)virtbase & (PAGE_SIZE - 1))
-        goto fail_maped;
+        goto fail;
 
-    make_pagemap();
+    cb = (struct control_blk *)virtbase;
+    /*sample = virtbase + nr_samples * 2 * sizeof(struct control_blk);*/
+    sample = (unsigned long *)(cb + nr_samples * 2);
+
+    if ((err = make_pagemap()) < 0)
+        goto fail;
+
+    for (i = 0; i < MAX_CHANNEl; i++)
+        channel_data[i] = 0;
 
     init_ctrl_data();
     init_hardware();
 
     return 0;
 
-fail_maped:
-    munmap(ioreg_dma, DMA_LEN);
+fail:
+    softpwm_exit();
     return err;
-}
-
-void softpwm_exit(void)
-{
 }
