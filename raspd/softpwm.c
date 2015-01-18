@@ -377,7 +377,7 @@ int softpwm_init(int cycle_time, int step_time, int invert)
     sample_time_us = step_time ?: 5;
     invert_mode = invert;
 
-    nr_samples = cycle_time / step_time;
+    nr_samples = cycle_time_us / sample_time_us;
 
     assert(sizeof(struct control_blk) == 32);
     size = nr_samples * 2 * sizeof(struct control_blk)

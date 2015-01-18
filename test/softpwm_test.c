@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
         else
             pwm_data[i] = min_data;
 
-        softpwm_set(i, 1);
+        //softpwm_set(i, 1);
     }
 
     do {
