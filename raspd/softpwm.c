@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -83,7 +84,6 @@ static int cycle_time_us;  /* us */
 static int sample_time_us; /* us */
 
 static int nr_samples;
-//static int nr_channels;
 static int nr_pages;
 
 #define MAX_CHANNEl     32
@@ -91,6 +91,12 @@ static int nr_pages;
 static unsigned long channel_all_mask;
 static unsigned long channel_mask;
 static int channel_data[MAX_CHANNEl];   /* pin1 - pin32 */
+
+static void udelay(int us)
+{
+    struct timespec ts = { 0, us * 1000 };
+    nanosleep(&ts, NULL);
+}
 
 static unsigned long virt_to_phys(void *virt)
 {
@@ -152,16 +158,25 @@ static void init_hardware(void)
 {
     /* initialize PWM */
     reg_write(ioreg_pwm + PWM_CTL, 0);
+    udelay(10);
     reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000006);   /* src = PLLD (500MHz) */
+    udelay(100);
     reg_write(ioreg_clk + PWMCLK_DIV, 0x5a000000 | (50 << 12));  /* 10MHz */
+    udelay(100);
     reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000016);   /* src = PLLD, enable */
+    udelay(100);
     reg_write(ioreg_pwm + PWM_RNG1, sample_time_us * 10);  /* XXX  ??? */
+    udelay(10);
     reg_write(ioreg_pwm + PWM_DMAC, PWMDMAC_ENAB | PWMDMAC_THRSHLD);
+    udelay(10);
     reg_write(ioreg_pwm + PWM_CTL, PWMCTL_CLRF);
+    udelay(10);
     reg_write(ioreg_pwm + PWM_CTL, PWMCTL_USEF1 | PWMCTL_PWEN1);
+    udelay(10);
 
     /* initialize DMA */
     reg_write(ioreg_dma + DMA_CS, DMA_RESET);
+    udelay(10);
     reg_write(ioreg_dma + DMA_CS, DMA_INT | DMA_END);
     reg_write(ioreg_dma + DMA_CONBLK_AD, virt_to_phys(cb));
     reg_write(ioreg_dma + DMA_DEBUG, 7);
@@ -213,6 +228,8 @@ static void update_pwm(void)
 
         mask = 0;
         for (i = 0; i < MAX_CHANNEl; i++) {
+            if (channel_data[i] <= 0)
+                continue;
             if (j > channel_data[i])
                 mask |= (1 << i);
         }
@@ -347,7 +364,9 @@ void softpwm_stop(void)
     for (i = 0; i < MAX_CHANNEl; i++)
         channel_data[i] = 0;
     update_pwm();
+    udelay(cycle_time_us);
     reg_write(ioreg_dma + DMA_CS, DMA_RESET);
+    udelay(10);
 }
 
 /*#endef reg_write*/
