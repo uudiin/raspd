@@ -63,7 +63,7 @@ struct control_blk {
     unsigned long stride;
     unsigned long next;
     unsigned long __pad[2];
-};
+} __attribute__ ((packed));
 
 struct page_map {
     unsigned char *virt_addr;
@@ -115,9 +115,11 @@ static void init_ctrl_data(void)
     phys_fifo_addr = (BCM2835_GPIO_PWM | 0x7e000000) + 0x18;
 
     memset(sample, 0, nr_samples * sizeof(unsigned long));
-
+/*
+ * FIXME
     for (i = 0; i < nr_samples; i++)
         sample[i] = channel_all_mask;
+*/
 
 	/*
      * Initialize all the DMA commands. They come in pairs.
