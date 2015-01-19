@@ -88,7 +88,6 @@ static int nr_pages;
 
 #define MAX_CHANNEl     32
 
-static unsigned long channel_all_mask;
 static unsigned long channel_mask;
 static int channel_data[MAX_CHANNEl];   /* pin1 - pin32 */
 
@@ -112,7 +111,7 @@ static void init_ctrl_data(void)
 
     cbp = cb;
     /* XXX  ??? */
-    phys_fifo_addr = (BCM2835_GPIO_PWM | 0x7e000000) + 0x18;
+    phys_fifo_addr = (BCM2835_GPIO_PWM | 0x7e000000) + (BCM2835_PWM_FIF1 * 4);
 
     memset(sample, 0, nr_samples * sizeof(unsigned long));
 /*
@@ -261,20 +260,15 @@ int softpwm_set_data(int pin, int data)
         data = nr_samples;
 
     if (data < 0) {
-        channel_all_mask &= ~(1 << pin);
         channel_mask &= ~(1 << pin);
         channel_data[pin] = 0;
     } else {
-        channel_all_mask |= (1 << pin);
         channel_data[pin] = data;
         if (data > 0)
             channel_mask |= (1 << pin);
         else if (data == 0)
             channel_mask &= ~(1 << pin);
     }
-
-    bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_write(pin, invert_mode ? HIGH : LOW);
 
     update_pwm();
     return 0;
@@ -312,11 +306,12 @@ static int make_pagemap(void)
     pid = getpid();
     snprintf(pagemap_file, sizeof(pagemap_file), "/proc/%d/pagemap", pid);
     err = -EPERM;
-    if ((fd = open(pagemap_file, O_RDONLY)) < 0)
+    fd = open(pagemap_file, O_RDONLY);
+    if (fd < 0)
         goto fail_open;
 
     /* (virt >> 12) * 8 */
-    offset = (unsigned int)virtbase >> 9;
+    offset = (unsigned int)(intptr_t)virtbase >> 9;
     err = -ERANGE;
     if (lseek(fd, offset, SEEK_SET) != offset)
         goto ret;

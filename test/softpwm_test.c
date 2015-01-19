@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <getopt.h>
 #include <termios.h>
@@ -115,6 +116,7 @@ int main(int argc, char *argv[])
 
     for (i = 0; optind < argc; i++, optind++) {
         pin[i] = atoi(argv[optind]);
+        bcm2835_gpio_fsel(pin[i], BCM2835_GPIO_FSEL_OUTP);
         nr_pin++;
         if (full)
             pwm_data[i] = max_data;
