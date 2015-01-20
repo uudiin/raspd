@@ -8,7 +8,7 @@ LIBS =
 
 PROGS = raspd
 
-SRCS_raspd = raspd.c module.c event.c luaenv.c \
+SRCS_raspd = raspd.c module.c event.c luaenv.c softpwm.c \
 	gpiolib.c gpio.c pwm.c l298n.c ultrasonic.c \
 	tankcontrol.c motor.c modmisc.c esc.c
 
