@@ -99,8 +99,10 @@ static void udelay(int us)
 
 static unsigned long virt_to_phys(void *virt)
 {
-    unsigned long offset = (unsigned char *)virt - virtbase;
-    return pagemaps[offset >> PAGE_SHIFT].phys_addr + (offset % PAGE_SIZE);
+    unsigned long offset = (unsigned char *)virt
+                                - virtbase;
+    return pagemaps[offset >> PAGE_SHIFT].phys_addr
+                    + (offset % PAGE_SIZE);
 }
 
 static void init_ctrl_data(void)
@@ -111,20 +113,25 @@ static void init_ctrl_data(void)
 
     cbp = cb;
     /* XXX  ??? */
-    phys_fifo_addr = (BCM2835_GPIO_PWM | 0x7e000000) + (BCM2835_PWM_FIF1 * 4);
+    phys_fifo_addr = (BCM2835_GPIO_PWM | 0x7e000000)
+            + (BCM2835_PWM_FIF1 * 4);
 
     memset(sample, 0, nr_samples * sizeof(unsigned long));
 /*
- * FIXME
+ * FIXME UNUSED CODE??
     for (i = 0; i < nr_samples; i++)
         sample[i] = channel_all_mask;
 */
 
 	/*
-     * Initialize all the DMA commands. They come in pairs.
-	 *  - 1st command copies a value from the sample memory to a destination 
-	 *    address which can be either the gpclr0 register or the gpset0 register
-	 *  - 2nd command waits for a trigger from an external source (PWM or PCM)
+     * Initialize all the DMA commands.
+     * They come in pairs.
+	 *  - 1st command copies a value from
+	 *    the sample memory to a destination 
+	 *    address which can be either the
+	 *    gpclr0 register or the gpset0 register
+	 *  - 2nd command waits for a trigger from 
+	 *    an external source (PWM or PCM)
 	 */
     for (i = 0; i < nr_samples; i++) {
         /* first DMA command */
@@ -141,7 +148,7 @@ static void init_ctrl_data(void)
 
         /* second DMA command */
         cbp->info = DMA_NO_WIDE_BURSTS | DMA_WAIT_RESP
-                            | DMA_D_DREQ | DMA_PER_MAP(5/*PWM*/);
+                    | DMA_D_DREQ | DMA_PER_MAP(5/*PWM*/);
         cbp->src = virt_to_phys(sample);    /* XXX  ??? */
         cbp->dst = phys_fifo_addr;
         cbp->length = sizeof(unsigned long);
@@ -160,26 +167,33 @@ static void init_hardware(void)
     /* initialize PWM */
     reg_write(ioreg_pwm + PWM_CTL, 0);
     udelay(10);
-    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000006);   /* src = PLLD (500MHz) */
+    /* src = PLLD (500MHz) */
+    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000006);
     udelay(100);
-    reg_write(ioreg_clk + PWMCLK_DIV, 0x5a000000 | (50 << 12));  /* 10MHz */
+    reg_write(ioreg_clk + PWMCLK_DIV,
+            0x5a000000 | (50 << 12));  /* 10MHz */
     udelay(100);
-    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000016);   /* src = PLLD, enable */
+    /* src = PLLD, enable */
+    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000016);
     udelay(100);
-    reg_write(ioreg_pwm + PWM_RNG1, sample_time_us * 10);  /* XXX  ??? */
+    reg_write(ioreg_pwm + PWM_RNG1,
+        sample_time_us * 10);  /* XXX  ??? */
     udelay(10);
-    reg_write(ioreg_pwm + PWM_DMAC, PWMDMAC_ENAB | PWMDMAC_THRSHLD);
+    reg_write(ioreg_pwm + PWM_DMAC,
+                PWMDMAC_ENAB | PWMDMAC_THRSHLD);
     udelay(10);
     reg_write(ioreg_pwm + PWM_CTL, PWMCTL_CLRF);
     udelay(10);
-    reg_write(ioreg_pwm + PWM_CTL, PWMCTL_USEF1 | PWMCTL_PWEN1);
+    reg_write(ioreg_pwm + PWM_CTL,
+            PWMCTL_USEF1 | PWMCTL_PWEN1);
     udelay(10);
 
     /* initialize DMA */
     reg_write(ioreg_dma + DMA_CS, DMA_RESET);
     udelay(10);
     reg_write(ioreg_dma + DMA_CS, DMA_INT | DMA_END);
-    reg_write(ioreg_dma + DMA_CONBLK_AD, virt_to_phys(cb));
+    reg_write(ioreg_dma + DMA_CONBLK_AD,
+                virt_to_phys(cb));
     reg_write(ioreg_dma + DMA_DEBUG, 7);
     reg_write(ioreg_dma + DMA_CS, 0x10880001); /* go */
 }
@@ -208,7 +222,8 @@ static void update_pwm(void)
 
 	/*
      * First we turn on the channels that need to be on
-     * Take the first DMA Packet and set it's target to start pulse
+     * Take the first DMA Packet and set it's target to
+     * start pulse
      */
     if (invert_mode)
         cb[0].dst = PHYS_GPCLR0;
@@ -219,7 +234,8 @@ static void update_pwm(void)
     sample[0] = mask;
 
     /* TODO  optimize this, 64000 loops */
-	/* Now we go through all the samples and turn the pins off when needed */
+	/* Now we go through all the samples 
+     * and turn the pins off when needed */
     for (j = 1; j < nr_samples; j++) {
         /* TODO  omit it */
         if (invert_mode)
@@ -229,7 +245,8 @@ static void update_pwm(void)
 
         mask = 0;
         for (i = 0; i < MAX_CHANNEl; i++) {
-            if (channel_data[i] <= 0)
+            /* XXX */
+            if (channel_data[i] < 0)
                 continue;
             if (j > channel_data[i])
                 mask |= (1 << i);
@@ -259,16 +276,11 @@ int softpwm_set_data(int pin, int data)
     if (data > nr_samples)
         data = nr_samples;
 
-    if (data < 0) {
+    channel_data[pin] = data;
+    if (data > 0)
+        channel_mask |= (1 << pin);
+    else if (data == 0)
         channel_mask &= ~(1 << pin);
-        channel_data[pin] = 0;
-    } else {
-        channel_data[pin] = data;
-        if (data > 0)
-            channel_mask |= (1 << pin);
-        else if (data == 0)
-            channel_mask &= ~(1 << pin);
-    }
 
     update_pwm();
     return 0;
@@ -304,7 +316,8 @@ static int make_pagemap(void)
         return -EIO;
 
     pid = getpid();
-    snprintf(pagemap_file, sizeof(pagemap_file), "/proc/%d/pagemap", pid);
+    snprintf(pagemap_file, sizeof(pagemap_file),
+            "/proc/%d/pagemap", pid);
     err = -EPERM;
     fd = open(pagemap_file, O_RDONLY);
     if (fd < 0)
@@ -329,7 +342,8 @@ static int make_pagemap(void)
         if (((pfn >> 55) & 0x1bf) != 0x10c)
             goto ret;
 
-        pagemaps[i].phys_addr = (unsigned long)pfn << PAGE_SHIFT | 0x40000000;
+        pagemaps[i].phys_addr = (unsigned long)pfn 
+                << PAGE_SHIFT | 0x40000000;
     }
 
     err = 0;
@@ -358,8 +372,10 @@ void softpwm_stop(void)
     if (ioreg_dma == MAP_FAILED || virtbase == MAP_FAILED)
         return;
 
-    for (i = 0; i < MAX_CHANNEl; i++)
-        channel_data[i] = 0;
+    for (i = 0; i < MAX_CHANNEl; i++) {
+        if (channel_data[i] > 0)
+            channel_data[i] = 0;
+    }
     update_pwm();
     udelay(cycle_time_us);
     reg_write(ioreg_dma + DMA_CS, DMA_RESET);
@@ -379,7 +395,8 @@ void softpwm_exit(void)
         free(pagemaps);
 }
 
-int softpwm_init(int cycle_time, int step_time, int invert)
+int softpwm_init(int cycle_time, int step_time,
+                int invert)
 {
     int size, i;
     int err;
@@ -403,15 +420,20 @@ int softpwm_init(int cycle_time, int step_time, int invert)
     /* get io reg mapped */
     err = -ENOMEM;
     ioreg_dma = map_peripheral(DMA_BASE, DMA_LEN);
-    ioreg_clk = (volatile unsigned long *)bcm2835_regbase(BCM2835_REGBASE_CLK);
-    ioreg_pwm = (volatile unsigned long *)bcm2835_regbase(BCM2835_REGBASE_PWM);
+    ioreg_clk = (volatile unsigned long *)
+            bcm2835_regbase(BCM2835_REGBASE_CLK);
+    ioreg_pwm = (volatile unsigned long *)
+            bcm2835_regbase(BCM2835_REGBASE_PWM);
     if (ioreg_dma == MAP_FAILED
-            || ioreg_clk == MAP_FAILED || ioreg_pwm == MAP_FAILED)
+            || ioreg_clk == MAP_FAILED
+            || ioreg_pwm == MAP_FAILED)
         goto fail;
 
     /* alloc mem */
-    virtbase = mmap(NULL, nr_pages * PAGE_SIZE, PROT_READ | PROT_WRITE,
-            MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_LOCKED, -1, 0);
+    virtbase = mmap(NULL, nr_pages * PAGE_SIZE, 
+                PROT_READ | PROT_WRITE,
+                MAP_SHARED | MAP_ANONYMOUS
+                | MAP_NORESERVE | MAP_LOCKED, -1, 0);
     err = -ENOMEM;
     if (virtbase == MAP_FAILED)
         goto fail;
@@ -420,14 +442,15 @@ int softpwm_init(int cycle_time, int step_time, int invert)
         goto fail;
 
     cb = (struct control_blk *)virtbase;
-    /*sample = virtbase + nr_samples * 2 * sizeof(struct control_blk);*/
-    sample = (unsigned long *)(cb + nr_samples * 2);
+    sample = (unsigned long *)(cb + (nr_samples * 2));
 
-    if ((err = make_pagemap()) < 0)
+    err = make_pagemap();
+    if (err < 0)
         goto fail;
 
+    /* XXX */
     for (i = 0; i < MAX_CHANNEl; i++)
-        channel_data[i] = 0;
+        channel_data[i] = -1;
 
     init_ctrl_data();
     init_hardware();

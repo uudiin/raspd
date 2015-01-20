@@ -590,7 +590,9 @@ main(int argc, char *argv[])
     int i;
     float min_throttle = 0.1;
     float max_throttle = 1;
-    float throttle[4] = { min_throttle, min_throttle, min_throttle, min_throttle };
+    float throttle[4] = {
+        min_throttle, min_throttle,
+        min_throttle, min_throttle };
     char inchar;
 
     channels = argc-1;
@@ -612,12 +614,18 @@ main(int argc, char *argv[])
 
     parseargs(argc, argv);
 
-    printf("Using hardware:                 %5s\n", delay_hw == DELAY_VIA_PWM ? "PWM" : "PCM");
-    printf("Number of channels:             %5d\n", NUM_CHANNELS);
-    printf("PWM frequency:               %5d Hz\n", 1000000/CYCLE_TIME_US);
-    printf("PWM steps:                      %5d\n", NUM_SAMPLES);
-    printf("Maximum period (100  %%):      %5dus\n", CYCLE_TIME_US);
-    printf("Minimum period (%1.3f%%):      %5dus\n", 100.0*SAMPLE_US / CYCLE_TIME_US, SAMPLE_US);
+    printf("Using hardware:                 %5s\n",
+        delay_hw == DELAY_VIA_PWM ? "PWM" : "PCM");
+    printf("Number of channels:             %5d\n",
+        NUM_CHANNELS);
+    printf("PWM frequency:               %5d Hz\n",
+        1000000/CYCLE_TIME_US);
+    printf("PWM steps:                      %5d\n",
+        NUM_SAMPLES);
+    printf("Maximum period (100  %%):      %5dus\n",
+        CYCLE_TIME_US);
+    printf("Minimum period (%1.3f%%):      %5dus\n",
+        100.0*SAMPLE_US / CYCLE_TIME_US, SAMPLE_US);
 
     setup_sighandlers();
 
