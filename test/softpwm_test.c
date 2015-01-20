@@ -148,8 +148,6 @@ int main(int argc, char *argv[])
             pwm_data[i] = max_data;
         else
             pwm_data[i] = min_data;
-
-        //softpwm_set(i, 1);
     }
 
     do {
@@ -167,6 +165,18 @@ int main(int argc, char *argv[])
         case 'r': softpwm_set(3, 0); break;
         case 'f': softpwm_set(3, 1); break;
         case 'v': softpwm_set(3, -1); break;
+        case '.':
+            softpwm_set(0, 1);
+            softpwm_set(1, 1);
+            softpwm_set(2, 1);
+            softpwm_set(3, 1);
+            break;
+        case ',':
+            softpwm_set(0, -1);
+            softpwm_set(1, -1);
+            softpwm_set(2, -1);
+            softpwm_set(3, -1);
+            break;
         }
     } while (inchar != '0');
 
