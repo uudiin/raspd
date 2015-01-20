@@ -160,42 +160,40 @@ static void init_ctrl_data(void)
     cbp->next = virt_to_phys(cb); /* do loop */
 }
 
-#define reg_write(r, v) bcm2835_peri_write((volatile uint32_t *)(r), (v))
-
 static void init_hardware(void)
 {
     /* initialize PWM */
-    reg_write(ioreg_pwm + PWM_CTL, 0);
+    ioreg_pwm[PWM_CTL] = 0;
     udelay(10);
     /* src = PLLD (500MHz) */
-    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000006);
+    ioreg_clk[PWMCLK_CNTL] = 0x5a000006;
     udelay(100);
-    reg_write(ioreg_clk + PWMCLK_DIV,
-            0x5a000000 | (50 << 12));  /* 10MHz */
+    ioreg_clk[PWMCLK_DIV] =
+            0x5a000000 | (50 << 12);  /* 10MHz */
     udelay(100);
     /* src = PLLD, enable */
-    reg_write(ioreg_clk + PWMCLK_CNTL, 0x5a000016);
+    ioreg_clk[PWMCLK_CNTL] = 0x5a000016;
     udelay(100);
-    reg_write(ioreg_pwm + PWM_RNG1,
-        sample_time_us * 10);  /* XXX  ??? */
+    ioreg_pwm[PWM_RNG1] =
+        sample_time_us * 10;  /* XXX  ??? */
     udelay(10);
-    reg_write(ioreg_pwm + PWM_DMAC,
-                PWMDMAC_ENAB | PWMDMAC_THRSHLD);
+    ioreg_pwm[PWM_DMAC] =
+                PWMDMAC_ENAB | PWMDMAC_THRSHLD;
     udelay(10);
-    reg_write(ioreg_pwm + PWM_CTL, PWMCTL_CLRF);
+    ioreg_pwm[PWM_CTL] = PWMCTL_CLRF;
     udelay(10);
-    reg_write(ioreg_pwm + PWM_CTL,
-            PWMCTL_USEF1 | PWMCTL_PWEN1);
+    ioreg_pwm[PWM_CTL] =
+            PWMCTL_USEF1 | PWMCTL_PWEN1;
     udelay(10);
 
     /* initialize DMA */
-    reg_write(ioreg_dma + DMA_CS, DMA_RESET);
+    ioreg_dma[DMA_CS] = DMA_RESET;
     udelay(10);
-    reg_write(ioreg_dma + DMA_CS, DMA_INT | DMA_END);
-    reg_write(ioreg_dma + DMA_CONBLK_AD,
-                virt_to_phys(cb));
-    reg_write(ioreg_dma + DMA_DEBUG, 7);
-    reg_write(ioreg_dma + DMA_CS, 0x10880001); /* go */
+    ioreg_dma[DMA_CS] = DMA_INT | DMA_END;
+    ioreg_dma[DMA_CONBLK_AD] =
+                virt_to_phys(cb);
+    ioreg_dma[DMA_DEBUG] = 7;
+    ioreg_dma[DMA_CS] = 0x10880001; /* go */
 }
 
 /*
@@ -378,11 +376,9 @@ void softpwm_stop(void)
     }
     update_pwm();
     udelay(cycle_time_us);
-    reg_write(ioreg_dma + DMA_CS, DMA_RESET);
+    ioreg_dma[DMA_CS] = DMA_RESET;
     udelay(10);
 }
-
-/*#endef reg_write*/
 
 void softpwm_exit(void)
 {
