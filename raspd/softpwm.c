@@ -12,6 +12,9 @@
 
 #include "softpwm.h"
 
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
+
 #define PAGE_SIZE   4096
 #define PAGE_SHIFT  12
 
@@ -79,7 +82,6 @@ static struct control_blk *cb;
 static unsigned long *sample;
 static struct page_map *pagemaps;
 
-static int invert_mode;
 static int cycle_time_us;  /* us */
 static int sample_time_us; /* us */
 
@@ -88,7 +90,6 @@ static int nr_pages;
 
 #define MAX_CHANNEl     32
 
-static unsigned long channel_all_mask;
 static unsigned long channel_mask;
 static int channel_data[MAX_CHANNEl];   /* pin1 - pin32 */
 
@@ -115,11 +116,6 @@ static void init_ctrl_data(void)
     phys_fifo_addr = (BCM2835_GPIO_PWM | 0x7e000000) + 0x18;
 
     memset(sample, 0, nr_samples * sizeof(unsigned long));
-/*
- * FIXME
-    for (i = 0; i < nr_samples; i++)
-        sample[i] = channel_all_mask;
-*/
 
 	/*
      * Initialize all the DMA commands. They come in pairs.
@@ -131,10 +127,7 @@ static void init_ctrl_data(void)
         /* first DMA command */
         cbp->info = DMA_NO_WIDE_BURSTS | DMA_WAIT_RESP;
         cbp->src = virt_to_phys(sample + i);
-        if (invert_mode)
-            cbp->dst = PHYS_GPSET0;
-        else
-            cbp->dst = PHYS_GPCLR0;
+        cbp->dst = PHYS_GPCLR0;
         cbp->length = sizeof(unsigned long);
         cbp->stride = 0;
         cbp->next = virt_to_phys(cbp + 1);
@@ -143,7 +136,7 @@ static void init_ctrl_data(void)
         /* second DMA command */
         cbp->info = DMA_NO_WIDE_BURSTS | DMA_WAIT_RESP
                             | DMA_D_DREQ | DMA_PER_MAP(5/*PWM*/);
-        cbp->src = virt_to_phys(sample);    /* XXX  ??? */
+        cbp->src = virt_to_phys(sample);    /* any data will do */
         cbp->dst = phys_fifo_addr;
         cbp->length = sizeof(unsigned long);
         cbp->stride = 0;
@@ -211,10 +204,7 @@ static void update_pwm(void)
      * First we turn on the channels that need to be on
      * Take the first DMA Packet and set it's target to start pulse
      */
-    if (invert_mode)
-        cb[0].dst = PHYS_GPCLR0;
-    else
-        cb[0].dst = PHYS_GPSET0;
+    cb[0].dst = PHYS_GPSET0;
 
 	/* And give that to the DMA controller to write */
     sample[0] = mask;
@@ -223,10 +213,7 @@ static void update_pwm(void)
 	/* Now we go through all the samples and turn the pins off when needed */
     for (j = 1; j < nr_samples; j++) {
         /* TODO  omit it */
-        if (invert_mode)
-            cb[j * 2].dst = PHYS_GPSET0;
-        else
-            cb[j * 2].dst = PHYS_GPCLR0;
+        cb[j * 2].dst = PHYS_GPCLR0;
 
         mask = 0;
         for (i = 0; i < MAX_CHANNEl; i++) {
@@ -254,6 +241,9 @@ static void update_pwm(void)
  */
 int softpwm_set_data(int pin, int data)
 {
+    unsigned long pinmask = (1 << pin);
+    int i;
+
     if (pin >= MAX_CHANNEl)
         return -EINVAL;
 
@@ -261,22 +251,31 @@ int softpwm_set_data(int pin, int data)
         data = nr_samples;
 
     if (data < 0) {
-        channel_all_mask &= ~(1 << pin);
-        channel_mask &= ~(1 << pin);
+        channel_mask &= ~pinmask;
         channel_data[pin] = 0;
     } else {
-        channel_all_mask |= (1 << pin);
         channel_data[pin] = data;
         if (data > 0)
-            channel_mask |= (1 << pin);
+            channel_mask |= pinmask;
         else if (data == 0)
-            channel_mask &= ~(1 << pin);
+            channel_mask &= ~pinmask;
     }
 
     bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_write(pin, invert_mode ? HIGH : LOW);
+    bcm2835_gpio_write(pin, LOW);
 
-    update_pwm();
+    /* do update */
+    if (channel_mask) {
+        cb[0].dst = PHYS_GPSET0;
+        sample[0] = channel_mask;
+
+        for (i = 1; i < data; i++)
+            sample[i] &= ~pinmask;
+        for (i = max(data, 1); i < nr_samples; i++)
+            sample[i] |= pinmask;
+    }
+
+    /*update_pwm();*/
     return 0;
 }
 
@@ -363,9 +362,10 @@ void softpwm_stop(void)
     if (ioreg_dma == MAP_FAILED || virtbase == MAP_FAILED)
         return;
 
-    for (i = 0; i < MAX_CHANNEl; i++)
-        channel_data[i] = 0;
-    update_pwm();
+    for (i = 0; i < MAX_CHANNEl; i++) {
+        if (channel_data[i])
+            softpwm_set_data(i, 0);
+    }
     udelay(cycle_time_us);
     reg_write(ioreg_dma + DMA_CS, DMA_RESET);
     udelay(10);
@@ -384,7 +384,7 @@ void softpwm_exit(void)
         free(pagemaps);
 }
 
-int softpwm_init(int cycle_time, int step_time, int invert)
+int softpwm_init(int cycle_time, int step_time)
 {
     int size, i;
     int err;
@@ -396,7 +396,6 @@ int softpwm_init(int cycle_time, int step_time, int invert)
      */ 
     cycle_time_us = cycle_time ?: 10000;
     sample_time_us = step_time ?: 5;
-    invert_mode = invert;
 
     nr_samples = cycle_time_us / sample_time_us;
 

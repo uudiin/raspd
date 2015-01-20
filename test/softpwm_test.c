@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <termios.h>
+#include <signal.h>
 
 #include <bcm2835.h>
 
@@ -30,6 +31,28 @@ static int min_data, max_data;
 static int pin[4];
 static int pwm_data[4];
 static int nr_pin;
+
+/* shutdown -- its super important to reset the DMA before quitting */
+static void terminate(int dummy)
+{
+    softpwm_exit();
+    bcm2835_close();
+    reset_termios();
+}
+
+/*
+ * Catch all signals possible - it is vital we kill the DMA engine
+ * on process exit!
+ */
+static void setup_sighandlers(void)
+{
+    struct sigaction sa;
+    int i;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = terminate;
+    for (i = 0; i < 64; i++)
+        sigaction(i, &sa, NULL);
+}
 
 static void softpwm_set(int index, int incr)
 {
@@ -104,6 +127,8 @@ int main(int argc, char *argv[])
         "\n",
         1000 / cycle, cycle * 1000 / step_us,
         min_data, min_us, max_data, max_us);
+
+    setup_sighandlers();
 
     init_termios(0);
     if (bcm2835_init() < 0)
