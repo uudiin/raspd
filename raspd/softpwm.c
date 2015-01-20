@@ -273,6 +273,10 @@ int softpwm_set_data(int pin, int data)
             sample[i] &= ~pinmask;
         for (i = max(data, 1); i < nr_samples; i++)
             sample[i] |= pinmask;
+    } else {
+        cb[0].dst = PHYS_GPCLR0;
+        sample[0] = channel_mask;
+        /* FIXME */
     }
 
     /*update_pwm();*/

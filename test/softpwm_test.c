@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <getopt.h>
 #include <termios.h>
@@ -133,7 +135,7 @@ int main(int argc, char *argv[])
     init_termios(0);
     if (bcm2835_init() < 0)
         return 1;
-    if ((err = softpwm_init(cycle * 1000, step_us, 0)) < 0) {
+    if ((err = softpwm_init(cycle * 1000, step_us)) < 0) {
         fprintf(stderr, "softpwm_init(), err = %d\n", err);
         return 1;
     }
