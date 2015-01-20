@@ -685,5 +685,7 @@ main(int argc, char *argv[])
         }
     } while (inchar != 'q');
 
+    terminate(0);
+
     return 0;
 }
