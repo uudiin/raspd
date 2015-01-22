@@ -1,31 +1,31 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
-#include <errno.h>
+#include "I2Cdev.h"
+#include "MPU6050.h"
 
-#include <bcm2835.h>
-#include <mpu6050.h>
+// class default I2C address is 0x68
+// specific I2C addresses may be passed as a parameter here
+// AD0 low = 0x68 (default for InvenSense evaluation board)
+// AD0 high = 0x69
+MPU6050 accelgyro;
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-void setup(void)
-{
+void setup() {
     // initialize device
     printf("Initializing I2C devices...\n");
-    mpu6050_initialize();
+    accelgyro.initialize();
 
     // verify connection
     printf("Testing device connections...\n");
-    printf(mpu6050_testConnection() ? "MPU6050 connection successful\n" : "MPU6050 connection failed\n");
+    printf(accelgyro.testConnection() ? "MPU6050 connection successful\n" : "MPU6050 connection failed\n");
 }
 
-void loop(void)
-{
+void loop() {
     // read raw accel/gyro measurements from device
-
-    printf("mpu6050_getMotion6\n");
-    mpu6050_getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
     // these methods (and a few others) are also available
     //accelgyro.getAcceleration(&ax, &ay, &az);
@@ -37,19 +37,8 @@ void loop(void)
 
 int main()
 {
-    if (!bcm2835_init())
-        return 1;
-    bcm2835_i2c_begin();
-
-    bcm2835_i2c_setSlaveAddress(MPU6050_DEFAULT_ADDRESS);
-    bcm2835_i2c_setClockDivider(BCM2835_I2C_CLOCK_DIVIDER_148);
-
     setup();
-    loop();
-
-    bcm2835_i2c_end();
-    bcm2835_close();
-
-    return 0;
+    for (;;)
+        loop();
 }
 

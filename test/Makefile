@@ -3,7 +3,7 @@
 include ../rules.mak
 
 CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wall
-CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include -I ../librf24
+CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include -I ../librf24 -I ../libmpu6050
 LIBS =
 
 
@@ -22,7 +22,8 @@ SRCS_softpwm_test += ../raspd/softpwm.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += \
-	../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a))
+	../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a \
+	../libmpu6050/libmpu6050.a))
 
 .PHONY: all clean
 
