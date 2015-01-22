@@ -7,7 +7,7 @@ CXX = $(CROSS_COMPILE)g++
 LD = $(CROSS_COMPILE)gcc
 AR = $(CROSS_COMPILE)ar
 MAKE = make
-CFLAGS = -g
+CFLAGS = -g -Wall
 LDFLAGS = -g
 
 DGFLAGS = -MMD -MP -MT $@ -MF $(*D)/$(*F).d
