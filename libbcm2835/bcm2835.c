@@ -956,7 +956,7 @@ uint8_t bcm2835_i2c_read_register_rs(char* regaddr, char* buf, uint32_t len)
 
 // Sending an arbitrary number of bytes before issuing a repeated start 
 // (with no prior stop) and reading a response. Some devices require this behavior.
-uint8_t bcm2835_i2c_write_read_rs(char* cmds, uint32_t cmds_len, char* buf, uint32_t buf_len)
+uint8_t bcm2835_i2c_write_register_rs(char* cmds, uint32_t cmds_len, char* buf, uint32_t buf_len)
 {   
 #ifdef I2C_V1
     volatile uint32_t* dlen    = bcm2835_bsc0 + BCM2835_BSC_DLEN/4;
