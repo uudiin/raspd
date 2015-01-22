@@ -1282,7 +1282,7 @@ extern "C" {
     /// \param[in] buf Buffer of bytes to receive.
     /// \param[in] buf_len Number of bytes to receive in the buf buffer.
 	/// \return reason see \ref bcm2835I2CReasonCodes
-    extern uint8_t bcm2835_i2c_write_register_rs(char* cmds, uint32_t cmds_len, char* buf, uint32_t buf_len);
+    extern uint8_t bcm2835_i2c_write_read_rs(char* cmds, uint32_t cmds_len, char* buf, uint32_t buf_len);
 
     /// @}
 

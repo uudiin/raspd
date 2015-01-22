@@ -164,10 +164,10 @@ unsigned char dev_addr = MPU6050_DEFAULT_ADDRESS;
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-#if 0
+#if 1
 static int set_reg_ptr(unsigned char regptr, size_t size)
 {
-    if (bcm2835_i2c_write(&regptr, 1) != 0)
+    if (bcm2835_i2c_write((const char *)&regptr, 1) != 0)
         return -ENOTTY;
     return 0;
 }
@@ -178,7 +178,7 @@ static int read_regs(unsigned char reg, unsigned char *buffer, size_t size)
 
     if ((err = set_reg_ptr(reg, size)) < 0)
         return err;
-    if (bcm2835_i2c_read(buffer, size) != 0)
+    if (bcm2835_i2c_read((char *)buffer, size) != 0)
         return -EXDEV;
     return 0;
 }
@@ -193,7 +193,7 @@ static unsigned char read_reg(unsigned char reg)
 static int write_reg(unsigned char reg, unsigned char v)
 {
     unsigned char buffer[2] = { reg, v };
-    if (bcm2835_i2c_write(buffer, 2) != 0)
+    if (bcm2835_i2c_write((const char *)buffer, 2) != 0)
         return -EXDEV;
     return 0;
 }
@@ -216,13 +216,13 @@ int i2c_writeBits(uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t dat
     // 10100011 original & ~mask
     // 10101011 masked | value
     uint8_t b;
-    if (bcm2835_i2c_read_register_rs((char *)regAddr, (char *)&b, sizeof(uint8_t)) == 0) {
+    if (read_regs(regAddr, &b, sizeof(uint8_t)) == 0) {
         uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
         data <<= (bitStart - length + 1); // shift data into correct position
         data &= mask; // zero all non-important bits in data
         b &= ~(mask); // zero all important bits in existing byte
         b |= data; // combine data with existing byte
-        return bcm2835_i2c_write_register_rs((char *)&regAddr, sizeof(regAddr), (char *)&b, sizeof(b));
+        return write_reg(regAddr, b);
     } else {
         return -1;
     }
@@ -237,9 +237,9 @@ int i2c_writeBits(uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t dat
  */
 int i2c_writeBit(uint8_t regAddr, uint8_t bitNum, uint8_t data) {
     uint8_t b;
-    bcm2835_i2c_read_register_rs((char *)regAddr, (char *)&b, sizeof(b));
+    b = read_reg(regAddr);
     b = (data != 0) ? (b | (1 << bitNum)) : (b & ~(1 << bitNum));
-    return bcm2835_i2c_write_register_rs((char *)&regAddr, sizeof(regAddr), (char *)&b, sizeof(b));
+    return write_reg(regAddr, b);
 }
 
 /** Read multiple bits from an 8-bit device register.
@@ -258,7 +258,7 @@ int i2c_readBits(uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t *dat
     //    010   masked
     //   -> 010 shifted
     uint8_t b;
-    if (bcm2835_i2c_read_register_rs((char *)regAddr, (char *)&b, sizeof(b)) == 0) {
+    if (read_regs(regAddr, &b, sizeof(b)) == 0) {
         uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
         b &= mask;
         b >>= (bitStart - length + 1);
@@ -365,9 +365,13 @@ int mpu6050_testConnection() {
 void mpu6050_initialize(void)
 {
     setClockSource(MPU6050_CLOCK_PLL_XGYRO);
+    printf("setClockSource\n");
     setFullScaleGyroRange(MPU6050_GYRO_FS_250);
+    printf("setFullScaleGyroRange\n");
     setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
+    printf("setFullScaleAccelRange\n");
     setSleepEnabled(0); // thanks to Jack Elston for pointing this one out!
+    printf("setSleepEnabled\n");
 }
 
 /** Get raw 6-axis motion sensor readings (accel/gyro).
@@ -384,7 +388,7 @@ void mpu6050_initialize(void)
  */
 void mpu6050_getMotion6(int16_t* ax, int16_t* ay, int16_t* az, int16_t* gx, int16_t* gy, int16_t* gz) {
     uint8_t buffer[15];
-    bcm2835_i2c_read_register_rs((char *)MPU6050_RA_ACCEL_XOUT_H, (char *)buffer, 14);
+    read_regs(MPU6050_RA_ACCEL_XOUT_H, buffer, 14);
     *ax = (((int16_t)buffer[0]) << 8) | buffer[1];
     *ay = (((int16_t)buffer[2]) << 8) | buffer[3];
     *az = (((int16_t)buffer[4]) << 8) | buffer[5];
@@ -405,6 +409,8 @@ void setup() {
 
 void loop() {
     // read raw accel/gyro measurements from device
+
+    printf("mpu6050_getMotion6\n");
     mpu6050_getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
     // these methods (and a few others) are also available

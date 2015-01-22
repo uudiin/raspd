@@ -54,3 +54,4 @@ test/rf24_test
 test/rt_ssh
 test/esc_test
 test/test_file
+test/mpu6050-test
