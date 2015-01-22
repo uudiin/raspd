@@ -40,6 +40,7 @@ static void terminate(int dummy)
     softpwm_exit();
     bcm2835_close();
     reset_termios();
+    exit(1);
 }
 
 /*
@@ -179,7 +180,7 @@ int main(int argc, char *argv[])
             break;
         }
     } while (inchar != '0');
-
+ 
     softpwm_exit();
     bcm2835_close();
     reset_termios();

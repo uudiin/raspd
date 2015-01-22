@@ -214,18 +214,10 @@ int softpwm_set_data(int pin, int data)
         data = nr_samples;
 
     channel_data[pin] = data;
-    if (data < 0) {
+    if (data <= 0)
         channel_mask &= ~pinmask;
-        channel_data[pin] = 0;
-    } else {
-        if (data > 0)
-            channel_mask |= pinmask;
-        else if (data == 0)
-            channel_mask &= ~pinmask;
-    }
-
-    bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_write(pin, LOW);
+    else
+        channel_mask |= pinmask;
 
     /* do update */
     if (channel_mask) {
