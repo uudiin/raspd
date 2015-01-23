@@ -4,14 +4,16 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
-#include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
+#include <signal.h>
+
+#include <bcm2835.h>
+#include <mpu6050.h>
+#include <mpu6050_6axis_motionapps20.h>
 
 // class default I2C address is 0x68
 // specific I2C addresses may be passed as a parameter here
 // AD0 low = 0x68 (default for SparkFun breakout and InvenSense evaluation board)
 // AD0 high = 0x69
-MPU6050 mpu;
 
 // uncomment "OUTPUT_READABLE_QUATERNION" if you want to see the actual
 // quaternion components in a [w, x, y, z] format (not best for parsing
@@ -57,17 +59,39 @@ uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
 // orientation/motion vars
-Quaternion q;           // [w, x, y, z]         quaternion container
-VectorInt16 aa;         // [x, y, z]            accel sensor measurements
-VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
-VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
-VectorFloat gravity;    // [x, y, z]            gravity vector
+struct Quaternion q;           // [w, x, y, z]         quaternion container
+struct VectorInt16 aa;         // [x, y, z]            accel sensor measurements
+struct VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
+struct VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
+struct VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\n' };
 
+static void terminate(int dummy)
+{
+    bcm2835_i2c_end();
+    bcm2835_close();
+
+    _exit(1);
+}
+
+static void setup_sighandlers(void)
+{
+    int i;
+
+    // Catch all signals possible - it is vital we kill the DMA engine
+    // on process exit!
+    for (i = 0; i < 64; i++) {
+        struct sigaction sa;
+
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = terminate;
+        sigaction(i, &sa, NULL);
+    }
+}
 
 // ================================================================
 // ===                      INITIAL SETUP                       ===
@@ -76,33 +100,33 @@ uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\
 void setup() {
     // initialize device
     printf("Initializing I2C devices...\n");
-    mpu.initialize();
+    mpu6050_initialize();
 
     // verify connection
     printf("Testing device connections...\n");
-    printf(mpu.testConnection() ? "MPU6050 connection successful\n" : "MPU6050 connection failed\n");
+    printf(mpu6050_testConnection() ? "MPU6050 connection successful\n" : "MPU6050 connection failed\n");
 
     // load and configure the DMP
     printf("Initializing DMP...\n");
-    devStatus = mpu.dmpInitialize();
+    devStatus = mpu6050_dmpInitialize();
     
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {
         // turn on the DMP, now that it's ready
         printf("Enabling DMP...\n");
-        mpu.setDMPEnabled(true);
+        mpu6050_setDMPEnabled(true);
 
         // enable Arduino interrupt detection
         //Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
         //attachInterrupt(0, dmpDataReady, RISING);
-        mpuIntStatus = mpu.getIntStatus();
+        mpuIntStatus = mpu6050_getIntStatus();
 
         // set our DMP Ready flag so the main loop() function knows it's okay to use it
         printf("DMP ready!\n");
         dmpReady = true;
 
         // get expected DMP packet size for later comparison
-        packetSize = mpu.dmpGetFIFOPacketSize();
+        packetSize = mpu6050_dmpGetFIFOPacketSize();
     } else {
         // ERROR!
         // 1 = initial memory load failed
@@ -121,55 +145,55 @@ void loop() {
     // if programming failed, don't try to do anything
     if (!dmpReady) return;
     // get current FIFO count
-    fifoCount = mpu.getFIFOCount();
+    fifoCount = mpu6050_getFIFOCount();
 
     if (fifoCount == 1024) {
         // reset so we can continue cleanly
-        mpu.resetFIFO();
+        mpu6050_resetFIFO();
         printf("FIFO overflow!\n");
 
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
     } else if (fifoCount >= 42) {
         // read a packet from FIFO
-        mpu.getFIFOBytes(fifoBuffer, packetSize);
+        mpu6050_getFIFOBytes(fifoBuffer, packetSize);
         
         #ifdef OUTPUT_READABLE_QUATERNION
             // display quaternion values in easy matrix form: w x y z
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
+            mpu6050_dmpGetQuaternion(&q, fifoBuffer);
             printf("quat %7.2f %7.2f %7.2f %7.2f    ", q.w,q.x,q.y,q.z);
         #endif
 
         #ifdef OUTPUT_READABLE_EULER
             // display Euler angles in degrees
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetEuler(euler, &q);
+            mpu6050_dmpGetQuaternion(&q, fifoBuffer);
+            mpu6050_dmpGetEuler(euler, &q);
             printf("euler %7.2f %7.2f %7.2f    ", euler[0] * 180/M_PI, euler[1] * 180/M_PI, euler[2] * 180/M_PI);
         #endif
 
         #ifdef OUTPUT_READABLE_YAWPITCHROLL
             // display Euler angles in degrees
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+            mpu6050_dmpGetQuaternion(&q, fifoBuffer);
+            mpu6050_dmpGetGravity(&gravity, &q);
+            mpu6050_dmpGetYawPitchRoll(ypr, &q, &gravity);
             printf("ypr  %7.2f %7.2f %7.2f    ", ypr[0] * 180/M_PI, ypr[1] * 180/M_PI, ypr[2] * 180/M_PI);
         #endif
 
         #ifdef OUTPUT_READABLE_REALACCEL
             // display real acceleration, adjusted to remove gravity
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetAccel(&aa, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+            mpu6050_dmpGetQuaternion(&q, fifoBuffer);
+            mpu6050_dmpGetAccel(&aa, fifoBuffer);
+            mpu6050_dmpGetGravity(&gravity, &q);
+            mpu6050_dmpGetLinearAccel(&aaReal, &aa, &gravity);
             printf("areal %6d %6d %6d    ", aaReal.x, aaReal.y, aaReal.z);
         #endif
 
         #ifdef OUTPUT_READABLE_WORLDACCEL
             // display initial world-frame acceleration, adjusted to remove gravity
             // and rotated based on known orientation from quaternion
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetAccel(&aa, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
+            mpu6050_dmpGetQuaternion(&q, fifoBuffer);
+            mpu6050_dmpGetAccel(&aa, fifoBuffer);
+            mpu6050_dmpGetGravity(&gravity, &q);
+            mpu6050_dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
             printf("aworld %6d %6d %6d    ", aaWorld.x, aaWorld.y, aaWorld.z);
         #endif
     
@@ -190,12 +214,26 @@ void loop() {
     }
 }
 
-int main() {
+int main()
+{
+
+    setup_sighandlers();
+    if (!bcm2835_init())
+        return 1;
+
+    bcm2835_i2c_begin();
+
+    bcm2835_i2c_setSlaveAddress(MPU6050_DEFAULT_ADDRESS);
+    bcm2835_i2c_setClockDivider(BCM2835_I2C_CLOCK_DIVIDER_148);
+
     setup();
     usleep(100000);
+
     for (;;)
         loop();
 
+    bcm2835_i2c_end();
+    bcm2835_close();
+
     return 0;
 }
-

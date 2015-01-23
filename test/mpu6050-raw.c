@@ -1,13 +1,38 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <bcm2835.h>
 #include <mpu6050.h>
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
+
+static void terminate(int dummy)
+{
+    bcm2835_i2c_end();
+    bcm2835_close();
+
+    _exit(1);
+}
+
+static void setup_sighandlers(void)
+{
+    int i;
+
+    // Catch all signals possible - it is vital we kill the DMA engine
+    // on process exit!
+    for (i = 0; i < 64; i++) {
+        struct sigaction sa;
+
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = terminate;
+        sigaction(i, &sa, NULL);
+    }
+}
 
 void setup(void)
 {
@@ -23,8 +48,6 @@ void setup(void)
 void loop(void)
 {
     // read raw accel/gyro measurements from device
-
-    printf("mpu6050_getMotion6\n");
     mpu6050_getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
     // these methods (and a few others) are also available
@@ -37,6 +60,8 @@ void loop(void)
 
 int main()
 {
+    setup_sighandlers();
+
     if (!bcm2835_init())
         return 1;
     bcm2835_i2c_begin();
@@ -45,11 +70,11 @@ int main()
     bcm2835_i2c_setClockDivider(BCM2835_I2C_CLOCK_DIVIDER_148);
 
     setup();
-    loop();
+    for (;;)
+        loop();
 
     bcm2835_i2c_end();
     bcm2835_close();
 
     return 0;
 }
-

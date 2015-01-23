@@ -4,16 +4,16 @@ include ../rules.mak
 
 CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wall
 CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include -I ../librf24 -I ../libmpu6050
-LIBS =
+LIBS = -lm
 
 
 PROGS = blink_act motor breath_led pwm l298n test_unix softpwm_test \
-		rt_ssh test_gpioint sw2 rf24_test esc_test test_file mpu6050-test
+		rt_ssh test_gpioint sw2 rf24_test esc_test test_file mpu6050-raw \
+		mpu6050-dmp
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
 SRCS_test_gpioint += ../raspd/event.c ../raspd/gpiolib.c
-SRCS_rf24_test += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_hcsr04 += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_sw += ../raspd/event.c
 SRCS_rf24_test += ../raspd/event.c ../raspd/gpiolib.c

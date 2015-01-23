@@ -3137,6 +3137,7 @@ uint8_t mpu6050_getDMPConfig2() {
     i2cdev_readByte(devAddr, MPU6050_RA_DMP_CFG_2, buffer);
     return buffer[0];
 }
+
 void mpu6050_setDMPConfig2(uint8_t config) {
     i2cdev_writeByte(devAddr, MPU6050_RA_DMP_CFG_2, config);
 }
