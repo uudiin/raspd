@@ -56,3 +56,4 @@ test/esc_test
 test/test_file
 test/mpu6050-raw
 test/mpu6050-dmp
+test/eMPL-test

@@ -3,13 +3,14 @@
 include ../rules.mak
 
 CFLAGS += -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wall
-CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include -I ../librf24 -I ../libmpu6050
+CFLAGS += -I ../lib -I ../libbcm2835 -I../libevent/include -I ../librf24 -I ../libmpu6050 \
+		-I ../libmpu/driver -I ../libmpu/driver/include -I ../libmpu/mllite -I ../libmpu/mpl -I ../libmpu/eMPL-hal
 LIBS = -lm
 
 
 PROGS = blink_act motor breath_led pwm l298n test_unix softpwm_test \
 		rt_ssh test_gpioint sw2 rf24_test esc_test test_file mpu6050-raw \
-		mpu6050-dmp
+		mpu6050-dmp eMPL-test
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
@@ -23,7 +24,7 @@ SRCS_softpwm_test += ../raspd/softpwm.c
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += \
 	../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a \
-	../libmpu6050/libmpu6050.a))
+	../libmpu6050/libmpu6050.a ../libmpu/libmpu.a))
 
 .PHONY: all clean
 
