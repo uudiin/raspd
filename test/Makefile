@@ -19,6 +19,7 @@ SRCS_hcsr04 += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_sw += ../raspd/event.c
 SRCS_rf24_test += ../raspd/event.c ../raspd/gpiolib.c
 SRCS_softpwm_test += ../raspd/softpwm.c
+SRCS_eMPL-test += ../raspd/event.c ../raspd/gpiolib.c
 
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
