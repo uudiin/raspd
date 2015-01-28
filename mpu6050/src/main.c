@@ -8,15 +8,8 @@
  */
  
 /* Includes ------------------------------------------------------------------*/
-#include "stm32l1xx.h"
-#include "stdio.h"
-#include "discover_board.h"
+#include <stdio.h>
 
-#include "uart.h"
-#include "i2c.h"
-#include "gpio.h"
-#include "main.h"
-    
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
 #include "invensense.h"
@@ -24,9 +17,20 @@
 #include "eMPL_outputs.h"
 #include "mltypes.h"
 #include "mpu.h"
-#include "log.h"
 #include "packet.h"
+
+#include <bcm2835.h>
+
 /* Private typedef -----------------------------------------------------------*/
+#define USART_ReceiveData(x)    fgetc(stdin)
+#define inv_enable_quaternion()         do {} while (0)
+#define inv_enable_9x_sensor_fusion()   do {} while (0)
+#define inv_enable_fast_nomot()         do {} while (0)
+#define inv_enable_gyro_tc()            do {} while (0)
+#undef MPL_LOGE
+#undef MPL_LOGI
+#define MPL_LOGE(...)   fprintf(stderr, __VA_ARGS__)
+#define MPL_LOGI(...)   fprintf(stdout, __VA_ARGS__)
 /* Data read from MPL. */
 #define PRINT_ACCEL     (0x01)
 #define PRINT_GYRO      (0x02)
@@ -38,7 +42,6 @@
 #define PRINT_PEDO      (0x80)
 #define PRINT_LINEAR_ACCEL (0x100)
 
-volatile uint32_t hal_timestamp = 0;
 #define ACCEL_ON        (0x01)
 #define GYRO_ON         (0x02)
 #define COMPASS_ON      (0x04)
@@ -125,18 +128,7 @@ static struct platform_data_s compass_pdata = {
 #endif
 
 
-/* Private define ------------------------------------------------------------*/
-
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-static volatile uint32_t TimingDelay;
-RCC_ClocksTypeDef RCC_Clocks;
-
 /* Private function prototypes -----------------------------------------------*/
-void  RCC_Configuration(void);
-void  Init_GPIOs (void);
-void Delay(uint32_t nTime);
-void platform_init(void);
 int stm32l_get_clock_ms(unsigned long *count);
 /* ---------------------------------------------------------------------------*/
 /* Get data from MPL.
@@ -694,11 +686,9 @@ void gyro_data_ready_cb(void)
   * @retval void None
   * @par Required preconditions: None
   */
-                                  
 int main(void)
-{ 
-  
-  inv_error_t result;
+{
+    inv_error_t result;
     unsigned char accel_fsr,  new_temp = 0;
     unsigned short gyro_rate, gyro_fsr;
     unsigned long timestamp;
@@ -708,12 +698,16 @@ int main(void)
     unsigned char new_compass = 0;
     unsigned short compass_fsr;
 #endif
-  platform_init();
+
+    if (!bcm2835_init())
+        return 1;
+    bcm2835_i2c_begin();
+    bcm2835_i2c_setClockDivider(148);
  
-  result = mpu_init(&int_param);
-  if (result) {
-      MPL_LOGE("Could not initialize gyro.\n");
-  }
+    result = mpu_init(&int_param);
+    if (result) {
+        MPL_LOGE("Could not initialize gyro.\n");
+    }
   
 
     /* If you're not using an MPU9150 AND you're not using DMP features, this
@@ -721,10 +715,10 @@ int main(void)
      * mpu_set_bypass(1);
      */
 
-  result = inv_init_mpl();
-  if (result) {
-      MPL_LOGE("Could not initialize MPL.\n");
-  }
+    result = inv_init_mpl();
+    if (result) {
+        MPL_LOGE("Could not initialize MPL.\n");
+    }
 
     /* Compute 6-axis and 9-axis quaternions. */
     inv_enable_quaternion();
@@ -772,15 +766,15 @@ int main(void)
     /* Allows use of the MPL APIs in read_from_mpl. */
     inv_enable_eMPL_outputs();
 
-  result = inv_start_mpl();
-  if (result == INV_ERROR_NOT_AUTHORIZED) {
-      while (1) {
-          MPL_LOGE("Not authorized.\n");
-      }
-  }
-  if (result) {
-      MPL_LOGE("Could not start the MPL.\n");
-  }
+    result = inv_start_mpl();
+    if (result == INV_ERROR_NOT_AUTHORIZED) {
+        while (1) {
+            MPL_LOGE("Not authorized.\n");
+        }
+    }
+    if (result) {
+        MPL_LOGE("Could not start the MPL.\n");
+    }
 
     /* Get/set hardware configuration. Start gyro. */
     /* Wake up all sensors. */
@@ -902,18 +896,18 @@ int main(void)
     mpu_set_dmp_state(1);
     hal.dmp_on = 1;
 
-  while(1){
+    while (1) {
     
-    unsigned long sensor_timestamp;
-    int new_data = 0;
-    if (USART_GetITStatus(USART1, USART_IT_RXNE)) {
-        /* A byte has been received via USART. See handle_input for a list of
-         * valid commands.
-         */
-        USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-        handle_input();
-    }
-    stm32l_get_clock_ms(&timestamp);
+        unsigned long sensor_timestamp;
+        int new_data = 0;
+        //if (USART_GetITStatus(USART1, USART_IT_RXNE)) {
+        //    /* A byte has been received via USART. See handle_input for a list of
+        //     * valid commands.
+        //     */
+        //    USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+            handle_input();
+        //}
+        stm32l_get_clock_ms(&timestamp);
 
 #ifdef COMPASS_ENABLED
         /* We're not using a data ready interrupt for the compass, so we'll
@@ -933,24 +927,24 @@ int main(void)
             new_temp = 1;
         }
 
-    if (hal.motion_int_mode) {
-        /* Enable motion interrupt. */
-        mpu_lp_motion_interrupt(500, 1, 5);
-        /* Notify the MPL that contiguity was broken. */
-        inv_accel_was_turned_off();
-        inv_gyro_was_turned_off();
-        inv_compass_was_turned_off();
-        inv_quaternion_sensor_was_turned_off();
-        /* Wait for the MPU interrupt. */
-        while (!hal.new_gyro) {}
-        /* Restore the previous sensor configuration. */
-        mpu_lp_motion_interrupt(0, 0, 0);
-        hal.motion_int_mode = 0;
-    }
+        if (hal.motion_int_mode) {
+            /* Enable motion interrupt. */
+            mpu_lp_motion_interrupt(500, 1, 5);
+            /* Notify the MPL that contiguity was broken. */
+            inv_accel_was_turned_off();
+            inv_gyro_was_turned_off();
+            inv_compass_was_turned_off();
+            inv_quaternion_sensor_was_turned_off();
+            /* Wait for the MPU interrupt. */
+            while (!hal.new_gyro) {}
+            /* Restore the previous sensor configuration. */
+            mpu_lp_motion_interrupt(0, 0, 0);
+            hal.motion_int_mode = 0;
+        }
 
-    if (!hal.sensors || !hal.new_gyro) {
-        continue;
-    }    
+        if (!hal.sensors || !hal.new_gyro) {
+            continue;
+        }
 
         if (hal.new_gyro && hal.lp_accel_mode) {
             short accel_short[3];
@@ -1072,169 +1066,20 @@ int main(void)
             read_from_mpl();
         }
     }
+
+    bcm2835_i2c_end();
+    bcm2835_close();
 }
 
 /*---------------------------------------------------------------------------*/
 
-/**
- * Configure the hardware of the Discovery board to link with the MPU
- */
-void platform_init(void)
-{
-   /*!< At this stage the microcontroller clock setting is already configured, 
-       this is done through SystemInit() function which is called from startup
-       file (startup_stm32l1xx_md.s) before to branch to application main.
-       To reconfigure the default setting of SystemInit() function, refer to
-       system_stm32l1xx.c file
-     */ 
-
-  /* Configure Clocks for Application need */
-  RCC_Configuration();
-
-  /* Set internal voltage regulator to 1.8V */
-  PWR_VoltageScalingConfig(PWR_VoltageScaling_Range1);
-
-  /* Wait Until the Voltage Regulator is ready */
-  while (PWR_GetFlagStatus(PWR_FLAG_VOS) != RESET) ;
-  
-  /* Configure SysTick IRQ and SysTick Timer to generate interrupts every 1ms */
-  RCC_GetClocksFreq(&RCC_Clocks);
-  SysTick_Config(RCC_Clocks.HCLK_Frequency / 2000); 
-
-  /* Init I/O ports */
-  Init_GPIOs();  //Initialize the I2C, UART, Intterupts, and the Green and Blue LEDs
-}
-		
-
-/**
-  * @brief  Configures the different system clocks.
-  * @param  None
-  * @retval None
-  */
-void RCC_Configuration(void)
-{  
-  
-  /* Enable HSI Clock */
-  RCC_HSICmd(ENABLE);
-  
-  /*!< Wait till HSI is ready */
-  while (RCC_GetFlagStatus(RCC_FLAG_HSIRDY) == RESET)
-  {}
-
-  RCC_SYSCLKConfig(RCC_SYSCLKSource_HSI);
-  
-  RCC_MSIRangeConfig(RCC_MSIRange_6);
-
-  RCC_HSEConfig(RCC_HSE_OFF);  
-  if(RCC_GetFlagStatus(RCC_FLAG_HSERDY) != RESET )
-  {
-    while(1);
-  }
- 
-  /* Enable  comparator clock LCD and PWR mngt */
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_LCD | RCC_APB1Periph_PWR, ENABLE);
-    
-  /* Enable ADC clock & SYSCFG */
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_SYSCFG, ENABLE);
-
-}
-
-
-void  Init_GPIOs (void)
-{
-  //GPIO_InitTypeDef GPIO_InitStructure;
-  
-    /* Enable GPIOs clock */ 	
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB | 
-                        RCC_AHBPeriph_GPIOC | RCC_AHBPeriph_GPIOD | 
-                        RCC_AHBPeriph_GPIOE | RCC_AHBPeriph_GPIOH, ENABLE);
-  
-  
-  //Configure I2C
-  I2C_Config();
-  
-  //Configure Interrupts
-  GPIO_Config();
-  
-  //Configure UART
-  USART_Config();
-  
-/* Configure the GPIO_LED pins  LD3 & LD4*/
-  /*GPIO_InitStructure.GPIO_Pin = LD_GREEN_GPIO_PIN | LD_BLUE_GPIO_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_Init(LD_GPIO_PORT, &GPIO_InitStructure);
-  GPIO_LOW(LD_GPIO_PORT, LD_GREEN_GPIO_PIN);	
-  GPIO_LOW(LD_GPIO_PORT, LD_BLUE_GPIO_PIN);*/
-
-}  
-
-
-/**
-  * @brief  Inserts a delay time.
-  * @param  nTime: specifies the delay time length, in 10 ms.
-  * @retval None
-  */
-void Delay(uint32_t nTime)
-{
-  TimingDelay = nTime;
-
-  while(TimingDelay != 0);
-  
-}
-
-/**
-  * @brief  Decrements the TimingDelay variable.
-  * @param  None
-  * @retval None
-  */
-void TimingDelay_Decrement(void)
-{
-
-  if (TimingDelay != 0x00)
-  { 
-    TimingDelay--;
-  }
-
-}
-
-void TimeStamp_Increment(void)
-{
-  hal_timestamp++;
-}
 
 int stm32l_get_clock_ms(unsigned long *count)
 {
     if (!count)
         return 1;
-    count[0] = hal_timestamp;
+    count[0] = clock();
     return 0;
 }
-
-#ifdef  USE_FULL_ASSERT
-
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t* file, uint32_t line)
-{ 
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-
-  /* Infinite loop */
-  while (1)
-  {
-    
-    
-  }
-}
-
-#endif
 
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/

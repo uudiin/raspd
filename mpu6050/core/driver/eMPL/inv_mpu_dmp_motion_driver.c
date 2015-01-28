@@ -70,6 +70,8 @@
 #define log_i       MPL_LOGI
 #define log_e       MPL_LOGE
 
+#elif defined EMPL_TARGET_BCM2835
+#include "platform_bcm2835.c"
 #else
 #error  Gyro driver is missing the system layer implementations.
 #endif

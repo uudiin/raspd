@@ -114,6 +114,8 @@ static inline int reg_int_cb(struct int_param_s *int_param)
 /* UC3 is a 32-bit processor, so abs and labs are equivalent. */
 #define labs        abs
 #define fabs(x)     (((x)>0)?(x):-(x))
+#elif defined EMPL_TARGET_BCM2835
+#include "platform_bcm2835.c"
 #else
 #error  Gyro driver is missing the system layer implementations.
 #endif
@@ -770,7 +772,7 @@ int mpu_init(struct int_param_s *int_param)
     if (mpu_configure_fifo(0))
         return -1;
 
-#ifndef EMPL_TARGET_STM32L    
+#ifndef EMPL_TARGET_STM32L
     if (int_param)
         reg_int_cb(int_param);
 #endif

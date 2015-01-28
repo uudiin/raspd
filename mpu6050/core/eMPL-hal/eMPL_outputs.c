@@ -14,6 +14,7 @@
  *       @file eMPL_outputs.c
  *       @brief Embedded MPL outputs.
  */
+#include <string.h>
 #include "eMPL_outputs.h"
 #include "ml_math_func.h"
 #include "mlmath.h"

@@ -26,8 +26,8 @@
 
 #include "packet.h"
 #include "log.h"
-#include "stm32l1xx.h"
-#include "uart.h"
+
+#define fputchar putchar
 
 #define BUF_SIZE        (256)
 #define PACKET_LENGTH   (23)
