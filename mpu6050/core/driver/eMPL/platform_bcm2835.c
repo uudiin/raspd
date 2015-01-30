@@ -17,8 +17,13 @@
 
 #include <bcm2835.h>
 
+#ifdef LOG_STD
+#define log_i(...)  fprintf(stdout, __VA_ARGS__)
+#define log_e(...)  fprintf(stderr, __VA_ARGS__)
+#else
 #define log_i(...)  do {} while (0)
 #define log_e(...)  do {} while (0)
+#endif
 #define delay_ms    bcm2835_delay
 #define min(a, b)   (((a) < (b)) ? (a) : (b))
 #define __no_operation()    do {} while (0)

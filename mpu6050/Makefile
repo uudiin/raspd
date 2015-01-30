@@ -3,17 +3,19 @@
 include ../rules.mak
 
 INC_PATHS = ../libbcm2835 \
+			../lib \
+			../libevent/include \
 			core/driver/include \
 			core/driver/eMPL \
 			core/eMPL-hal \
 			core/mllite \
 			core/mpl \
-			core/driver/stm32L
+			core/driver
 
 INCLUDES = $(addprefix -I, $(INC_PATHS))
 
 CFLAGS += $(INCLUDES)
-CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX
+CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DLOG_STD
 LDFLAGS += -lm
 LIBS =
 
@@ -22,7 +24,7 @@ PROGS = mpu6050
 
 SRCS_libmpu6050 = core/driver/eMPL/inv_mpu.c \
 				  core/driver/eMPL/inv_mpu_dmp_motion_driver.c \
-				  core/driver/stm32L/log_stm32l.c \
+				  core/driver/log_std.c \
 				  core/eMPL-hal/eMPL_outputs.c \
 				  core/mllite/data_builder.c \
 				  core/mllite/hal_outputs.c \
@@ -34,7 +36,9 @@ SRCS_libmpu6050 = core/driver/eMPL/inv_mpu.c \
 				  core/mllite/start_manager.c \
 				  core/mllite/storage_manager.c
 
-SRCS_mpu6050 = src/main.c
+SRCS_mpu6050 = src/main.c \
+			   ../raspd/event.c \
+			   ../raspd/gpiolib.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 
@@ -46,7 +50,9 @@ all: $(STATIC_LIBS) $(PROGS)
 
 libmpu6050.a: $(OBJS_libmpu6050)
 
-mpu6050: $(OBJS_mpu6050) libmpu6050.a ../libbcm2835/libbcm2835.a
+mpu6050: ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a
+
+mpu6050: $(OBJS_mpu6050) libmpu6050.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
 
 ifneq ($(MAKECMDGOALS), clean)
