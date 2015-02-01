@@ -1,1 +1,4 @@
 !core/mpl/libmpllib.a
+*.pyc
+libmpu6050.a
+mpu6050

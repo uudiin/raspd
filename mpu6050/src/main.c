@@ -208,8 +208,7 @@ static void read_from_mpl(void)
             unsigned long step_count, walk_time;
             dmp_get_pedometer_step_count(&step_count);
             dmp_get_pedometer_walk_time(&walk_time);
-            MPL_LOGI("Walked %ld steps over %ld milliseconds..\n", step_count,
-                    walk_time);
+            MPL_LOGI("Walked %ld steps over %ld milliseconds..\n", step_count, walk_time);
         }
     }
 
@@ -916,7 +915,7 @@ int main(int argc, char *argv[])
     gpiolib_init();
     rasp_event_init();
     bcm2835_i2c_begin();
-    bcm2835_i2c_setClockDivider(148);
+    bcm2835_i2c_setClockDivider(64);
 
     err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
                     NULL, stdin_ready, NULL, NULL);
