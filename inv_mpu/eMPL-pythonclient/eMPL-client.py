@@ -4,20 +4,19 @@
 # A PC application for use with Embedded MotionApps.
 # Copyright 2012 InvenSense, Inc. All Rights Reserved.
 
-import serial, sys, time, string, pygame
+import socket, sys, time, string, pygame
 from ponycube import *
 
+DEFAULT_PORT = 8899
+
 class eMPL_packet_reader:
-    def __init__(self, port, quat_delegate=None, debug_delegate=None, data_delegate=None ):
-        self.s = serial.Serial(port,115200)
-        self.s.setTimeout(0.1)
-        self.s.setWriteTimeout(0.2)
-# TODO: Will this break anything?
-            ##Client attempts to write to eMPL.
-            #try:
-            #self.s.write("\n")
-            #except serial.serialutil.SerialTimeoutException:
-            #pass # write will timeout if umpl app is already started.
+    def __init__(self, port, quat_delegate=None, debug_delegate=None, data_delegate=None):
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.bind(('', port))
+        self.s.listen(5)
+        self.sock, self.address = self.s.accept()
+        self.sock.settimeout(0)
+        print "client connected"
 
         if quat_delegate:
             self.quat_delegate = quat_delegate
@@ -41,8 +40,12 @@ class eMPL_packet_reader:
     def read(self):
         NUM_BYTES = 23
         p = None
-        while self.s.inWaiting() >= NUM_BYTES:
-            rs = self.s.read(NUM_BYTES)
+        rs = None
+        try:
+            rs = self.sock.recv(NUM_BYTES)
+        except:
+            pass
+        if rs:
             if ord(rs[0]) == ord('$'):
                 pkt_code = ord(rs[1])
                 if pkt_code == 1:
@@ -58,16 +61,16 @@ class eMPL_packet_reader:
                     print "no handler for pkt_code",pkt_code
             else:
                 c = ' '
-                print "serial misaligned!"
+                print "socket misaligned!"
                 while not ord(c) == ord('$'):
-                    c = self.s.read(1)
-                self.s.read(NUM_BYTES-1)
+                    c = self.sock.recv(1)
+                self.sock.recv(NUM_BYTES-1)
 
     def write(self,a):
-        self.s.write(a)
+        self.sock.send(a)
 
     def close(self):
-        self.s.close()
+        self.sock.close()
 
     def write_log(self,fname):
         f = open(fname,'w')
@@ -257,17 +260,18 @@ class quat_packet (object):
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
-        comport = int(sys.argv[1]) - 1
+        port = int(sys.argv[1])
     else:
-        print "usage: " + sys.argv[0] + " port"
-        sys.exit(-1)
+        port = DEFAULT_PORT
+
+    print "port %d" % port
 
     pygame.init()
     viewer = cube_packet_viewer()
     debug  = debug_packet_viewer()
     data   = data_packet_viewer()
 
-    reader = eMPL_packet_reader(comport, 
+    reader = eMPL_packet_reader(port, 
                 quat_delegate = viewer, 
                 debug_delegate = debug, 
                 data_delegate = data)

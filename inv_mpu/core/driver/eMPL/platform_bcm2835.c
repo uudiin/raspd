@@ -30,9 +30,11 @@
 
 static void get_ms(unsigned long *count)
 {
-    if (count != NULL) {
-        *count = clock();
-    }
+    struct timeval tv;
+    if (!count)
+        return;
+    gettimeofday(&tv, NULL);
+    *count = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
 static int reg_int_cb(struct int_param_s *int_param)

@@ -2,65 +2,74 @@
 
 include ../rules.mak
 
-INC_PATHS = ../libbcm2835 \
-			../lib \
-			../libevent/include \
-			core/driver/include \
+INC_PATHS = core/driver/include \
 			core/driver/eMPL \
 			core/eMPL-hal \
 			core/mllite \
 			core/mpl \
-			core/driver
+			core/driver \
+			../libbcm2835 \
+			../lib \
+			../libevent/include \
 
 INCLUDES = $(addprefix -I, $(INC_PATHS))
 
 CFLAGS += $(INCLUDES)
-CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DLOG_STD
+CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
 LDFLAGS += -lm
 LIBS =
 
-STATIC_LIBS = libmpu6050.a
-PROGS = mpu6050
+STATIC_LIBS = libinv_mpu.a
+PROGS = mpu_test invmpu_dmp
 
-SRCS_libmpu6050 = core/driver/eMPL/inv_mpu.c \
+SRCS_libinv_mpu = core/driver/eMPL/inv_mpu.c \
 				  core/driver/eMPL/inv_mpu_dmp_motion_driver.c \
-				  core/driver/log_std.c \
-				  core/eMPL-hal/eMPL_outputs.c \
-				  core/mllite/data_builder.c \
-				  core/mllite/hal_outputs.c \
-				  core/mllite/message_layer.c \
-				  core/mllite/ml_math_func.c \
-				  core/mllite/mlmath.c \
-				  core/mllite/mpl.c \
-				  core/mllite/results_holder.c \
-				  core/mllite/start_manager.c \
-				  core/mllite/storage_manager.c
+				  core/mllite/ml_math_func.c
 
-SRCS_mpu6050 = src/main.c \
+SRCS_mpu_test = src/main.c \
+			   core/driver/log_std.c \
+			   core/eMPL-hal/eMPL_outputs.c \
+			   core/mllite/data_builder.c \
+			   core/mllite/hal_outputs.c \
+			   core/mllite/message_layer.c \
+			   core/mllite/mlmath.c \
+			   core/mllite/mpl.c \
+			   core/mllite/results_holder.c \
+			   core/mllite/start_manager.c \
+			   core/mllite/storage_manager.c \
 			   ../raspd/event.c \
 			   ../raspd/gpiolib.c
 
+SRCS_invmpu_dmp = src/main_dmp.c \
+				  ../raspd/event.c \
+				  ../raspd/gpiolib.c \
+
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 
-OBJS_libmpu6050 = $(SRCS_libmpu6050:.c=.o)
+OBJS_libinv_mpu = $(SRCS_libinv_mpu:.c=.o)
+
+EXT_LIBS = ../libbcm2835/libbcm2835.a \
+		   ../lib/libraspberry.a \
+		   ../libevent/libevent.a
 
 .PHONY: all clean
 
 all: $(STATIC_LIBS) $(PROGS)
 
-libmpu6050.a: $(OBJS_libmpu6050)
+libinv_mpu.a: $(OBJS_libinv_mpu)
 
-mpu6050: ../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a
+mpu_test: $(OBJS_mpu_test) $(EXT_LIBS) libinv_mpu.a
+	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
 
-mpu6050: $(OBJS_mpu6050) libmpu6050.a
+invmpu_dmp: $(OBJS_invmpu_dmp) $(EXT_LIBS) libinv_mpu.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
 
 ifneq ($(MAKECMDGOALS), clean)
 $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
--include $(SRCS_libmpu6050:.c=.d)
+-include $(SRCS_libinv_mpu:.c=.d)
 endif
 
 clean:
-	rm -f $(SRCS_libmpu6050:.c=.d) $(SRCS_mpu6050:.c=.d)
-	rm -f $(OBJS_libmpu6050) $(OBJS_mpu6050)
+	rm -f $(SRCS_libinv_mpu:.c=.d) $(SRCS_mpu_test:.c=.d)
+	rm -f $(OBJS_libinv_mpu) $(OBJS_mpu_test)
 	rm -f $(STATIC_LIBS) $(PROGS)
