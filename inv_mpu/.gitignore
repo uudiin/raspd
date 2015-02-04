@@ -1,4 +1,5 @@
 !core/mpl/libmpllib.a
 *.pyc
-libmpu6050.a
-mpu6050
+libinv_mpu.a
+mpu_test
+invmpu_dmp

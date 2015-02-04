@@ -29,7 +29,6 @@
 #include "../../raspd/event.h"
 #include "../../raspd/gpiolib.h"
 
-static int pin_int = 17;
 static int fd = -1;
 
 /* Private typedef -----------------------------------------------------------*/
@@ -654,9 +653,9 @@ static void handle_input(void)
      */
     case '1':
         if (hal.dmp_on) {
-            dmp_set_fifo_rate(10);
+            dmp_set_fifo_rate(5);
         } else
-            mpu_set_sample_rate(10);
+            mpu_set_sample_rate(5);
         break;
     case '2':
         if (hal.dmp_on) {
@@ -666,21 +665,21 @@ static void handle_input(void)
         break;
     case '3':
         if (hal.dmp_on) {
-            dmp_set_fifo_rate(40);
-        } else
-            mpu_set_sample_rate(40);
-        break;
-    case '4':
-        if (hal.dmp_on) {
             dmp_set_fifo_rate(50);
         } else
             mpu_set_sample_rate(50);
         break;
-    case '5':
+    case '4':
         if (hal.dmp_on) {
             dmp_set_fifo_rate(100);
         } else
             mpu_set_sample_rate(100);
+        break;
+    case '5':
+        if (hal.dmp_on) {
+            dmp_set_fifo_rate(200);
+        } else
+            mpu_set_sample_rate(200);
         break;
 	case ',':
         /* Set hardware to interrupt on gesture event only. This feature is
@@ -960,15 +959,19 @@ int main(int argc, char *argv[])
 #endif
     char *hostname = NULL;
     long long_port = 8899;
+    int pin_int = 17;
+    int frequency = DEFAULT_MPU_HZ;
     static struct option options[] = {
         { "pin-int", required_argument, NULL, 'p' },
+        { "hz",      required_argument, NULL, 'f' },
         { 0, 0, 0, 0 }
     };
     int c;
 
-    while ((c = getopt_long(argc, argv, "p:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "p:f:", options, NULL)) != -1) {
         switch (c) {
         case 'p': pin_int = atoi(optarg); break;
+        case 'f': frequency = atoi(optarg); break;
         default:
             LOGE("usage: %s --pin-int <n> [hostname] [port]\n", argv[0]);
             exit(1);
@@ -1051,7 +1054,7 @@ int main(int argc, char *argv[])
 #endif
     /* Push both gyro and accel data into the FIFO. */
     mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-    mpu_set_sample_rate(DEFAULT_MPU_HZ);
+    mpu_set_sample_rate(frequency);
 #ifdef COMPASS_ENABLED
     /* The compass sampling rate can be less than the gyro/accel sampling rate.
      * Use this function for proper power management.
@@ -1126,7 +1129,7 @@ int main(int argc, char *argv[])
         DMP_FEATURE_ANDROID_ORIENT | DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_CAL_GYRO |
         DMP_FEATURE_GYRO_CAL;
     dmp_enable_feature(hal.dmp_features);
-    dmp_set_fifo_rate(DEFAULT_MPU_HZ);
+    dmp_set_fifo_rate(frequency);
     mpu_set_dmp_state(1);
     hal.dmp_on = 1;
 
