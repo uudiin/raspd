@@ -1,0 +1,5 @@
+!core/mpl/libmpllib.a
+*.pyc
+libinv_mpu.a
+mpu_test
+invmpu_dmp
