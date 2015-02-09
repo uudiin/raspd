@@ -166,17 +166,36 @@ int main(int argc, char *argv[])
         case 'r': softpwm_set(3, 0); break;
         case 'f': softpwm_set(3, 1); break;
         case 'v': softpwm_set(3, -1); break;
-        case '.':
+        case 'y':
+        case 'u':
+            softpwm_set(0, 0);
+            softpwm_set(1, 0);
+            softpwm_set(2, 0);
+            softpwm_set(3, 0);
+            break;
+        case 'h':
             softpwm_set(0, 1);
             softpwm_set(1, 1);
             softpwm_set(2, 1);
             softpwm_set(3, 1);
             break;
-        case ',':
+        case 'n':
             softpwm_set(0, -1);
             softpwm_set(1, -1);
             softpwm_set(2, -1);
             softpwm_set(3, -1);
+            break;
+        case 'j':
+            softpwm_set(0, 5);
+            softpwm_set(1, 5);
+            softpwm_set(2, 5);
+            softpwm_set(3, 5);
+            break;
+        case 'm':
+            softpwm_set(0, -5);
+            softpwm_set(1, -5);
+            softpwm_set(2, -5);
+            softpwm_set(3, -5);
             break;
         }
     } while (inchar != '0');
