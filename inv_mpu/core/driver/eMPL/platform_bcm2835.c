@@ -74,10 +74,10 @@ static int i2c_read(unsigned char slave_addr, unsigned char reg_addr,
 {
     int err;
 
+    bcm2835_i2c_setSlaveAddress(slave_addr);
     err = set_reg_ptr(reg_addr, length);
     if (err < 0)
         return err;
-    bcm2835_i2c_setSlaveAddress(slave_addr);
     if (bcm2835_i2c_read((char *)data, length) != 0)
         return -EXDEV;
     return 0;
