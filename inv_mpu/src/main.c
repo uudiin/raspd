@@ -35,6 +35,8 @@ static int pin_int = 17;
 #define inv_enable_9x_sensor_fusion()   do {} while (0)
 #define inv_enable_fast_nomot()         do {} while (0)
 #define inv_enable_gyro_tc()            do {} while (0)
+#define inv_enable_vector_compass_cal() do {} while (0)
+#define inv_enable_magnetic_disturbance()   do {} while (0)
 #undef MPL_LOGE
 #undef MPL_LOGI
 #define MPL_LOGE(...)   fprintf(stderr, __VA_ARGS__)
