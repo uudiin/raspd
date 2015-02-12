@@ -1,5 +1,6 @@
 package com.gfs.planecontroller;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -10,13 +11,12 @@ import android.view.View;
 public class OrientationView extends View {
 	public int mX, mY;
 	
-	private int mWidth, mHeight;
-	
 	public OrientationView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		
 	}
 
+	@SuppressLint("DrawAllocation")
 	@Override
 	protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);

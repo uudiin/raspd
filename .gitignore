@@ -8,6 +8,7 @@
 *.ap_
 *.dex
 bin/
+.settings/
 
 # eclipse
 .cproject
