@@ -30,8 +30,9 @@ static void reset_termios(void)
 
 
 static int min_data, max_data;
-static int pin[4];
-static int pwm_data[4];
+static int pin[8];
+static unsigned long pinmask;
+static int pwm_data[8];
 static int nr_pin;
 
 /* shutdown -- its super important to reset the DMA before quitting */
@@ -141,10 +142,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    for (i = 0; optind < argc; i++, optind++) {
+    for (i = 0; optind < argc && i < 8; i++, optind++) {
         pin[i] = atoi(argv[optind]);
         bcm2835_gpio_fsel(pin[i], BCM2835_GPIO_FSEL_OUTP);
         nr_pin++;
+        pinmask |= (1 << pin[i]);
         if (full)
             pwm_data[i] = max_data;
         else
@@ -166,17 +168,36 @@ int main(int argc, char *argv[])
         case 'r': softpwm_set(3, 0); break;
         case 'f': softpwm_set(3, 1); break;
         case 'v': softpwm_set(3, -1); break;
-        case '.':
+        case 'y':
+        case 'u':
+            softpwm_set(0, 0);
+            softpwm_set(1, 0);
+            softpwm_set(2, 0);
+            softpwm_set(3, 0);
+            break;
+        case 'h':
             softpwm_set(0, 1);
             softpwm_set(1, 1);
             softpwm_set(2, 1);
             softpwm_set(3, 1);
             break;
-        case ',':
+        case 'n':
             softpwm_set(0, -1);
             softpwm_set(1, -1);
             softpwm_set(2, -1);
             softpwm_set(3, -1);
+            break;
+        case 'j':
+            softpwm_set(0, 5);
+            softpwm_set(1, 5);
+            softpwm_set(2, 5);
+            softpwm_set(3, 5);
+            break;
+        case 'm':
+            softpwm_set(0, -5);
+            softpwm_set(1, -5);
+            softpwm_set(2, -5);
+            softpwm_set(3, -5);
             break;
         }
     } while (inchar != '0');
