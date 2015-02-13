@@ -131,6 +131,39 @@ static int modexec_exit(struct module *m, void *opaque)
     return 0;
 }
 
+/* shutdown -- its super important to reset the DMA before quitting */
+static void terminate(int dummy)
+{
+    if (fd != -1)
+        close(fd);
+
+    /* uninitialize all modules */
+    foreach_module(modexec_exit, NULL);
+
+    /* TODO */
+    softpwm_exit();
+
+    luaenv_exit();
+    gpiolib_exit();
+    bcm2835_close();
+    rasp_event_exit();
+    exit(1);
+}
+
+/*
+ * Catch all signals possible - it is vital we kill the DMA engine
+ * on process exit!
+ */
+static void setup_sighandlers(void)
+{
+    struct sigaction sa;
+    int i;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = terminate;
+    for (i = 0; i < 64; i++)
+        sigaction(i, &sa, NULL);
+}
+
 static void usage(FILE *fp)
 {
     fprintf(fp,
@@ -191,6 +224,9 @@ int main(int argc, char *argv[])
             break;
         }
     }
+
+    /* set signel handlers */
+    setup_sighandlers();
 
     /*
      * luaenv
