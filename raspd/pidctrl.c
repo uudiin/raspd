@@ -6,6 +6,7 @@
 #include "module.h"
 #include "softpwm.h"
 #include "inv_mpu.h"
+#include "luaenv.h"
 #include "pid.h"
 #include "pidctrl.h"
 
@@ -29,10 +30,8 @@ static struct esc_info esc_right;
 volatile static long dst_euler[3];
 volatile static long dst_altitude;
 
-static void *altimeter_dev;
-
-/* proto */
-long get_distance(void *dev);
+/* TODO */
+static long (*fptr_get_altitude)(unsigned long *timestamp);
 
 static void update_pwm(void)
 {
@@ -226,7 +225,7 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
 {
     static unsigned long prev_timestamp;
     unsigned long dt;
-    long cur_altitude = 0;
+    long cur_altitude = -1;
 
     if (prev_timestamp == 0)
         dt = 1;     /* FIXME:  ms ? */
@@ -234,10 +233,10 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
         dt = timestamp - prev_timestamp;
     prev_timestamp = timestamp;
 
-    if (altimeter_dev)
-        cur_altitude = get_distance(altimeter_dev);
+    if (fptr_get_altitude)
+        cur_altitude = fptr_get_altitude(NULL);
 
-    if (cur_altitude && (sensors & INV_XYZ_ACCEL))
+    if (cur_altitude != -1 && (sensors & INV_XYZ_ACCEL))
         altitude_control(dst_altitude, cur_altitude, accel, dt);
 
     if ((sensors & INV_XYZ_GYRO) && (sensors & INV_WXYZ_QUAT)) {
@@ -247,9 +246,10 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
     }
 }
 
-int pidctrl_init(const char *front, const char *rear, const char *left,
-                const char *right, const char *altimeter,
-                float angle[], float rate[], float alt[])
+/* TODO */
+int pidctrl_init(int front, int rear, int left, int right,
+                long (*get_altitude)(unsigned long *timestamp),
+                long angle[], long rate[], long alt[])
 {
     int i;
     /* set Kp, Ki, Kd */
@@ -259,10 +259,13 @@ int pidctrl_init(const char *front, const char *rear, const char *left,
         pid_set(&euler_rate[i], rate[0], rate[1], rate[2], rate[3], rate[4]);
     pid_set(&altitude, alt[0], alt[1], alt[2], alt[3], alt[4]);
 
-    esc_front.pin = (int)(intptr_t)luaenv_getdev(front);
-    esc_rear.pin =  (int)(intptr_t)luaenv_getdev(rear);
-    esc_left.pin =  (int)(intptr_t)luaenv_getdev(left);
-    esc_right.pin = (int)(intptr_t)luaenv_getdev(right);
+    esc_front.pin = front;
+    esc_rear.pin =  rear;
+    esc_left.pin =  left;
+    esc_right.pin = right;
+
+    /* which altimeter should be used */
+    fptr_get_altitude = get_altitude;
 
     invmpu_register_tap_cb(tap_cb);
     invmpu_register_android_orient_cb(android_orient_cb);

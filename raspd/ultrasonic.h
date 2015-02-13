@@ -21,17 +21,22 @@ struct ultrasonic_dev {
     int pin_echo;
     int trig_time;  /* us */
     struct timeval tv_trig;
+    struct timeval tv_delay;
     /* dynamic */
     struct event *ev_timer;
-    struct event *ev_over_trig;
+    struct event *ev_trig_done;
+    struct event *ev_delay;
     struct event *ev_echo;
-    struct timespec echo_tp;
+    struct timeval echo_tv;
     int nr_trig;
     int nr_echo;
     int count;
     int counted;
     int flags;
 #define UF_IMMEDIATE    1
+
+    float distance;
+    unsigned long timestamp;
 
     __cb_ultrasonic cb;
     void *opaque;
@@ -45,5 +50,7 @@ int ultrasonic(struct ultrasonic_dev *dev, __cb_ultrasonic cb, void *opaque);
 int ultrasonic_scope(struct ultrasonic_dev *dev, int count,
                 int interval, __cb_ultrasonic cb, void *opaque);
 unsigned int ultrasonic_is_busy(struct ultrasonic_dev *dev);
+float ultrasonic_get_distance(struct ultrasonic_dev *dev,
+                                unsigned long *timestamp);
 
 #endif /* __ULTRASONIC_H__ */

@@ -1,9 +1,9 @@
 #ifndef __PIDCTRL_H__
 #define __PIDCTRL_H__
 
-int pidctrl_init(const char *front, const char *rear, const char *left,
-                const char *right, const char *altimeter,
-                float angle[], float rate[], float alt[]);
+int pidctrl_init(int front, int rear, int left, int right,
+                long (*get_altitude)(unsigned long *timestamp),
+                long angle[], long rate[], long alt[])
 void pidctrl_exit(void);
 
 #endif /* __PIDCTRL_H__ */

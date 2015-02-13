@@ -18,6 +18,7 @@
 #include "event.h"
 #include "luaenv.h"
 #include "gpiolib.h"
+#include "softpwm.h"
 #include "config.h"
 
 #define BUF_SIZE    1024
