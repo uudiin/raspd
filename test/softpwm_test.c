@@ -30,8 +30,9 @@ static void reset_termios(void)
 
 
 static int min_data, max_data;
-static int pin[4];
-static int pwm_data[4];
+static int pin[8];
+static unsigned long pinmask;
+static int pwm_data[8];
 static int nr_pin;
 
 /* shutdown -- its super important to reset the DMA before quitting */
@@ -141,10 +142,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    for (i = 0; optind < argc; i++, optind++) {
+    for (i = 0; optind < argc && i < 8; i++, optind++) {
         pin[i] = atoi(argv[optind]);
         bcm2835_gpio_fsel(pin[i], BCM2835_GPIO_FSEL_OUTP);
         nr_pin++;
+        pinmask |= (1 << pin[i]);
         if (full)
             pwm_data[i] = max_data;
         else

@@ -202,18 +202,11 @@ static void init_hardware(void)
  *   = 0 : set 0 & clear enable mask
  *   > 0 : set data
  */
-int softpwm_set_data(int pin, int data)
+static void set_mask_data(unsigned long pinmask, int data)
 {
-    unsigned long pinmask = (1 << pin);
-    int i;
-
-    if (pin >= MAX_CHANNEl)
-        return -EINVAL;
-
     if (data > nr_samples)
         data = nr_samples;
 
-    channel_data[pin] = data;
     if (data <= 0)
         channel_mask &= ~pinmask;
     else
@@ -221,6 +214,7 @@ int softpwm_set_data(int pin, int data)
 
     /* do update */
     if (channel_mask) {
+        int i;
         cb[0].dst = PHYS_GPSET0;
         sample[0] = channel_mask;
 
@@ -234,6 +228,30 @@ int softpwm_set_data(int pin, int data)
         /* FIXME */
     }
 
+    return 0;
+}
+
+int softpwm_set_data(int pin, int data)
+{
+    unsigned long pinmask = (1 << pin);
+
+    if (pin >= MAX_CHANNEl)
+        return -EINVAL;
+
+    channel_data[pin] = data;
+    set_mask_data(pinmask, data);
+
+    return 0;
+}
+
+int softpwm_set_multi(unsigned long pinmask, int data)
+{
+    int i;
+    for (i = 0; i < MAX_CHANNEl; i++) {
+        if (pinmask & (1 << i))
+            channel_data[i] = data;
+    }
+    set_mask_data(pinmask, data);
     return 0;
 }
 

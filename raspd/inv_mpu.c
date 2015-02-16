@@ -47,9 +47,13 @@ struct hal_s {
     short gyro[3];
     long quat[4];
     long temperature;
-#ifdef COMPASS_ENABLED
     short compass_short[3];
+#ifdef COMPASS_ENABLED
 #endif
+    void (*tap_cb)(unsigned char count, unsigned char direction);
+    void (*android_orient_cb)(unsigned char orientation);
+    __invmpu_data_ready_cb data_ready_cb;
+    struct event *ev_int;    /* event for pin interrupt */
 };
 static struct hal_s hal = {0};
 
@@ -95,7 +99,7 @@ static struct platform_data_s compass_pdata = {
 #endif
 
 /* Private function prototypes -----------------------------------------------*/
-int get_clock_ms(unsigned long *count)
+static int get_clock_ms(unsigned long *count)
 {
     struct timeval tv;
     if (!count)
@@ -107,7 +111,7 @@ int get_clock_ms(unsigned long *count)
 /* ---------------------------------------------------------------------------*/
 
 /* Handle sensor on/off combinations. */
-static void invmpu_setup_sensors(unsigned char sensors)
+static void setup_sensors(unsigned char sensors)
 {
     unsigned char mask = 0, lp_accel_was_on = 0;
     if (sensors & ACCEL_ON)
@@ -134,50 +138,14 @@ static void invmpu_setup_sensors(unsigned char sensors)
 
 static void tap_cb(unsigned char direction, unsigned char count)
 {
-    switch (direction) {
-    case TAP_X_UP:
-        LOGI("Tap X+ ");
-        break;
-    case TAP_X_DOWN:
-        LOGI("Tap X- ");
-        break;
-    case TAP_Y_UP:
-        LOGI("Tap Y+ ");
-        break;
-    case TAP_Y_DOWN:
-        LOGI("Tap Y- ");
-        break;
-    case TAP_Z_UP:
-        LOGI("Tap Z+ ");
-        break;
-    case TAP_Z_DOWN:
-        LOGI("Tap Z- ");
-        break;
-    default:
-        return;
-    }
-    LOGI("x%d\n", count);
-    return;
+    if (hal.tap_cb)
+        hal.tap_cb(direction, count);
 }
 
 static void android_orient_cb(unsigned char orientation)
 {
-	switch (orientation) {
-	case ANDROID_ORIENT_PORTRAIT:
-        LOGI("Portrait\n");
-        break;
-	case ANDROID_ORIENT_LANDSCAPE:
-        LOGI("Landscape\n");
-        break;
-	case ANDROID_ORIENT_REVERSE_PORTRAIT:
-        LOGI("Reverse Portrait\n");
-        break;
-	case ANDROID_ORIENT_REVERSE_LANDSCAPE:
-        LOGI("Reverse Landscape\n");
-        break;
-	default:
-		return;
-	}
+    if (hal.android_orient_cb)
+        hal.android_orient_cb(orientation);
 }
 
 
@@ -267,7 +235,7 @@ static void handle_input(char c)
     }
 }
 
-void invmpu_set_lp_quat(int lp_quat_on)
+static void set_lp_quat(int lp_quat_on)
 {
     /* Toggle LP quaternion.
      * The DMP features can be enabled/disabled at runtime. Use this same
@@ -286,7 +254,7 @@ void invmpu_set_lp_quat(int lp_quat_on)
 }
 
 /* Set low-power accel mode. */
-void invmpu_set_lp_accel(void)
+static void set_lp_accel(void)
 {
     if (hal.dmp_on)
         /* LP accel is not compatible with the DMP. */
@@ -358,18 +326,36 @@ void invmpu_set_sample_rate(int rate)
         mpu_set_sample_rate(rate);
 }
 
+void invmpu_register_tap_cb(void (*func)(unsigned char, unsigned char))
+{
+    hal.tap_cb = func;
+}
+
+void invmpu_register_android_orient_cb(void (*func)(unsigned char))
+{
+    hal.android_orient_cb = func;
+}
+
+void invmpu_register_data_ready_cb(__invmpu_data_ready_cb func)
+{
+    hal.data_ready_cb = func;
+}
+
 /*******************************************************************************/
 
-static void invmpu_data_ready(void)
+static void read_from_mpu(void)
 {
-    unsigned char accel_fsr, new_temp = 0;
+    unsigned char accel_fsr, new_temp;
     unsigned long timestamp;
     unsigned long sensor_timestamp;
-    int new_data = 0;   /* TODO: do print */
+    int sensors;
 #ifdef COMPASS_ENABLED
     unsigned char new_compass = 0;
 #endif
 
+have_data:
+    new_temp = 0;
+    sensors = 0;
     get_clock_ms(&timestamp);
 
 #ifdef COMPASS_ENABLED
@@ -407,10 +393,9 @@ static void invmpu_data_ready(void)
 
     if (hal.new_gyro && hal.lp_accel_mode) {
         mpu_get_accel_reg(hal.accel_short, &sensor_timestamp);
-        new_data = 1;
         hal.new_gyro = 0;
+        sensors |= INV_XYZ_ACCEL;
     } else if (hal.new_gyro && hal.dmp_on) {
-        short sensors;
         unsigned char more;
         /* This function gets new data from the FIFO when the DMP is in
          * use. The FIFO can contain any combination of gyro, accel,
@@ -425,25 +410,18 @@ static void invmpu_data_ready(void)
          * leftover packets in the FIFO.
          */
         dmp_read_fifo(hal.gyro, hal.accel_short, hal.quat,
-                        &sensor_timestamp, &sensors, &more);
+                        &sensor_timestamp, (short *)&sensors, &more);
         if (!more)
             hal.new_gyro = 0;
         if (sensors & INV_XYZ_GYRO) {
-            new_data = 1;
             if (new_temp) {
                 new_temp = 0;
                 /* Temperature only used for gyro temp comp. */
                 mpu_get_temperature(&hal.temperature, &sensor_timestamp);
             }
         }
-        if (sensors & INV_XYZ_ACCEL) {
-            new_data = 1;
-        }
-        if (sensors & INV_WXYZ_QUAT) {
-            new_data = 1;
-        }
     } else if (hal.new_gyro) {
-        unsigned char sensors, more;
+        unsigned char more;
         /* This function gets new data from the FIFO. The FIFO can contain
          * gyro, accel, both, or neither. The sensors parameter tells the
          * caller which data fields were actually populated with new data.
@@ -455,19 +433,15 @@ static void invmpu_data_ready(void)
          */
         hal.new_gyro = 0;
         mpu_read_fifo(hal.gyro, hal.accel_short,
-                    &sensor_timestamp, &sensors, &more);
+                    &sensor_timestamp, (unsigned char *)&sensors, &more);
         if (more)
             hal.new_gyro = 1;
         if (sensors & INV_XYZ_GYRO) {
-            new_data = 1;
             if (new_temp) {
                 new_temp = 0;
                 /* Temperature only used for gyro temp comp. */
                 mpu_get_temperature(&hal.temperature, &sensor_timestamp);
             }
-        }
-        if (sensors & INV_XYZ_ACCEL) {
-            new_data = 1;
         }
     }
 #ifdef COMPASS_ENABLED
@@ -482,22 +456,37 @@ static void invmpu_data_ready(void)
              * parameter to INV_CALIBRATED | acc, where acc is the
              * accuracy from 0 to 3.
              */
+            sensors |= INV_XYZ_COMPASS;
         }
-        new_data = 1;
     }
 #endif
+
+    if (sensors && hal.data_ready_cb) {
+        hal.data_ready_cb(sensors, sensor_timestamp, hal.quat,
+            hal.accel_short, hal.gyro, hal.compass_short, hal.temperature);
+    }
+
+    if (hal.new_gyro)
+        goto have_data;
 }
 
-static void invmpu_int_cb(int fd, short what, void *arg)
+static void int_cb(int fd, short what, void *arg)
 {
     hal.new_gyro = 1;
-    invmpu_data_ready();
+    read_from_mpu();
 }
 
-int invmpu_init(int pin_int)
+int invmpu_init(int pin_int, int sample_rate)
 {
     inv_error_t result;
     struct int_param_s int_param;
+    int err;
+
+    err = bcm2835_gpio_signal(pin_int, EDGE_both, int_cb, NULL, &hal.ev_int);
+    if (err < 0) {
+        LOGE("gpio_signal(%d), err = %d\n", pin_int, err);
+        return err;
+    }
 
     result = mpu_init(&int_param);
     if (result) {
@@ -518,7 +507,7 @@ int invmpu_init(int pin_int)
 #endif
     /* Push both gyro and accel data into the FIFO. */
     mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-    mpu_set_sample_rate(DEFAULT_MPU_HZ);
+    mpu_set_sample_rate(sample_rate);
 #ifdef COMPASS_ENABLED
     /* The compass sampling rate can be less than the gyro/accel sampling rate.
      * Use this function for proper power management.
@@ -590,7 +579,14 @@ int invmpu_init(int pin_int)
         DMP_FEATURE_ANDROID_ORIENT | DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_CAL_GYRO |
         DMP_FEATURE_GYRO_CAL;
     dmp_enable_feature(hal.dmp_features);
-    dmp_set_fifo_rate(DEFAULT_MPU_HZ);
+    dmp_set_fifo_rate(sample_rate);
     mpu_set_dmp_state(1);
     hal.dmp_on = 1;
+}
+
+void invmpu_exit(void)
+{
+    /* TODO */
+    if (hal.ev_int)
+        eventfd_del(hal.ev_int);
 }

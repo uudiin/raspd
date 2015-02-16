@@ -21,7 +21,9 @@
 #include "ultrasonic.h"
 #include "motor.h"
 #include "l298n.h"
-#include "esc.h"
+#include "softpwm.h"
+#include "inv_mpu.h"
+#include "pidctrl.h"
 #include "tankcontrol.h"
 
 #include "luaenv.h"
@@ -313,6 +315,88 @@ static int lr_gpio_signal(lua_State *L)
     return 1;
 }
 
+static int lr_i2c_init(lua_State *L)
+{
+    int divider = (int)luaL_optint(L, 1, 64);
+    bcm2835_i2c_begin();
+    bcm2835_i2c_setClockDivider(divider);
+    return 0;
+}
+
+static int lr_softpwm_init(lua_State *L)
+{
+    int cycle_time_us = (int)luaL_optint(L, 1, 2500);
+    int step_time_us = (int)luaL_optint(L, 2, 5);
+    int err = softpwm_init(cycle_time_us, step_time_us);
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+static int lr_invmpu_init(lua_State *L)
+{
+    int pin_int = (int)luaL_checkinteger(L, 1);
+    int smaple_rate = (int)luaL_optint(L, 2, 200);
+    int err = invmpu_init(pin_int, sample_rate);
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+static void *alti_dev;
+
+static long get_altitude_from_ultrasonic(unsigned long *timestamp)
+{
+    if (alti_dev)
+        return ultrasonic_get_distance(alti_dev, timestamp);
+    return -1;
+}
+
+static long get_altitude_from_barometer(unsigned long *timestamp)
+{
+    return -1;
+}
+
+static int lr_pidctrl_init(lua_State *L)
+{
+    int pin_front, pin_rear, pin_left, pin_right;
+    const char *altimeter;
+    long angle[5], rate[5], alti[5];
+    int i, n;
+
+    pin_front = (int)luaL_checkinteger(L, 1);
+    pin_rear  = (int)luaL_checkinteger(L, 2);
+    pin_left  = (int)luaL_checkinteger(L, 3);
+    pin_right = (int)luaL_checkinteger(L, 4);
+    altimeter = luaL_checkstring(L, 5);
+
+    if (altimeter)
+        alti_dev = luaenv_getdev(altimeter);
+
+    n = lua_objlen(L, 6);
+    for (i = 1; i <= n; i++) {
+        lua_rawgeti(L, 6, i);
+        angle[i] = (long)luaL_checkinteger(L, -1);
+    }
+
+    n = lua_objlen(L, 7);
+    for (i = 1; i <= n; i++) {
+        lua_rawgeti(L, 7, i);
+        rate[i] = (long)luaL_checkinteger(L, -1);
+    }
+
+    n = lua_objlen(L, 8);
+    for (i = 1; i <= n; i++) {
+        lua_rawgeti(L, 8, i);
+        alti[i] = (long)luaL_checkinteger(L, -1);
+    }
+
+    pidctrl_init(pin_front, pin_rear, pin_left, pin_right,
+            strcmp(altimeter, "ultrasonic") == 0 ?
+                get_altitude_from_ultrasonic : NULL,
+            angle, rate, alti);
+    /* TODO */
+    return 0;
+}
+
 static int lr_stepmotor_new(lua_State *L)
 {
     int pin1, pin2, pin3, pin4;
@@ -601,97 +685,20 @@ static int lr_ultrasonic_is_busy(lua_State *L)
     return 1;
 }
 
+static int lr_ultrasonic_get_distance(lua_State *L)
+{
+    struct ultrasonic_dev **devp = lua_touserdata(L, 1);
+    unsigned long timestamp;
+    float distance;
+    distance = ultrasonic_get_distance(*devp, &timestamp);
+    lua_pushnumber(distance);
+    lua_pushnumber(timestamp);
+    return 2;
+}
+
 /*
- * esc
+ * tank
  */
-static int lr_esc_new(lua_State *L)
-{
-    int pin, refresh_rate, start_time;
-    int min_throttle_time, max_throttle_time;
-    struct esc_dev **devp;
-
-    pin = (int)luaL_checkinteger(L, 1);
-    refresh_rate = (int)luaL_checkinteger(L, 2);
-    start_time = (int)luaL_checkinteger(L, 3);
-    min_throttle_time = (int)luaL_checkinteger(L, 4);
-    max_throttle_time = (int)luaL_checkinteger(L, 5);
-
-    devp = lua_newuserdata(L, sizeof(struct esc_dev *));
-    *devp = esc_new(pin, refresh_rate, start_time,
-                    min_throttle_time, max_throttle_time);
-    if (*devp == NULL) {
-        luaL_error(L, "esc_new() error\n");
-        return 0;
-    }
-    return 1;
-}
-
-static int lr_esc_del(lua_State *L)
-{
-    struct esc_dev **devp = lua_touserdata(L, 1);
-    esc_del(*devp);
-    return 0;
-}
-
-static int lr_esc_get(lua_State *L)
-{
-    struct esc_dev **devp = lua_touserdata(L, 1);
-    lua_pushinteger(L, esc_get(*devp));
-    return 1;
-}
-
-static int lr_esc_set(lua_State *L)
-{
-    struct esc_dev **devp = lua_touserdata(L, 1);
-    int throttle_time = (int)luaL_checkinteger(L, 2);
-    lua_pushinteger(L, esc_set(*devp, throttle_time));
-    return 1;
-}
-
-static int esc_started_wrap(struct esc_dev *dev, void *opaque)
-{
-    /* get table */
-    lua_pushlightuserdata(_L, &_L);
-    lua_rawget(_L, LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(_L, dev);
-    lua_gettable(_L, -2);
-
-    /* call lua handler */
-    if (lua_pcall(_L, 0, 0, 0) == 0) {
-        /* TODO */
-    }
-    return 0;
-}
-
-static int lr_esc_start(lua_State *L)
-{
-    struct esc_dev **devp = lua_touserdata(L, 1);
-    int err;
-
-    if (lua_gettop(L) >= 2 && lua_isfunction(L, 2) && !lua_iscfunction(L, 2)) {
-        /* set lua handler */
-        lua_pushlightuserdata(L, &_L);
-        lua_rawget(L, LUA_REGISTRYINDEX);
-        lua_pushlightuserdata(L, *devp); /* key: dev */
-        lua_pushvalue(L, 2);             /* value: callback */
-        lua_rawset(L, -3);
-        lua_pop(L, 1);
-
-        err = esc_start(*devp, esc_started_wrap, NULL);
-    } else {
-        err = esc_start(*devp, NULL, NULL);
-    }
-    lua_pushinteger(L, err);
-    return 1;
-}
-
-static int lr_esc_stop(lua_State *L)
-{
-    struct esc_dev **devp = lua_touserdata(L, 1);
-    lua_pushinteger(L, esc_stop(*devp));
-    return 1;
-}
-
 static int lr_tank_new(lua_State *L)
 {
     int pin;
@@ -804,6 +811,12 @@ static const luaL_Reg luaraspd_lib[] = {
     { "gpio_level",  lr_gpio_level  },
     { "gpio_signal", lr_gpio_signal },
 
+    /* misc */
+    { "i2c_init",     lr_i2c_init     },
+    { "softpwm_init", lr_softpwm_init },
+    { "invmpu_init",  lr_invmpu_init  },
+    { "pidctrl_init", lr_pidctrl_init },
+
     /* stepmotor */
     { "stepmotor_new", lr_stepmotor_new },
     { "stepmotor_del", lr_stepmotor_del },
@@ -831,14 +844,8 @@ static const luaL_Reg luaraspd_lib[] = {
     { "ultrasonic_del",     lr_ultrasonic_del     },
     { "ultrasonic_scope",   lr_ultrasonic_scope   },
     { "ultrasonic_is_busy", lr_ultrasonic_is_busy },
+    { "ultrasonic_get_distance", lr_ultrasonic_get_distance },
 
-    /* esc */
-    { "esc_new",   lr_esc_new   },
-    { "esc_del",   lr_esc_del   },
-    { "esc_get",   lr_esc_get   },
-    { "esc_set",   lr_esc_set   },
-    { "esc_start", lr_esc_start },
-    { "esc_stop",  lr_esc_stop  },
 
     /* tank */
     { "tank_new",   lr_tank_new   },

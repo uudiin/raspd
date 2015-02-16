@@ -13,7 +13,12 @@ SRCS_libraspd = event.c gpiolib.c
 
 SRCS_raspd = raspd.c module.c event.c luaenv.c softpwm.c \
 	gpiolib.c gpio.c pwm.c l298n.c ultrasonic.c \
-	tankcontrol.c motor.c modmisc.c esc.c
+	tankcontrol.c motor.c modmisc.c inv_mpu.c pid.c pidctrl.c
+
+DEPS_raspd = ../lib/libraspberry.a \
+			 ../libbcm2835/libbcm2835.a \
+			 ../libevent/libevent.a \
+			 ../inv_mpu/libinv_mpu.a
 
 OBJS_libraspd = $(SRCS_libraspd:.c=.o)
 
@@ -25,7 +30,7 @@ all: $(STATIC_LIBS) $(PROGS)
 
 libraspd.a: $(OBJS_libraspd)
 
-raspd: $(OBJS_raspd) ../lib/libraspberry.a ../libbcm2835/libbcm2835.a ../libevent/libevent.a
+raspd: $(OBJS_raspd) $(DEPS_raspd)
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
 
 ifneq ($(MAKECMDGOALS), clean)

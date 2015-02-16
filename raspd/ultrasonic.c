@@ -19,6 +19,9 @@
 
 #define MODNAME     "ultrasonic"
 
+/* TODO: 10 ms */
+#define CONTINUOUS_DELAYED (10 * 1000)
+
 /*
  * in air
  *    0 degree: 331 m/s
@@ -40,13 +43,36 @@
         }                                                 \
     } while (0)
 
+#define timeval_sub(t, u, v)                        \
+    do {                                            \
+        (v)->tv_sec = (t)->tv_sec - (u)->tv_sec;    \
+        (v)->tv_usec = (t)->tv_usec - (u)->tv_usec; \
+        if ((v)->tv_usec < 0) {                     \
+            (v)->tv_sec--;                          \
+            (v)->tv_usec += 1000000;                \
+        }                                           \
+    } while (0)
+
 /************************************************************/
 
 static int do_trig(struct ultrasonic_dev *dev)
 {
     /* keeping 10 us at HIGH level */
     bcm2835_gpio_write(dev->pin_trig, HIGH);
-    if (evtimer_add(dev->ev_over_trig, &dev->tv_trig) < 0)
+    if (evtimer_add(dev->ev_trig_done, &dev->tv_trig) < 0)
+        return -ENOSPC;
+    return 0;
+}
+
+static void delay_trig(int fd, short what, void *arg)
+{
+    struct ultrasonic_dev *dev = arg;
+    do_trig(dev);
+}
+
+static int do_delay_trig(struct ultrasonic_dev *dev)
+{
+    if (evtimer_add(dev->ev_delay, &dev->tv_delay) < 0)
         return -ENOSPC;
     return 0;
 }
@@ -54,24 +80,25 @@ static int do_trig(struct ultrasonic_dev *dev)
 static void echo_signal(int fd, short what, void *arg)
 {
     struct ultrasonic_dev *dev = arg;
-    struct timespec tp, elapse;
+    struct timeval tv, elapse;
     unsigned long microsec;
     double distance;
     int level;
 
     dev->nr_echo++;
-    clock_gettime(CLOCK_MONOTONIC, &tp);
+    gettimeofday(&tv, NULL);
     level = (int)bcm2835_gpio_lev(dev->pin_echo);
-    /*
-    fprintf(stderr, "nr_trig = %d, nr_echo = %d, level = %d, sec = %d, nsec = %d\n",
-                        dev->nr_trig, dev->nr_echo, level, tp.tv_sec, tp.tv_nsec);
-    */
+
     if (level) {
-        dev->echo_tp = tp;
+        dev->echo_tv = tv;
     } else {
-        timespec_sub(&tp, &dev->echo_tp, &elapse);
-        microsec = elapse.tv_sec * 1000000 + elapse.tv_nsec / 1000;
+        timeval_sub(&tv, &dev->echo_tv, &elapse);
+        microsec = elapse.tv_sec * 1000000 + elapse.tv_usec;
         distance = US2VELOCITY(microsec);
+        /* save data */
+        dev->distance = (float)distance;
+        dev->timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
+
         if (dev->cb) {
             int err;
 
@@ -83,7 +110,7 @@ static void echo_signal(int fd, short what, void *arg)
         if (dev->flags & UF_IMMEDIATE) {
             /* TODO */
             if (dev->count == -1 || dev->counted++ < dev->count)
-                do_trig(dev);
+                do_delay_trig(dev);
         }
     }
 }
@@ -93,7 +120,8 @@ static void trig_done(int fd, short what, void *arg)
     struct ultrasonic_dev *dev = arg;
     dev->nr_trig++;
     bcm2835_gpio_write(dev->pin_trig, LOW);
-    evtimer_del(dev->ev_over_trig);
+    /* TODO: needed ? */
+    evtimer_del(dev->ev_trig_done);
 }
 
 static void timer_scope(int fd, short what, void *arg);
@@ -112,10 +140,17 @@ struct ultrasonic_dev *ultrasonic_new(int pin_trig,
 
         dev->tv_trig.tv_sec = 0;
         dev->tv_trig.tv_usec = trig_time;
+        dev->tv_delay.tv_sec = 0;
+        dev->tv_delay.tv_usec = CONTINUOUS_DELAYED;
 
         /* only new, no add */
-        dev->ev_over_trig = evtimer_new(evbase, trig_done, dev);
-        if (dev->ev_over_trig == NULL) {
+        dev->ev_trig_done = evtimer_new(evbase, trig_done, dev);
+        if (dev->ev_trig_done == NULL) {
+            ultrasonic_del(dev);
+            return NULL;
+        }
+        dev->ev_delay = evtimer_new(evbase, delay_trig, dev);
+        if (dev->ev_delay == NULL) {
             ultrasonic_del(dev);
             return NULL;
         }
@@ -144,8 +179,10 @@ void ultrasonic_del(struct ultrasonic_dev *dev)
             eventfd_del(dev->ev_timer);
         if (dev->ev_echo)
             eventfd_del(dev->ev_echo);
-        if (dev->ev_over_trig)
-            eventfd_del(dev->ev_over_trig);
+        if (dev->ev_trig_done)
+            eventfd_del(dev->ev_trig_done);
+        if (dev->ev_delay)
+            eventfd_del(dev->ev_delay);
         free(dev);
     }
 }
@@ -153,7 +190,7 @@ void ultrasonic_del(struct ultrasonic_dev *dev)
 int ultrasonic(struct ultrasonic_dev *dev, __cb_ultrasonic cb, void *opaque)
 {
     /* in using ? */
-    if (evtimer_pending(dev->ev_over_trig, NULL))
+    if (evtimer_pending(dev->ev_trig_done, NULL))
         return -EBUSY;
 
     dev->cb = cb;
@@ -217,7 +254,15 @@ int ultrasonic_scope(struct ultrasonic_dev *dev, int count,
 unsigned int ultrasonic_is_busy(struct ultrasonic_dev *dev)
 {
     return (unsigned int)(evtimer_pending(dev->ev_timer, NULL)
-                    || evtimer_pending(dev->ev_over_trig, NULL));
+                    || evtimer_pending(dev->ev_trig_done, NULL));
+}
+
+float ultrasonic_get_distance(struct ultrasonic_dev *dev,
+                                unsigned long *timestamp)
+{
+    if (timestamp)
+        *timestamp = dev->timestamp;
+    return dev->distance;
 }
 
 /************************************************************/

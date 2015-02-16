@@ -79,20 +79,6 @@ function devicetree_init(dt)
                             io.stderr:write("l298n_new() error\n")
                         end
                     end
-                elseif class == "esc" and type(devlist) == "table" then
-                    for name, d in pairs(devlist) do
-                        local esc
-
-                        request_gpio(d, d.pin)
-
-                        esc = lr.esc_new(d.pin, d.refresh_rate, d.start_time,
-                                    d.min_throttle_time, d.max_throttle_time)
-                        if esc then
-                            register_device(esc, name)
-                        else
-                            io.stderr:write("esc_new() error\n")
-                        end
-                    end
                 elseif class == "tank" and type(devlist) == "table" then
                     for name, d in pairs(devlist) do
                         local tank
@@ -123,8 +109,60 @@ function devicetree_init(dt)
                     end
                 end
             end
+
+        elseif k == "softpwm" and type(v) == "table" then
+
+            -- XXX: softpwm initialized by devtree
+            softpwm_init(v.cycle_time, v.step_time)
+
+            for class, devlist in pairs(v) do
+                if class == "esc" and type(devlist) == "table" then
+                    for name, d in pairs(devlist) do
+                        if type(d) == "table" then
+
+                            request_gpio(d, d.pin)
+
+                            lr.gpio_fsel(d.pin)
+
+                            -- use pin as dev pointer
+                            register_device(d.pin, name)
+                        end
+                    end
+                end
+            end
         elseif k == "i2c" and type(v) == "table" then
+
+            -- XXX: i2c initialized by devtree
+            i2c_init(v.divider)
+
+            for class, devlist in pairs(v) do
+                if class == "imu" and type(devlist) == "table" then
+                    for name, d in pairs(devlist) do
+
+                        request_gpio(d, d.pin_int)
+
+                        -- init mpu
+                        lr.invmpu_init(d.pin_int, d.sample_rate)
+
+                        -- use pin as dev pointer
+                        register_device(d.pin_int, name)
+                    end
+                end
+            end
         elseif k == "spi" and type(v) == "table" then
+        elseif k == "pidctrl" and type(v) == "table" then
+            for name, p in pairs(v) do
+                if type(p) == "table" and #p ~= 5 then
+                    io.stderr:write("p parameters error\n")
+                end
+            end
+
+            --lr.pctrl_init(p.esc_front, p.esc_left, p.esc_rear, p.esc_right,
+            --                p.altimeter, p.p_angle, p.p_rate, p.p_alti)
+
+            lr.pctrl_init(__DEV(p.esc_front), __DEV(p.esc_rear),
+                          __DEV(p.esc_left), __DEV(p.esc_right),
+                          p.altimeter, p.p_angle, p.p_rate, p.p_alti)
         end
     end
 end

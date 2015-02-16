@@ -39,6 +39,11 @@ static int pin_int = 17;
 #define inv_enable_magnetic_disturbance() do {} while (0)
 
 /* Private typedef -----------------------------------------------------------*/
+#undef MPL_LOGE
+#undef MPL_LOGI
+#define MPL_LOGE(...)   fprintf(stderr, __VA_ARGS__)
+#define MPL_LOGI(...)   fprintf(stdout, __VA_ARGS__)
+
 /* Data read from MPL. */
 #define PRINT_ACCEL     (0x01)
 #define PRINT_GYRO      (0x02)

@@ -11,58 +11,56 @@ devroot = {
                 trig_time = 10
             }
         },
+    },
 
-        stepmotor = {
-            stepmotor = {
-                pin1 = 2,
-                pin2 = 3,
-                pin3 = 4,
-                pin4 = 17,
-
-                step_angle = 5.625,
-                reduction_ratio = 64,
-                pullin_freq = 500,
-                pullout_freq = 900,
-                flags = 2           -- SMF_PULSE_EIGHT
-            }
-        },
+    softpwm = {
+        -- 2.5 ms, 400 Hz
+        cycle_time = 2500,  -- 2500 us
+        step_time = 5,      -- 5 us
 
         esc = {
-            esc1 = {
-                pin = 27,
+            min_throttle_time = 1000,   -- 1ms
+            max_throttle_time = 2000,   -- 2ms
 
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
-            },
-            esc2 = {
-                pin = 22,
+            esc1 = { pin = 27 },
+            esc2 = { pin = 22 },
+            esc3 = { pin = 5 },
+            esc4 = { pin = 6 },
+        }
+    },
 
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
-            },
-            esc3 = {
-                pin = 5,
+    i2c = {
+        divider = 64,
 
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
-            },
-            esc4 = {
-                pin = 6,
-
-                refresh_rate = 50,      -- frequency (hz)
-                start_time = 5000,      -- 5s
-                min_throttle_time = 900,    -- 900us
-                max_throttle_time = 2100,   -- 2100us
+        imu = {
+            -- mpu6050, mpu9250
+            mpu = {
+                pin_int = 17,
+                sample_rate = 200,
             }
         }
     },
 
-    i2c = {},
-    spi = {}
+    spi = {},
+
+    pidctrl = {
+        -- '+'
+        esc_front = "esc1",
+        esc_left  = "esc2",
+        esc_rear  = "esc3",
+        esc_right = "esc4",
+
+        -- 'x'
+        --esc_front_left  = "esc1",
+        --esc_front_right = "esc2",
+        --esc_rear_left   = "esc3",
+        --esc_rear_right  = "esc4",
+
+        altimeter = "ultrasonic",
+
+        --            Kp Ki Kd min max
+        pid_angle = { 10, 1, 2, 1, 6 },
+        pid_rate  = { 10, 1, 2, 1, 6 },
+        pid_alti  = { 10, 1, 2, 1, 6 },
+    }
 }
