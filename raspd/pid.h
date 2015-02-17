@@ -17,7 +17,7 @@ struct pid_struct {
 
 struct pid_struct *pid_new(long kp, long ki, long kd, long min, long max);
 void pid_del(struct pid_struct *pid);
-float pid_update(struct pid_struct *pid,
+long pid_update(struct pid_struct *pid,
         long setpoint, long input, unsigned long dt);
 void pid_set(struct pid_struct *pid,
         long kp, long ki, long kd, long min, long max);

@@ -27,7 +27,7 @@ void pid_del(struct pid_struct *pid)
         free(pid);
 }
 
-float pid_update(struct pid_struct *pid,
+long pid_update(struct pid_struct *pid,
         long setpoint, long input, unsigned long dt)
 {
     /* compute error */

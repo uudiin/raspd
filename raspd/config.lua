@@ -12,7 +12,7 @@ devres = config_path .. "devres.lua"
 steer = config_path .. "steer_quadcopter.lua"
 
 -- devtree
-devtree_file = config_path .. "devtree_quadrotor.lua"
+devtree_file = config_path .. "devtree_quadcopter.lua"
 
 -- pin pwm
 -- channel-0  12 18

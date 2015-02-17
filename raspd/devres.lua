@@ -113,7 +113,7 @@ function devicetree_init(dt)
         elseif k == "softpwm" and type(v) == "table" then
 
             -- XXX: softpwm initialized by devtree
-            softpwm_init(v.cycle_time, v.step_time)
+            lr.softpwm_init(v.cycle_time, v.step_time)
 
             for class, devlist in pairs(v) do
                 if class == "esc" and type(devlist) == "table" then
@@ -133,7 +133,7 @@ function devicetree_init(dt)
         elseif k == "i2c" and type(v) == "table" then
 
             -- XXX: i2c initialized by devtree
-            i2c_init(v.divider)
+            lr.i2c_init(v.divider)
 
             for class, devlist in pairs(v) do
                 if class == "imu" and type(devlist) == "table" then
@@ -150,19 +150,22 @@ function devicetree_init(dt)
                 end
             end
         elseif k == "spi" and type(v) == "table" then
-        elseif k == "pidctrl" and type(v) == "table" then
+        end
+    end
+
+    -- loop again
+    for k, v in pairs(dt) do
+        if k == "pidctrl" and type(v) == "table" then
             for name, p in pairs(v) do
                 if type(p) == "table" and #p ~= 5 then
                     io.stderr:write("p parameters error\n")
                 end
             end
 
-            --lr.pctrl_init(p.esc_front, p.esc_left, p.esc_rear, p.esc_right,
-            --                p.altimeter, p.p_angle, p.p_rate, p.p_alti)
-
-            lr.pctrl_init(__DEV(p.esc_front), __DEV(p.esc_rear),
-                          __DEV(p.esc_left), __DEV(p.esc_right),
-                          p.altimeter, p.p_angle, p.p_rate, p.p_alti)
+            lr.pidctrl_init(__DEV(v.esc_front), __DEV(v.esc_rear),
+                      __DEV(v.esc_left), __DEV(v.esc_right),
+                      v.pid_angle, v.pid_rate, v.pid_alti,
+                      v.altimeter)
         end
     end
 end
@@ -177,7 +180,7 @@ if not devtree_file then
         devtree_file = config_path .. "devtree_car.lua"
     elseif mach == "tank" then
         devtree_file = config_path .. "devtree_tank.lua"
-    elseif mach == "quadrotor" then
+    elseif mach == "quadcopter" then
         devtree_file = config_path .. "devtree_quadcopter.lua"
     else
         devtree_file = config_path .. "devtree.lua"
@@ -188,3 +191,4 @@ dofile(devtree_file)
 
 -- init device tree
 devicetree_init(devroot)
+

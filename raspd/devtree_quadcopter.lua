@@ -1,4 +1,4 @@
--- devtree for quadrotor
+-- devtree for quadcopter
 
 devroot = {
     gpio = {

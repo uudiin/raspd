@@ -246,6 +246,10 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
         dt = 1;     /* FIXME:  ms ? */
     else
         dt = timestamp - prev_timestamp;
+
+    if (dt == 0)
+        dt = 1;
+
     prev_timestamp = timestamp;
 
     if (fptr_get_altitude)
@@ -298,7 +302,7 @@ void pidctrl_exit(void)
 
 static int euler_main(int fd, int argc, char *argv[])
 {
-    int yaw, pitch, roll;
+    int yaw = 0, pitch = 0, roll = 0;
     static struct option options[] = {
         { "yaw",   required_argument, NULL, 'y' },
         { "pitch", required_argument, NULL, 'p' },
@@ -317,9 +321,12 @@ static int euler_main(int fd, int argc, char *argv[])
         }
     }
 
-    dst_euler[YAW]   = (long)yaw;
-    dst_euler[PITCH] = (long)pitch;
-    dst_euler[ROLL]  = (long)roll;
+    if (yaw)
+        dst_euler[YAW]   = (long)yaw;
+    if (pitch)
+        dst_euler[PITCH] = (long)pitch;
+    if (roll)
+        dst_euler[ROLL]  = (long)roll;
 
     return 0;
 }
