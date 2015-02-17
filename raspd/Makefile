@@ -3,6 +3,7 @@
 include ../rules.mak
 
 CFLAGS += -g -I../lib -I../libbcm2835 -I../libevent/include
+CFLAGS += -I../inv_mpu/core/driver/eMPL -I../inv_mpu/core/driver/include -I../inv_mpu/core/mllite
 LDFLAGS += -L ../lib -llua -ldl -lm
 LIBS =
 
@@ -13,7 +14,7 @@ SRCS_libraspd = event.c gpiolib.c
 
 SRCS_raspd = raspd.c module.c event.c luaenv.c softpwm.c \
 	gpiolib.c gpio.c pwm.c l298n.c ultrasonic.c \
-	tankcontrol.c motor.c modmisc.c inv_mpu.c pid.c pidctrl.c
+	tankcontrol.c motor.c modmisc.c inv_imu.c pid.c pidctrl.c
 
 DEPS_raspd = ../lib/libraspberry.a \
 			 ../libbcm2835/libbcm2835.a \

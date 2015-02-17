@@ -1,6 +1,8 @@
 #ifndef __TANKCONTROL_H__
 #define __TANKCONTROL_H__
 
+#include <queue.h>
+
 struct code_entry { 
     TAILQ_ENTRY(code_entry) link;
     int code;

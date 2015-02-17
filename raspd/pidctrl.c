@@ -2,21 +2,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <getopt.h>
+#include <math.h>
+
+#include <inv_mpu.h>
+#include <inv_mpu_dmp_motion_driver.h>
+#include <ml_math_func.h>
 
 #include "module.h"
 #include "softpwm.h"
 #include "inv_mpu.h"
 #include "luaenv.h"
 #include "pid.h"
+
 #include "pidctrl.h"
 
 #define YAW   0
 #define PITCH 1
 #define ROLL  2
 
-static struct pid_struct euler[3];
-static struct pid_struct euler_rate[3];
-static struct pid_struct altitude;
+static struct pid_struct pid_euler[3];
+static struct pid_struct pid_euler_rate[3];
+static struct pid_struct pid_altitude;
 
 struct esc_info {
     int pin;
@@ -27,8 +34,8 @@ static struct esc_info esc_rear;
 static struct esc_info esc_left;
 static struct esc_info esc_right;
 
-volatile static long dst_euler[3];
-volatile static long dst_altitude;
+static long dst_euler[3];
+static long dst_altitude;
 
 /* TODO */
 static long (*fptr_get_altitude)(unsigned long *timestamp);
@@ -60,14 +67,14 @@ static void attitude_control(long target_euler[], long euler[],
      */
     pidout[YAW]   = target_euler[YAW];
 #define PID(x) \
-    pidout[x] = pid_update(&euler[x], target_euler[x], euler[x], dt)
+    pidout[x] = pid_update(&pid_euler[x], target_euler[x], euler[x], dt)
     PID(PITCH);
     PID(ROLL);
 #undef PID
 
     /* rate control */
 #define PID(x) \
-    pidout[x] = pid_update(&euler_rate[x], pidout[x], gyro[x], dt)
+    pidout[x] = pid_update(&pid_euler_rate[x], pidout[x], gyro[x], dt)
     PID(YAW);
     PID(PITCH);
     PID(ROLL);
@@ -90,8 +97,8 @@ static void altitude_control(long target, long current,
     /* XXX: only Z axis */
     accel[2] = (long)accel_short[2];
 
-    pidout = pid_update(&altitude, target, current, dt);
-    pidout = pid_update(&altitude, pidout, accel[2], dt);
+    pidout = pid_update(&pid_altitude, target, current, dt);
+    pidout = pid_update(&pid_altitude, pidout, accel[2], dt);
 
     /* set throttle */
     esc_front.throttle += pidout;   /* TODO:  / 65536 ? */
@@ -152,6 +159,14 @@ static void android_orient_cb(unsigned char orientation)
 	}
 }
 
+static long q29_mult(long a, long b)
+{
+    long long temp;
+    long result;
+    temp = (long long)a * b;
+    result = (long)(temp >> 29);
+    return result;
+}
 /**
  *  @brief      Body-to-world frame euler angles.
  *  The euler angles are output with the following convention:
@@ -161,7 +176,7 @@ static void android_orient_cb(unsigned char orientation)
  *  @param[out] data        Euler angles in degrees, q16 fixed point.
  *  @return     1 if data was updated.
  */
-void quat_to_euler(const long *quat, long *data)
+static void quat_to_euler(const long *quat, long *data)
 {
     long t1, t2, t3;
     long q00, q01, q02, q03, q11, q12, q13, q22, q23, q33;
@@ -254,10 +269,10 @@ int pidctrl_init(int front, int rear, int left, int right,
     int i;
     /* set Kp, Ki, Kd */
     for (i = 0; i < 3; i++)
-        pid_set(&euler[i], angle[0], angle[1], angle[2], angle[3], angle[4]);
+        pid_set(&pid_euler[i], angle[0], angle[1], angle[2], angle[3], angle[4]);
     for (i = 0; i < 3; i++)
-        pid_set(&euler_rate[i], rate[0], rate[1], rate[2], rate[3], rate[4]);
-    pid_set(&altitude, alt[0], alt[1], alt[2], alt[3], alt[4]);
+        pid_set(&pid_euler_rate[i], rate[0], rate[1], rate[2], rate[3], rate[4]);
+    pid_set(&pid_altitude, alt[0], alt[1], alt[2], alt[3], alt[4]);
 
     esc_front.pin = front;
     esc_rear.pin =  rear;

@@ -21,10 +21,10 @@
 #include "ultrasonic.h"
 #include "motor.h"
 #include "l298n.h"
-#include "softpwm.h"
-#include "inv_mpu.h"
-#include "pidctrl.h"
 #include "tankcontrol.h"
+#include "softpwm.h"
+#include "inv_imu.h"
+#include "pidctrl.h"
 
 #include "luaenv.h"
 
@@ -335,7 +335,7 @@ static int lr_softpwm_init(lua_State *L)
 static int lr_invmpu_init(lua_State *L)
 {
     int pin_int = (int)luaL_checkinteger(L, 1);
-    int smaple_rate = (int)luaL_optint(L, 2, 200);
+    int sample_rate = (int)luaL_optint(L, 2, 200);
     int err = invmpu_init(pin_int, sample_rate);
     lua_pushinteger(L, err);
     return 1;
@@ -691,8 +691,8 @@ static int lr_ultrasonic_get_distance(lua_State *L)
     unsigned long timestamp;
     float distance;
     distance = ultrasonic_get_distance(*devp, &timestamp);
-    lua_pushnumber(distance);
-    lua_pushnumber(timestamp);
+    lua_pushnumber(L, distance);
+    lua_pushnumber(L, timestamp);
     return 2;
 }
 

@@ -10,6 +10,8 @@
 #include "event.h"
 #include "gpiolib.h"
 
+#include "inv_imu.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 #undef LOGE
@@ -258,7 +260,7 @@ static void set_lp_accel(void)
 {
     if (hal.dmp_on)
         /* LP accel is not compatible with the DMP. */
-        break;
+        return;
     mpu_lp_accel_mode(20);
     /* When LP accel mode is enabled, the driver automatically configures
      * the hardware for latched interrupts. However, the MCU sometimes
@@ -478,7 +480,7 @@ static void int_cb(int fd, short what, void *arg)
 
 int invmpu_init(int pin_int, int sample_rate)
 {
-    inv_error_t result;
+    int result;
     struct int_param_s int_param;
     int err;
 
