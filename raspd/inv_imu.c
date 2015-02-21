@@ -162,7 +162,7 @@ void invmpu_self_test(void)
     result = mpu_run_self_test(gyro, accel);
 #endif
     if (result == 0x7) {
-	LOGI("Passed!\n");
+        LOGI("Passed!\n");
         LOGI("accel: %7.4f %7.4f %7.4f\n",
                     accel[0]/65536.f,
                     accel[1]/65536.f,

@@ -345,6 +345,8 @@ static void *alti_dev;
 
 static long get_altitude_from_ultrasonic(unsigned long *timestamp)
 {
+    /* TODO FIXME */
+    return -1;
     if (alti_dev)
         return ultrasonic_get_distance(alti_dev, timestamp);
     return -1;
@@ -359,7 +361,7 @@ static int lr_pidctrl_init(lua_State *L)
 {
     int pin_front, pin_rear, pin_left, pin_right;
     const char *altimeter;
-    long angle[5], rate[5], alti[5];
+    float angle[5], rate[5], alti[5];
     int i, n;
 
     pin_front = (int)luaL_checkinteger(L, 1);
@@ -374,19 +376,19 @@ static int lr_pidctrl_init(lua_State *L)
     n = lua_objlen(L, 5);
     for (i = 1; i <= n; i++) {
         lua_rawgeti(L, 5, i);
-        angle[i - 1] = (long)luaL_checkinteger(L, -1);
+        angle[i - 1] = luaL_checknumber(L, -1);
     }
 
     n = lua_objlen(L, 6);
     for (i = 1; i <= n; i++) {
         lua_rawgeti(L, 6, i);
-        rate[i - 1] = (long)luaL_checkinteger(L, -1);
+        rate[i - 1] = luaL_checknumber(L, -1);
     }
 
     n = lua_objlen(L, 7);
     for (i = 1; i <= n; i++) {
         lua_rawgeti(L, 7, i);
-        alti[i - 1] = (long)luaL_checkinteger(L, -1);
+        alti[i - 1] = luaL_checknumber(L, -1);
     }
 
     pidctrl_init(pin_front, pin_rear, pin_left, pin_right,
