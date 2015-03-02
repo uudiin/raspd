@@ -227,8 +227,6 @@ static void set_mask_data(unsigned long pinmask, int data)
         sample[0] = channel_mask;
         /* FIXME */
     }
-
-    return 0;
 }
 
 int softpwm_set_data(int pin, int data)

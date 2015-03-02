@@ -70,6 +70,6 @@ $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
 endif
 
 clean:
-	rm -f $(SRCS_libinv_mpu:.c=.d) $(SRCS_mpu_test:.c=.d)
-	rm -f $(OBJS_libinv_mpu) $(OBJS_mpu_test)
+	rm -f $(SRCS_libinv_mpu:.c=.d) $(SRCS_mpu_test:.c=.d) $(SRCS_invmpu_dmp:.c=.d)
+	rm -f $(OBJS_libinv_mpu) $(OBJS_mpu_test) $(OBJS_invmpu_dmp)
 	rm -f $(STATIC_LIBS) $(PROGS)

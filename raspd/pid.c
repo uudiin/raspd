@@ -5,7 +5,7 @@
 
 #include "pid.h"
 
-struct pid_struct *pid_new(long kp, long ki, long kd, long min, long max)
+struct pid_struct *pid_new(float kp, float ki, float kd, float min, float max)
 {
     struct pid_struct *pid;
 
@@ -28,7 +28,7 @@ void pid_del(struct pid_struct *pid)
 }
 
 float pid_update(struct pid_struct *pid,
-        long setpoint, long input, unsigned long dt)
+        float setpoint, float input, float dt)
 {
     /* compute error */
     pid->error = setpoint - input;
@@ -55,7 +55,7 @@ float pid_update(struct pid_struct *pid,
 }
 
 void pid_set(struct pid_struct *pid,
-        long kp, long ki, long kd, long min, long max)
+        float kp, float ki, float kd, float min, float max)
 {
     memset(pid, 0, sizeof(*pid));
     pid->kp = kp;
@@ -65,14 +65,14 @@ void pid_set(struct pid_struct *pid,
     pid->max = max;
 }
 
-void pid_set_tunings(struct pid_struct *pid, long kp, long ki, long kd)
+void pid_set_tunings(struct pid_struct *pid, float kp, float ki, float kd)
 {
     pid->kp = kp;
     pid->ki = ki;
     pid->kd = kd;
 }
 
-void pid_set_windup_bounds(struct pid_struct *pid, long min, long max)
+void pid_set_windup_bounds(struct pid_struct *pid, float min, float max)
 {
     pid->min = min;
     pid->max = max;
