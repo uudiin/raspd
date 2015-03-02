@@ -9,11 +9,10 @@ config_path = "/root/raspberry/raspd/"
 devres = config_path .. "devres.lua"
 
 -- steer
-steer = config_path .. "steer_car.lua"
+steer = config_path .. "steer_quadcopter.lua"
 
 -- devtree
---devtree_file = "/root/raspberry/raspd/devtree_quadrotor.lua"
-devtree_file = config_path .. "devtree_tank.lua"
+devtree_file = config_path .. "devtree_quadrotor.lua"
 
 -- pin pwm
 -- channel-0  12 18

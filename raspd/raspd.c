@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <event2/event.h>
 
@@ -135,9 +136,6 @@ static int modexec_exit(struct module *m, void *opaque)
 /* shutdown -- its super important to reset the DMA before quitting */
 static void terminate(int dummy)
 {
-    if (fd != -1)
-        close(fd);
-
     /* uninitialize all modules */
     foreach_module(modexec_exit, NULL);
 
