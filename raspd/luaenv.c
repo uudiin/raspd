@@ -8,6 +8,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#include <luaconf.h>
 
 #include <bcm2835.h>
 
