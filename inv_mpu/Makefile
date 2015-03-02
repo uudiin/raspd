@@ -15,13 +15,12 @@ INC_PATHS = core/driver/include \
 INCLUDES = $(addprefix -I, $(INC_PATHS))
 
 CFLAGS += $(INCLUDES)
-#CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU9250 -DCOMPASS_ENABLED -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
-CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
+CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU9250 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
 LDFLAGS += -lm
 LIBS =
 
 STATIC_LIBS = libinv_mpu.a
-PROGS = invmpu_dmp
+PROGS = mpu_test invmpu_dmp
 
 SRCS_libinv_mpu = core/driver/eMPL/inv_mpu.c \
 				  core/driver/eMPL/inv_mpu_dmp_motion_driver.c \

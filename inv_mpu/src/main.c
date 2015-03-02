@@ -6,7 +6,7 @@
  *       @file      mllite_test.c
  *       @brief     Test app for eMPL using the Motion Driver DMP image.
  */
- 
+
 /* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include <errno.h>
@@ -30,17 +30,20 @@
 
 static int pin_int = 17;
 
+
+#define inv_enable_quaternion()           do {} while (0)
+#define inv_enable_9x_sensor_fusion()     do {} while (0)
+#define inv_enable_fast_nomot()           do {} while (0)
+#define inv_enable_gyro_tc()              do {} while (0)
+#define inv_enable_vector_compass_cal()   do {} while (0)
+#define inv_enable_magnetic_disturbance() do {} while (0)
+
 /* Private typedef -----------------------------------------------------------*/
-#define inv_enable_quaternion()         do {} while (0)
-#define inv_enable_9x_sensor_fusion()   do {} while (0)
-#define inv_enable_fast_nomot()         do {} while (0)
-#define inv_enable_gyro_tc()            do {} while (0)
-#define inv_enable_vector_compass_cal() do {} while (0)
-#define inv_enable_magnetic_disturbance()   do {} while (0)
 #undef MPL_LOGE
 #undef MPL_LOGI
 #define MPL_LOGE(...)   fprintf(stderr, __VA_ARGS__)
 #define MPL_LOGI(...)   fprintf(stdout, __VA_ARGS__)
+
 /* Data read from MPL. */
 #define PRINT_ACCEL     (0x01)
 #define PRINT_GYRO      (0x02)
@@ -137,6 +140,12 @@ static struct platform_data_s compass_pdata = {
 #define COMPASS_ENABLED 1
 #endif
 
+
+#ifdef COMPASS_ENABLED
+static unsigned char new_compass = 0;
+#endif
+
+unsigned char new_temp = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 int get_clock_ms(unsigned long *count)
@@ -335,7 +344,7 @@ static inline void run_self_test(void)
     result = mpu_run_self_test(gyro, accel);
 #endif
     if (result == 0x7) {
-	MPL_LOGI("Passed!\n");
+        MPL_LOGI("Passed!\n");
         MPL_LOGI("accel: %7.4f %7.4f %7.4f\n",
                     accel[0]/65536.f,
                     accel[1]/65536.f,
@@ -715,13 +724,9 @@ static void reset_termios(void)
 
 static void once_loop(void)
 {
-    unsigned char accel_fsr, new_temp = 0;
     unsigned long timestamp;
     unsigned long sensor_timestamp;
     int new_data = 0;
-#ifdef COMPASS_ENABLED
-    unsigned char new_compass = 0;
-#endif
 
     get_clock_ms(&timestamp);
 
@@ -905,11 +910,12 @@ static void int_ready(int fd, short what, void *arg)
 int main(int argc, char *argv[])
 {
     inv_error_t result;
-    unsigned char accel_fsr,  new_temp = 0;
+    unsigned char accel_fsr;
     unsigned short gyro_rate, gyro_fsr;
     unsigned long timestamp;
     struct int_param_s int_param;
     int err;
+
 #ifdef COMPASS_ENABLED
     unsigned short compass_fsr;
 #endif
@@ -920,7 +926,7 @@ int main(int argc, char *argv[])
     gpiolib_init();
     rasp_event_init();
     bcm2835_i2c_begin();
-    bcm2835_i2c_setClockDivider(64);
+    bcm2835_i2c_setClockDivider(BCM2835_I2C_CLOCK_DIVIDER_626);
 
     err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
                     NULL, stdin_ready, NULL, NULL);
@@ -1131,5 +1137,4 @@ int main(int argc, char *argv[])
     reset_termios();
 }
 
-/*---------------------------------------------------------------------------*/
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
