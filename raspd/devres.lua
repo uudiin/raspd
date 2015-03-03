@@ -124,6 +124,10 @@ function devicetree_init(dt)
 
                             lr.gpio_fsel(d.pin)
 
+                            -- set throttle
+                            lr.softpwm_set_data(d.pin,
+                                    devlist.min_throttle_time / v.step_time)
+
                             -- use pin as dev pointer
                             register_device(d.pin, name)
                         end
@@ -155,10 +159,10 @@ function devicetree_init(dt)
 
     -- loop again
     for k, v in pairs(dt) do
-        if k == "pidctrl" and type(v) == "table" then
+        if k == "quadcopter" and type(v) == "table" then
             for name, p in pairs(v) do
                 if type(p) == "table" and #p ~= 5 then
-                    io.stderr:write("p parameters error\n")
+                    io.stderr:write("PID parameters error\n")
                 end
             end
 

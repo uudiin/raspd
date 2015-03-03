@@ -64,6 +64,28 @@ static int fd = -1;
 #define TEMP_READ_MS    (500)
 #define COMPASS_READ_MS (100)
 
+struct hal_s {
+    unsigned char lp_accel_mode;
+    unsigned char sensors;
+    unsigned char dmp_on;
+    volatile unsigned char new_gyro;
+    unsigned char motion_int_mode;
+    unsigned long next_pedo_ms;
+    unsigned long next_temp_ms;
+    unsigned long next_compass_ms;
+    unsigned int report;
+    unsigned short dmp_features;
+
+    short accel_short[3];
+    short gyro[3];
+    long quat[4];
+    long temperature;
+#ifdef COMPASS_ENABLED
+    short compass_short[3];
+#endif
+};
+static struct hal_s hal = {0};
+
 /* Platform-specific information. Kinda like a boardfile. */
 struct platform_data_s {
     signed char orientation[9];
@@ -105,27 +127,6 @@ static struct platform_data_s compass_pdata = {
 #define COMPASS_ENABLED 1
 #endif
 
-struct hal_s {
-    unsigned char lp_accel_mode;
-    unsigned char sensors;
-    unsigned char dmp_on;
-    volatile unsigned char new_gyro;
-    unsigned char motion_int_mode;
-    unsigned long next_pedo_ms;
-    unsigned long next_temp_ms;
-    unsigned long next_compass_ms;
-    unsigned int report;
-    unsigned short dmp_features;
-
-    short accel_short[3];
-    short gyro[3];
-    long quat[4];
-    long temperature;
-#ifdef COMPASS_ENABLED
-    short compass_short[3];
-#endif
-};
-static struct hal_s hal = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 int get_clock_ms(unsigned long *count)
@@ -1017,7 +1018,7 @@ int main(int argc, char *argv[])
     gpiolib_init();
     rasp_event_init();
     bcm2835_i2c_begin();
-    bcm2835_i2c_setClockDivider(BCM2835_I2C_CLOCK_DIVIDER_626);
+    bcm2835_i2c_setClockDivider(64);
 
     err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
                     NULL, stdin_ready, NULL, NULL);

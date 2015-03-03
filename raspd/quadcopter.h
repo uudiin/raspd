@@ -1,9 +1,9 @@
-#ifndef __PIDCTRL_H__
-#define __PIDCTRL_H__
+#ifndef __QUADCOPTER_H__
+#define __QUADCOPTER_H__
 
 int pidctrl_init(int front, int rear, int left, int right,
                 long (*get_altitude)(unsigned long *timestamp),
-                float angle[], float rate[], float alti[]);
+                long angle[], long rate[], long alti[]);
 void pidctrl_exit(void);
 
-#endif /* __PIDCTRL_H__ */
+#endif /* __QUADCOPTER_H__ */

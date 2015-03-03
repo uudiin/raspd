@@ -43,7 +43,7 @@ devroot = {
 
     spi = {},
 
-    pidctrl = {
+    quadcopter = {
         -- '+'
         esc_front = "esc1",
         esc_left  = "esc2",
@@ -58,9 +58,9 @@ devroot = {
 
         altimeter = "ultrasonic",
 
-        --            Kp  Ki  Kd  min  max
-        pid_angle = { 1, 0.1, 0.2, 0.1, 8 },
-        pid_rate  = { 1, 0.1, 0.2, 0.1, 8 },
-        pid_alti  = { 1, 0.1, 0.2, 0.1, 8 },
+        --            Kp Ki Kd min max
+        pid_angle = { 10, 1, 2, 1, 6 },
+        pid_rate  = { 10, 1, 2, 1, 6 },
+        pid_alti  = { 10, 1, 2, 1, 6 },
     }
 }
