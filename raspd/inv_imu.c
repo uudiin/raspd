@@ -180,7 +180,7 @@ void invmpu_self_test(void)
          */
         unsigned char i = 0;
 
-        for(i = 0; i<3; i++) {
+        for(i = 0; i < 3; i++) {
         	gyro[i] = (long)(gyro[i] * 32.8f); /* convert to +-1000dps */
         	accel[i] *= 4096.f;                /* convert to +-8G */
         	accel[i] = accel[i] >> 16;
@@ -203,6 +203,46 @@ void invmpu_self_test(void)
         if (!(result & 0x4))
             LOGE("Compass failed.\n");
     }
+}
+
+int invmpu_get_calibrate_data(long gyro[], long accel[])
+{
+    int result;
+
+#if defined (MPU6500) || defined (MPU9250)
+    result = mpu_run_6500_self_test(gyro, accel, 0);
+#elif defined (MPU6050) || defined (MPU9150)
+    result = mpu_run_self_test(gyro, accel);
+#endif
+    if (result == 0x7) {
+        /* Test passed. We can trust the gyro data here, so now we need to update calibrated data*/
+        /*
+         * This portion of the code uses the HW offset registers that are in the MPUxxxx devices
+         * instead of pushing the cal data to the MPL software library
+         */
+        unsigned char i = 0;
+
+        for(i = 0; i < 3; i++) {
+        	gyro[i] = (long)(gyro[i] * 32.8f); /* convert to +-1000dps */
+        	accel[i] *= 4096.f;                /* convert to +-8G */
+        	accel[i] = accel[i] >> 16;
+        	gyro[i] = (long)(gyro[i] >> 16);
+        }
+        return 0;
+    } else {
+        return result;
+    }
+}
+
+void invmpu_set_calibrate_data(long gyro[], long accel[])
+{
+    mpu_set_gyro_bias_reg(gyro);
+
+#if defined (MPU6500) || defined (MPU9250)
+    mpu_set_accel_bias_6500_reg(accel);
+#elif defined (MPU6050) || defined (MPU9150)
+    mpu_set_accel_bias_6050_reg(accel);
+#endif
 }
 
 static void handle_input(char c)
@@ -398,7 +438,7 @@ have_data:
         hal.new_gyro = 0;
         sensors |= INV_XYZ_ACCEL;
     } else if (hal.new_gyro && hal.dmp_on) {
-        unsigned char more;
+        unsigned char more = 0;
         /* This function gets new data from the FIFO when the DMP is in
          * use. The FIFO can contain any combination of gyro, accel,
          * quaternion, and gesture data. The sensors parameter tells the
@@ -423,7 +463,7 @@ have_data:
             }
         }
     } else if (hal.new_gyro) {
-        unsigned char more;
+        unsigned char more = 0;
         /* This function gets new data from the FIFO. The FIFO can contain
          * gyro, accel, both, or neither. The sensors parameter tells the
          * caller which data fields were actually populated with new data.

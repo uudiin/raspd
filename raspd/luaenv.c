@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <event2/event.h>
@@ -330,6 +331,27 @@ static int lr_invmpu_init(lua_State *L)
     int err = invmpu_init(pin_int, sample_rate);
     lua_pushinteger(L, err);
     return 1;
+}
+
+static int lr_invmpu_set_calibrate_data(lua_State *L)
+{
+    long gyro[3], accel[3];
+    int i;
+
+    assert(lua_objlen(L, 1) == 3);
+    assert(lua_objlen(L, 2) == 3);
+
+    for (i = 1; i <= 3; i++) {
+        lua_rawgeti(L, 1, i);
+        gyro[i - 1] = luaL_checkinteger(L, -1);
+    }
+    for (i = 1; i <= 3; i++) {
+        lua_rawgeti(L, 2, i);
+        accel[i - 1] = luaL_checkinteger(L, -1);
+    }
+
+    invmpu_set_calibrate_data(gyro, accel);
+    return 0;
 }
 
 static void *alti_dev;
@@ -852,6 +874,7 @@ static const luaL_Reg luaraspd_lib[] = {
     /* misc */
     { "i2c_init",     lr_i2c_init     },
     { "invmpu_init",  lr_invmpu_init  },
+    { "invmpu_set_calibrate_data", lr_invmpu_set_calibrate_data },
     { "pidctrl_init", lr_pidctrl_init },
 
     /* softpwm */

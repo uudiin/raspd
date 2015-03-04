@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <getopt.h>
 #include <math.h>
 
@@ -312,7 +313,7 @@ int pidctrl_init(int front, int rear, int left, int right,
     fptr_get_altitude = get_altitude;
 
     /* TODO FIXME : self-test */
-    invmpu_self_test();
+    /*invmpu_self_test();*/
 
     invmpu_register_tap_cb(tap_cb);
     invmpu_register_android_orient_cb(android_orient_cb);
@@ -328,9 +329,33 @@ void pidctrl_exit(void)
  * module
  */
 
+static const char *file_cal;
+
+static int euler_init(void)
+{
+    const char *file = NULL;
+    int err;
+
+    err = luaenv_getconf_str("_G", "mpu_cal", &file);
+    if (err >= 0 && file) {
+        file_cal = strdup(file);
+        luaenv_pop(1);
+    } else {
+        fprintf(stderr, "luaenv_getconf_str(mpu_cal), err = %d\n", err);
+    }
+    return err;
+}
+
+static void euler_exit(void)
+{
+    if (file_cal)
+        free((void *)file_cal);
+}
+
 static int euler_main(int fd, int argc, char *argv[])
 {
     int yaw = 0, pitch = 0, roll = 0;
+    int self_test = 0;
     static struct option options[] = {
         { "yaw",       required_argument, NULL, 'y' },
         { "pitch",     required_argument, NULL, 'p' },
@@ -345,8 +370,58 @@ static int euler_main(int fd, int argc, char *argv[])
         case 'y': yaw = atoi(optarg); break;
         case 'p': pitch = atoi(optarg); break;
         case 'r': roll = atoi(optarg); break;
-        case 's': invmpu_self_test(); break;
+        case 's': self_test = 1; break;
         default:
+            return 1;
+        }
+    }
+
+    /* self test, get calibrated data */
+    if (file_cal && self_test) {
+        int result;
+        long gyro[3], accel[3];
+        time_t t;
+        FILE *fp_cal;
+
+        result = invmpu_get_calibrate_data(gyro, accel);
+        if (result == 0) {
+            fp_cal = fopen(file_cal, "w+");
+            if (fp_cal == NULL) {
+                fprintf(stderr, "fopen(%s), error\n", file_cal);
+                return 1;
+            }
+
+            LOGE("Passed!\n");
+            LOGE("accel: %7.4f %7.4f %7.4f\n",
+                        accel[0]/65536.f,
+                        accel[1]/65536.f,
+                        accel[2]/65536.f);
+            LOGE("gyro: %7.4f %7.4f %7.4f\n",
+                        gyro[0]/65536.f,
+                        gyro[1]/65536.f,
+                        gyro[2]/65536.f);
+
+            t = time(NULL);
+            fprintf(fp_cal,
+                "-- automatically generated, do not edit\n"
+                "-- time: %s\n"
+                "\n"
+                "cal_gyro  = { %ld, %ld, %ld }\n"
+                "cal_accel = { %ld, %ld, %ld }\n",
+                ctime(&t),
+                gyro[0], gyro[1], gyro[2],
+                accel[0], accel[1], accel[2]);
+
+            fclose(fp_cal);
+            return 0;
+        } else {
+            if (!(result & 0x1))
+                LOGE("Gyro failed.\n");
+            if (!(result & 0x2))
+                LOGE("Accel failed.\n");
+            if (!(result & 0x4))
+                LOGE("Compass failed.\n");
+
             return 1;
         }
     }
@@ -390,6 +465,6 @@ static int throttle_main(int fd, int argc, char *argv[])
     update_pwm();
 }
 
-DEFINE_MODULE(euler);
+DEFINE_MODULE_INIT_EXIT(euler);
 DEFINE_MODULE(altitude);
 DEFINE_MODULE(throttle);

@@ -38,7 +38,9 @@ devroot = {
                 pin_int = 17,
                 sample_rate = 200,
             }
-        }
+        },
+
+        barometer = {}
     },
 
     spi = {},

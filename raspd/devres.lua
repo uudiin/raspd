@@ -150,6 +150,16 @@ function devicetree_init(dt)
 
                         -- use pin as dev pointer
                         register_device(d.pin_int, name)
+
+                        -- TODO do calibrate
+                        dofile(mpu_cal)
+                        if type(cal_gyro) ~= "table" or #cal_gyro ~= 3 then
+                            io.stderr:write("calibrate data (gyro) error\n")
+                        end
+                        if type(cal_accel) ~= "table" or #cal_accel ~= 3 then
+                            io.stderr:write("calibrate data (accel) error\n")
+                        end
+                        lr.invmpu_set_calibrate_data(cal_gyro, cal_accel)
                     end
                 end
             end

@@ -482,12 +482,17 @@ static inline void run_self_test(void)
          */
         unsigned char i = 0;
 
-        for(i = 0; i<3; i++) {
-        	gyro[i] = (long)(gyro[i] * 32.8f); //convert to +-1000dps
-        	accel[i] *= 4096.f; //convert to +-8G
+        for(i = 0; i < 3; i++) {
+        	gyro[i] = (long)(gyro[i] * 32.8f);  /* convert to +-1000dps */
+        	accel[i] *= 4096.f;                 /* convert to +-8G */
         	accel[i] = accel[i] >> 16;
         	gyro[i] = (long)(gyro[i] >> 16);
         }
+
+        LOGI("cal_gyro  = { %ld, %ld, %ld }\n"
+             "cal_accel = { %ld, %ld, %ld }\n",
+             gyro[0], gyro[1], gyro[2],
+             accel[0], accel[1], accel[2]);
 
         mpu_set_gyro_bias_reg(gyro);
 
@@ -504,7 +509,7 @@ static inline void run_self_test(void)
             LOGE("Accel failed.\n");
         if (!(result & 0x4))
             LOGE("Compass failed.\n");
-     }
+    }
 }
 
 static void handle_input(void)
@@ -928,6 +933,35 @@ static void once_loop(void)
     }
 }
 
+int invmpu_get_calibrate_data(long gyro[], long accel[])
+{
+    int result;
+
+#if defined (MPU6500) || defined (MPU9250)
+    result = mpu_run_6500_self_test(gyro, accel, 0);
+#elif defined (MPU6050) || defined (MPU9150)
+    result = mpu_run_self_test(gyro, accel);
+#endif
+    if (result == 0x7) {
+        /* Test passed. We can trust the gyro data here, so now we need to update calibrated data*/
+        /*
+         * This portion of the code uses the HW offset registers that are in the MPUxxxx devices
+         * instead of pushing the cal data to the MPL software library
+         */
+        unsigned char i = 0;
+
+        for(i = 0; i < 3; i++) {
+        	gyro[i] = (long)(gyro[i] * 32.8f); /* convert to +-1000dps */
+        	accel[i] *= 4096.f;                /* convert to +-8G */
+        	accel[i] = accel[i] >> 16;
+        	gyro[i] = (long)(gyro[i] >> 16);
+        }
+        return 0;
+    } else {
+        return result;
+    }
+}
+
 static void stdin_ready(int fd, short what, void *arg)
 {
     handle_input();
@@ -961,9 +995,11 @@ int main(int argc, char *argv[])
     long long_port = 8899;
     int pin_int = 17;
     int frequency = DEFAULT_MPU_HZ;
+    int self_test = 0;
     static struct option options[] = {
         { "pin-int", required_argument, NULL, 'p' },
         { "hz",      required_argument, NULL, 'f' },
+        { "self-test",     no_argument, NULL, 's' },
         { 0, 0, 0, 0 }
     };
     int c;
@@ -972,6 +1008,7 @@ int main(int argc, char *argv[])
         switch (c) {
         case 'p': pin_int = atoi(optarg); break;
         case 'f': frequency = atoi(optarg); break;
+        case 's': self_test = 1; break;
         default:
             LOGE("usage: %s --pin-int <n> [hostname] [port]\n", argv[0]);
             exit(1);
@@ -1133,9 +1170,48 @@ int main(int argc, char *argv[])
     mpu_set_dmp_state(1);
     hal.dmp_on = 1;
 
+    /* self test, get calibrated data */
+    if (self_test) {
+        int result;
+        long gyro[3], accel[3];
+
+        result = invmpu_get_calibrate_data(gyro, accel);
+        if (result == 0) {
+            LOGE("Passed!\n");
+            LOGE("accel: %7.4f %7.4f %7.4f\n",
+                        accel[0]/65536.f,
+                        accel[1]/65536.f,
+                        accel[2]/65536.f);
+            LOGE("gyro: %7.4f %7.4f %7.4f\n",
+                        gyro[0]/65536.f,
+                        gyro[1]/65536.f,
+                        gyro[2]/65536.f);
+
+            fprintf(stdout,
+                "-- automatically generated, do not edit\n"
+                "\n"
+                "cal_gyro  = { %ld, %ld, %ld }\n"
+                "cal_accel = { %ld, %ld, %ld }\n",
+                gyro[0], gyro[1], gyro[2],
+                accel[0], accel[1], accel[2]);
+
+            goto exit;
+        } else {
+            if (!(result & 0x1))
+                LOGE("Gyro failed.\n");
+            if (!(result & 0x2))
+                LOGE("Accel failed.\n");
+            if (!(result & 0x4))
+                LOGE("Compass failed.\n");
+
+            goto exit;
+        }
+    }
+
     /* main loop */
     rasp_event_loop();
 
+exit:
     bcm2835_i2c_end();
     rasp_event_exit();
     gpiolib_exit();
