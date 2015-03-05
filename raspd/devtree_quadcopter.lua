@@ -30,13 +30,15 @@ devroot = {
     },
 
     i2c = {
+        -- XXX: must be it
         divider = 64,
 
         imu = {
             -- mpu6050, mpu9250
             mpu = {
                 pin_int = 17,
-                sample_rate = 200,
+                -- XXX: must be it
+                sample_rate = 20,
             }
         },
 
