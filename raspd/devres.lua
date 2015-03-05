@@ -142,11 +142,15 @@ function devicetree_init(dt)
             for class, devlist in pairs(v) do
                 if class == "imu" and type(devlist) == "table" then
                     for name, d in pairs(devlist) do
+                        local err
 
                         request_gpio(d, d.pin_int)
 
                         -- init mpu
-                        lr.invmpu_init(d.pin_int, d.sample_rate)
+                        err = lr.invmpu_init(d.pin_int, d.sample_rate)
+                        if err < 0 then
+                            io.stderr:write("invmpu_init() error\n")
+                        end
 
                         -- use pin as dev pointer
                         register_device(d.pin_int, name)

@@ -30,7 +30,7 @@ devroot = {
     },
 
     i2c = {
-        divider = 64,
+        divider = 32,
 
         imu = {
             -- mpu6050, mpu9250
