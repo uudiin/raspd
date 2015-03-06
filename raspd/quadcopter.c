@@ -21,9 +21,9 @@
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
-#define YAW   0
-#define PITCH 1
-#define ROLL  2
+#define PITCH 0
+#define ROLL  1
+#define YAW   2
 
 static struct pid_struct pid_euler[3];
 static struct pid_struct pid_euler_rate[3];

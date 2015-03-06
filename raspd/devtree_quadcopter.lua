@@ -64,8 +64,8 @@ devroot = {
         altimeter = "ultrasonic",
 
         --            Kp Ki Kd min max
-        pid_angle = { 10, 1, 2, 1, 6 },
-        pid_rate  = { 10, 1, 2, 1, 6 },
-        pid_alti  = { 10, 1, 2, 1, 6 },
+        pid_angle = { 10, 1, 2, -6, 6 },
+        pid_rate  = { 10, 1, 2, -6, 6 },
+        pid_alti  = { 10, 1, 2, -6, 6 },
     }
 }

@@ -93,6 +93,8 @@ static int nr_pages;
 static unsigned long channel_mask;
 static int channel_data[MAX_CHANNEl];   /* pin1 - pin32 */
 
+static int initialized;
+
 static void udelay(int us)
 {
     struct timespec ts = { 0, us * 1000 };
@@ -233,6 +235,8 @@ int softpwm_set_data(int pin, int data)
 {
     unsigned long pinmask = (1 << pin);
 
+    if (!initialized)
+        return -ENOENT;
     if (pin >= MAX_CHANNEl)
         return -EINVAL;
 
@@ -245,6 +249,8 @@ int softpwm_set_data(int pin, int data)
 int softpwm_set_multi(unsigned long pinmask, int data)
 {
     int i;
+    if (!initialized)
+        return -ENOENT;
     for (i = 0; i < MAX_CHANNEl; i++) {
         if (pinmask & (1 << i))
             channel_data[i] = data;
@@ -343,6 +349,7 @@ void softpwm_stop(void)
     udelay(cycle_time_us);
     ioreg_dma[DMA_CS] = DMA_RESET;
     udelay(10);
+    initialized = 0;
 }
 
 void softpwm_exit(void)
@@ -407,6 +414,8 @@ int softpwm_init(int cycle_time, int step_time)
 
     init_ctrl_data();
     init_hardware();
+
+    initialized = 1;
 
     return 0;
 
