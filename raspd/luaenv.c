@@ -940,8 +940,8 @@ static int luaopen_luaraspd(lua_State *L)
      * luaL_newlib(L, luaraspd_lib);
      */
 #if LUA_VERSION_NUM >= 502
-    lua_newtable(L);
-    luaL_setfuncs(L, luaraspd_lib, 0);
+    luaL_newlib(L, luaraspd_lib);
+    lua_setglobal(L, "luaraspd");
 #else
     luaL_register(L, "luaraspd", luaraspd_lib);
 #endif
