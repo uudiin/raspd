@@ -1144,7 +1144,8 @@ int main(int argc, char *argv[])
      * DMP_FEATURE_SEND_CAL_GYRO: Add calibrated gyro data to the FIFO. Cannot
      * be used in combination with DMP_FEATURE_SEND_RAW_GYRO.
      */
-    dmp_load_motion_driver_firmware();
+    err = dmp_load_motion_driver_firmware();
+    assert(err == 0);
     dmp_set_orientation(
         inv_orientation_matrix_to_scalar(gyro_pdata.orientation));
     dmp_register_tap_cb(tap_cb);
@@ -1167,7 +1168,8 @@ int main(int argc, char *argv[])
         DMP_FEATURE_GYRO_CAL;
     dmp_enable_feature(hal.dmp_features);
     dmp_set_fifo_rate(frequency);
-    mpu_set_dmp_state(1);
+    err = mpu_set_dmp_state(1);
+    assert(err == 0);
     hal.dmp_on = 1;
 
     /* self test, get calibrated data */
