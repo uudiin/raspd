@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <event2/event.h>
@@ -25,7 +26,7 @@
 #include "tankcontrol.h"
 #include "softpwm.h"
 #include "inv_imu.h"
-#include "pidctrl.h"
+#include "quadcopter.h"
 
 #include "luaenv.h"
 
@@ -324,15 +325,6 @@ static int lr_i2c_init(lua_State *L)
     return 0;
 }
 
-static int lr_softpwm_init(lua_State *L)
-{
-    int cycle_time_us = (int)luaL_optint(L, 1, 2500);
-    int step_time_us = (int)luaL_optint(L, 2, 5);
-    int err = softpwm_init(cycle_time_us, step_time_us);
-    lua_pushinteger(L, err);
-    return 1;
-}
-
 static int lr_invmpu_init(lua_State *L)
 {
     int pin_int = (int)luaL_checkinteger(L, 1);
@@ -340,6 +332,27 @@ static int lr_invmpu_init(lua_State *L)
     int err = invmpu_init(pin_int, sample_rate);
     lua_pushinteger(L, err);
     return 1;
+}
+
+static int lr_invmpu_set_calibrate_data(lua_State *L)
+{
+    long gyro[3], accel[3];
+    int i;
+
+    assert(lua_objlen(L, 1) == 3);
+    assert(lua_objlen(L, 2) == 3);
+
+    for (i = 1; i <= 3; i++) {
+        lua_rawgeti(L, 1, i);
+        gyro[i - 1] = luaL_checkinteger(L, -1);
+    }
+    for (i = 1; i <= 3; i++) {
+        lua_rawgeti(L, 2, i);
+        accel[i - 1] = luaL_checkinteger(L, -1);
+    }
+
+    invmpu_set_calibrate_data(gyro, accel);
+    return 0;
 }
 
 static void *alti_dev;
@@ -362,7 +375,7 @@ static int lr_pidctrl_init(lua_State *L)
 {
     int pin_front, pin_rear, pin_left, pin_right;
     const char *altimeter;
-    float angle[5], rate[5], alti[5];
+    long angle[5], rate[5], alti[5];
     int i, n;
 
     pin_front = (int)luaL_checkinteger(L, 1);
@@ -377,19 +390,19 @@ static int lr_pidctrl_init(lua_State *L)
     n = lua_objlen(L, 5);
     for (i = 1; i <= n; i++) {
         lua_rawgeti(L, 5, i);
-        angle[i - 1] = luaL_checknumber(L, -1);
+        angle[i - 1] = luaL_checkinteger(L, -1);
     }
 
     n = lua_objlen(L, 6);
     for (i = 1; i <= n; i++) {
         lua_rawgeti(L, 6, i);
-        rate[i - 1] = luaL_checknumber(L, -1);
+        rate[i - 1] = luaL_checkinteger(L, -1);
     }
 
     n = lua_objlen(L, 7);
     for (i = 1; i <= n; i++) {
         lua_rawgeti(L, 7, i);
-        alti[i - 1] = luaL_checknumber(L, -1);
+        alti[i - 1] = luaL_checkinteger(L, -1);
     }
 
     pidctrl_init(pin_front, pin_rear, pin_left, pin_right,
@@ -400,6 +413,51 @@ static int lr_pidctrl_init(lua_State *L)
     return 0;
 }
 
+/*
+ * softpwm
+ */
+static int lr_softpwm_init(lua_State *L)
+{
+    int cycle_time_us = (int)luaL_optint(L, 1, 2500);
+    int step_time_us = (int)luaL_optint(L, 2, 5);
+    int err = softpwm_init(cycle_time_us, step_time_us);
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+static int lr_softpwm_exit(lua_State *L)
+{
+    softpwm_exit();
+    return 0;
+}
+
+static int lr_softpwm_stop(lua_State *L)
+{
+    softpwm_stop();
+    return 0;
+}
+
+static int lr_softpwm_set_data(lua_State *L)
+{
+    int pin = (int)luaL_checkinteger(L, 1);
+    int data = (int)luaL_checkinteger(L, 2);
+    int err = softpwm_set_data(pin, data);
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+static int lr_softpwm_set_multi(lua_State *L)
+{
+    unsigned long pinmask = (unsigned long)luaL_checkinteger(L, 1);
+    int data = (int)luaL_checkinteger(L, 2);
+    int err = softpwm_set_multi(pinmask, data);
+    lua_pushinteger(L, err);
+    return 1;
+}
+
+/*
+ * stepmotor
+ */
 static int lr_stepmotor_new(lua_State *L)
 {
     int pin1, pin2, pin3, pin4;
@@ -816,9 +874,16 @@ static const luaL_Reg luaraspd_lib[] = {
 
     /* misc */
     { "i2c_init",     lr_i2c_init     },
-    { "softpwm_init", lr_softpwm_init },
     { "invmpu_init",  lr_invmpu_init  },
+    { "invmpu_set_calibrate_data", lr_invmpu_set_calibrate_data },
     { "pidctrl_init", lr_pidctrl_init },
+
+    /* softpwm */
+    { "softpwm_init", lr_softpwm_init },
+    { "softpwm_exit", lr_softpwm_exit },
+    { "softpwm_stop", lr_softpwm_stop },
+    { "softpwm_set_data",  lr_softpwm_set_data },
+    { "softpwm_set_multi", lr_softpwm_set_multi },
 
     /* stepmotor */
     { "stepmotor_new", lr_stepmotor_new },

@@ -124,6 +124,10 @@ function devicetree_init(dt)
 
                             lr.gpio_fsel(d.pin)
 
+                            -- set throttle
+                            lr.softpwm_set_data(d.pin,
+                                    devlist.min_throttle_time / v.step_time)
+
                             -- use pin as dev pointer
                             register_device(d.pin, name)
                         end
@@ -138,14 +142,28 @@ function devicetree_init(dt)
             for class, devlist in pairs(v) do
                 if class == "imu" and type(devlist) == "table" then
                     for name, d in pairs(devlist) do
+                        local err
 
                         request_gpio(d, d.pin_int)
 
                         -- init mpu
-                        lr.invmpu_init(d.pin_int, d.sample_rate)
+                        err = lr.invmpu_init(d.pin_int, d.sample_rate)
+                        if err < 0 then
+                            io.stderr:write("invmpu_init() error\n")
+                        end
 
                         -- use pin as dev pointer
                         register_device(d.pin_int, name)
+
+                        -- TODO do calibrate
+                        dofile(mpu_cal)
+                        if type(cal_gyro) ~= "table" or #cal_gyro ~= 3 then
+                            io.stderr:write("calibrate data (gyro) error\n")
+                        end
+                        if type(cal_accel) ~= "table" or #cal_accel ~= 3 then
+                            io.stderr:write("calibrate data (accel) error\n")
+                        end
+                        lr.invmpu_set_calibrate_data(cal_gyro, cal_accel)
                     end
                 end
             end
@@ -155,10 +173,10 @@ function devicetree_init(dt)
 
     -- loop again
     for k, v in pairs(dt) do
-        if k == "pidctrl" and type(v) == "table" then
+        if k == "quadcopter" and type(v) == "table" then
             for name, p in pairs(v) do
                 if type(p) == "table" and #p ~= 5 then
-                    io.stderr:write("p parameters error\n")
+                    io.stderr:write("PID parameters error\n")
                 end
             end
 

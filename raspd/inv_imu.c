@@ -180,7 +180,7 @@ void invmpu_self_test(void)
          */
         unsigned char i = 0;
 
-        for(i = 0; i<3; i++) {
+        for(i = 0; i < 3; i++) {
         	gyro[i] = (long)(gyro[i] * 32.8f); /* convert to +-1000dps */
         	accel[i] *= 4096.f;                /* convert to +-8G */
         	accel[i] = accel[i] >> 16;
@@ -203,6 +203,46 @@ void invmpu_self_test(void)
         if (!(result & 0x4))
             LOGE("Compass failed.\n");
     }
+}
+
+int invmpu_get_calibrate_data(long gyro[], long accel[])
+{
+    int result;
+
+#if defined (MPU6500) || defined (MPU9250)
+    result = mpu_run_6500_self_test(gyro, accel, 0);
+#elif defined (MPU6050) || defined (MPU9150)
+    result = mpu_run_self_test(gyro, accel);
+#endif
+    if (result == 0x7) {
+        /* Test passed. We can trust the gyro data here, so now we need to update calibrated data*/
+        /*
+         * This portion of the code uses the HW offset registers that are in the MPUxxxx devices
+         * instead of pushing the cal data to the MPL software library
+         */
+        unsigned char i = 0;
+
+        for(i = 0; i < 3; i++) {
+        	gyro[i] = (long)(gyro[i] * 32.8f); /* convert to +-1000dps */
+        	accel[i] *= 4096.f;                /* convert to +-8G */
+        	accel[i] = accel[i] >> 16;
+        	gyro[i] = (long)(gyro[i] >> 16);
+        }
+        return 0;
+    } else {
+        return result;
+    }
+}
+
+void invmpu_set_calibrate_data(long gyro[], long accel[])
+{
+    mpu_set_gyro_bias_reg(gyro);
+
+#if defined (MPU6500) || defined (MPU9250)
+    mpu_set_accel_bias_6500_reg(accel);
+#elif defined (MPU6050) || defined (MPU9150)
+    mpu_set_accel_bias_6050_reg(accel);
+#endif
 }
 
 static void handle_input(char c)
@@ -398,7 +438,7 @@ have_data:
         hal.new_gyro = 0;
         sensors |= INV_XYZ_ACCEL;
     } else if (hal.new_gyro && hal.dmp_on) {
-        unsigned char more;
+        unsigned char more = 0;
         /* This function gets new data from the FIFO when the DMP is in
          * use. The FIFO can contain any combination of gyro, accel,
          * quaternion, and gesture data. The sensors parameter tells the
@@ -423,7 +463,7 @@ have_data:
             }
         }
     } else if (hal.new_gyro) {
-        unsigned char more;
+        unsigned char more = 0;
         /* This function gets new data from the FIFO. The FIFO can contain
          * gyro, accel, both, or neither. The sensors parameter tells the
          * caller which data fields were actually populated with new data.
@@ -503,18 +543,28 @@ int invmpu_init(int pin_int, int sample_rate)
     /* Get/set hardware configuration. Start gyro. */
     /* Wake up all sensors. */
 #ifdef COMPASS_ENABLED
-    mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
+    err = mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
 #else
-    mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
+    err = mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
 #endif
+    if (err)
+        LOGE("mpu_set_sensors() error\n");
+
     /* Push both gyro and accel data into the FIFO. */
-    mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-    mpu_set_sample_rate(sample_rate);
+    err = mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
+    if (err)
+        LOGE("mpu_configure_fifo() error\n");
+
+    err = mpu_set_sample_rate(sample_rate);
+    if (err)
+        LOGE("mpu_set_sample_rate() error\n");
 #ifdef COMPASS_ENABLED
     /* The compass sampling rate can be less than the gyro/accel sampling rate.
      * Use this function for proper power management.
      */
-    mpu_set_compass_sample_rate(1000 / COMPASS_READ_MS);
+    err = mpu_set_compass_sample_rate(1000 / COMPASS_READ_MS);
+    if (err)
+        LOGE("mpu_set_compass_sample_rate() error\n");
 #endif
 
     /* Initialize HAL state variables. */
@@ -559,9 +609,15 @@ int invmpu_init(int pin_int, int sample_rate)
      * DMP_FEATURE_SEND_CAL_GYRO: Add calibrated gyro data to the FIFO. Cannot
      * be used in combination with DMP_FEATURE_SEND_RAW_GYRO.
      */
-    dmp_load_motion_driver_firmware();
-    dmp_set_orientation(
+    err = dmp_load_motion_driver_firmware();
+    if (err)
+        LOGE("dmp_load_motion_driver_firmware(), err = %d\n", err);
+
+    err = dmp_set_orientation(
         inv_orientation_matrix_to_scalar(gyro_pdata.orientation));
+    if (err)
+        LOGE("dmp_set_orientation(), err = %d\n", err);
+
     dmp_register_tap_cb(tap_cb);
     dmp_register_android_orient_cb(android_orient_cb);
     /*
@@ -581,8 +637,15 @@ int invmpu_init(int pin_int, int sample_rate)
         DMP_FEATURE_ANDROID_ORIENT | DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_CAL_GYRO |
         DMP_FEATURE_GYRO_CAL;
     dmp_enable_feature(hal.dmp_features);
-    dmp_set_fifo_rate(sample_rate);
-    mpu_set_dmp_state(1);
+
+    err = dmp_set_fifo_rate(sample_rate);
+    if (err)
+        LOGE("dmp_set_fifo_rate(), err = %d\n", err);
+
+    err = mpu_set_dmp_state(1);
+    if (err)
+        LOGE("mpu_set_dmp_state(), err = %d\n", err);
+
     hal.dmp_on = 1;
 }
 

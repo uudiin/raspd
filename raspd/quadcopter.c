@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <getopt.h>
 #include <math.h>
 
@@ -15,7 +16,7 @@
 #include "luaenv.h"
 #include "pid.h"
 
-#include "pidctrl.h"
+#include "quadcopter.h"
 
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
@@ -30,18 +31,19 @@ static struct pid_struct pid_altitude;
 
 struct esc_info {
     int pin;
-    float throttle;
+    int throttle;
 };
 static struct esc_info esc_front;
 static struct esc_info esc_rear;
 static struct esc_info esc_left;
 static struct esc_info esc_right;
 
-static float min_throttle = 1000.f;
-static float max_throttle = 2000.f;
+/* TODO FIXME */
+static int min_throttle = 200;
+static int max_throttle = 400;
 
-static float dst_euler[3];
-static float dst_altitude;
+static long dst_euler[3];
+static long dst_altitude;
 
 /* TODO */
 static long (*fptr_get_altitude)(unsigned long *timestamp);
@@ -53,24 +55,24 @@ static void update_pwm(void)
     esc_left.throttle  = max(min(max_throttle, esc_left.throttle),  min_throttle);
     esc_right.throttle = max(min(max_throttle, esc_right.throttle), min_throttle);
 
-    softpwm_set_data(esc_front.pin, (int)floorf(esc_front.throttle));
-    softpwm_set_data(esc_rear.pin,  (int)floorf(esc_rear.throttle));
-    softpwm_set_data(esc_left.pin,  (int)floorf(esc_left.throttle));
-    softpwm_set_data(esc_right.pin, (int)floorf(esc_right.throttle));
+    softpwm_set_data(esc_front.pin, esc_front.throttle);
+    softpwm_set_data(esc_rear.pin,  esc_rear.throttle);
+    softpwm_set_data(esc_left.pin,  esc_left.throttle);
+    softpwm_set_data(esc_right.pin, esc_right.throttle);
 }
 
 /*
  * executed period
  */
-static void attitude_control(float target_euler[], float euler[],
-                        short gyro_short[], float dt)
+static void attitude_control(long target_euler[], long euler[],
+                        short gyro_short[], long dt)
 {
-    float gyro[3];
-    float pidout[3];
+    long gyro[3];
+    long pidout[3];
 
-    gyro[0] = (float)gyro_short[0];
-    gyro[1] = (float)gyro_short[1];
-    gyro[2] = (float)gyro_short[2];
+    gyro[0] = (long)gyro_short[0];
+    gyro[1] = (long)gyro_short[1];
+    gyro[2] = (long)gyro_short[2];
 
     /*
      * angle control is only done on PITCH and ROLL
@@ -107,14 +109,14 @@ static void attitude_control(float target_euler[], float euler[],
     update_pwm();
 }
 
-static void altitude_control(float target, float current,
-                        short accel_short[], float dt)
+static void altitude_control(long target, long current,
+                        short accel_short[], long dt)
 {
-    float accel[3];
-    float pidout;
+    long accel[3];
+    long pidout;
 
     /* XXX: only Z axis */
-    accel[2] = (float)accel_short[2];
+    accel[2] = (long)accel_short[2];
 
     pidout = pid_update(&pid_altitude, target, current, dt);
     pidout = pid_update(&pid_altitude, pidout, accel[2], dt);
@@ -182,7 +184,7 @@ static long q29_mult(long a, long b)
  *  @param[out] data        Euler angles in degrees, q16 fixed point.
  *  @return     1 if data was updated.
  */
-static void quat_to_euler(const long *quat, float *data)
+static void quat_to_euler(const long *quat, long *data)
 {
     long t1, t2, t3;
     long q00, q01, q02, q03, q11, q12, q13, q22, q23, q33;
@@ -236,9 +238,9 @@ static void quat_to_euler(const long *quat, float *data)
 
     if (values[1] < -90)
         values[1] = -180 - values[1];
-    data[0] = values[0];
-    data[1] = values[1];
-    data[2] = values[2];
+    data[0] = (long)(values[0] * 65536.f);
+    data[1] = (long)(values[1] * 65536.f);
+    data[2] = (long)(values[2] * 65536.f);
 }
 
 static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
@@ -246,7 +248,6 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
 {
     static unsigned long prev_timestamp;
     unsigned long dt;
-    float dt_sec;
     long cur_altitude = -1;
 
     if (prev_timestamp == 0)
@@ -257,21 +258,20 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
     if (dt == 0)
         dt = 1;
 
-    dt_sec = dt / 1000.f;
     prev_timestamp = timestamp;
 
     if (fptr_get_altitude)
         cur_altitude = fptr_get_altitude(NULL);
 
     if (cur_altitude != -1 && (sensors & INV_XYZ_ACCEL))
-        altitude_control(dst_altitude, cur_altitude, accel, dt_sec);
+        altitude_control(dst_altitude, cur_altitude, accel, dt);
 
     if ((sensors & INV_XYZ_GYRO) && (sensors & INV_WXYZ_QUAT)) {
-        float euler[3];
+        long euler[3];
         quat_to_euler(quat, euler);
-        attitude_control(dst_euler, euler, gyro, dt_sec);
+        attitude_control(dst_euler, euler, gyro, dt);
 
-        fprintf(stderr, "throttle: %.1f %.1f %.1f %.1f  -- gyro: %4d %4d %4d  -- euler: %.3f %.3f %.3f\n",
+        fprintf(stderr, "throttle: %d %d %d %d  -- gyro: %4d %4d %4d  -- euler: %ld %ld %ld\n",
                 esc_front.throttle, esc_rear.throttle,
                 esc_left.throttle, esc_right.throttle,
                 gyro[0], gyro[1], gyro[2],
@@ -282,7 +282,7 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
 /* TODO */
 int pidctrl_init(int front, int rear, int left, int right,
                 long (*get_altitude)(unsigned long *timestamp),
-                float angle[], float rate[], float alti[])
+                long angle[], long rate[], long alti[])
 {
     int i;
     /* set Kp, Ki, Kd */
@@ -291,6 +291,13 @@ int pidctrl_init(int front, int rear, int left, int right,
     for (i = 0; i < 3; i++)
         pid_set(&pid_euler_rate[i], rate[0], rate[1], rate[2], rate[3], rate[4]);
     pid_set(&pid_altitude, alti[0], alti[1], alti[2], alti[3], alti[4]);
+
+    /*
+    for (i = 0; i < 5; i++) {
+        fprintf(stdout, "angle = %ld, rate = %ld, alti = %ld\n",
+                angle[i], rate[i], alti[i]);
+    }
+    */
 
     esc_front.throttle = min_throttle;
     esc_rear.throttle = min_throttle;
@@ -305,9 +312,8 @@ int pidctrl_init(int front, int rear, int left, int right,
     /* which altimeter should be used */
     fptr_get_altitude = get_altitude;
 
-    /* self-test */
-    invmpu_self_test();
-    invmpu_self_test();
+    /* TODO FIXME : self-test */
+    /*invmpu_self_test();*/
 
     invmpu_register_tap_cb(tap_cb);
     invmpu_register_android_orient_cb(android_orient_cb);
@@ -323,9 +329,33 @@ void pidctrl_exit(void)
  * module
  */
 
+static const char *file_cal;
+
+static int euler_init(void)
+{
+    const char *file = NULL;
+    int err;
+
+    err = luaenv_getconf_str("_G", "mpu_cal", &file);
+    if (err >= 0 && file) {
+        file_cal = strdup(file);
+        luaenv_pop(1);
+    } else {
+        fprintf(stderr, "luaenv_getconf_str(mpu_cal), err = %d\n", err);
+    }
+    return err;
+}
+
+static void euler_exit(void)
+{
+    if (file_cal)
+        free((void *)file_cal);
+}
+
 static int euler_main(int fd, int argc, char *argv[])
 {
     int yaw = 0, pitch = 0, roll = 0;
+    int self_test = 0;
     static struct option options[] = {
         { "yaw",       required_argument, NULL, 'y' },
         { "pitch",     required_argument, NULL, 'p' },
@@ -340,18 +370,68 @@ static int euler_main(int fd, int argc, char *argv[])
         case 'y': yaw = atoi(optarg); break;
         case 'p': pitch = atoi(optarg); break;
         case 'r': roll = atoi(optarg); break;
-        case 's': invmpu_self_test(); break;
+        case 's': self_test = 1; break;
         default:
             return 1;
         }
     }
 
+    /* self test, get calibrated data */
+    if (file_cal && self_test) {
+        int result;
+        long gyro[3], accel[3];
+        time_t t;
+        FILE *fp_cal;
+
+        result = invmpu_get_calibrate_data(gyro, accel);
+        if (result == 0) {
+            fp_cal = fopen(file_cal, "w+");
+            if (fp_cal == NULL) {
+                fprintf(stderr, "fopen(%s), error\n", file_cal);
+                return 1;
+            }
+
+            LOGE("Passed!\n");
+            LOGE("accel: %7.4f %7.4f %7.4f\n",
+                        accel[0]/65536.f,
+                        accel[1]/65536.f,
+                        accel[2]/65536.f);
+            LOGE("gyro: %7.4f %7.4f %7.4f\n",
+                        gyro[0]/65536.f,
+                        gyro[1]/65536.f,
+                        gyro[2]/65536.f);
+
+            t = time(NULL);
+            fprintf(fp_cal,
+                "-- automatically generated, do not edit\n"
+                "-- time: %s\n"
+                "\n"
+                "cal_gyro  = { %ld, %ld, %ld }\n"
+                "cal_accel = { %ld, %ld, %ld }\n",
+                ctime(&t),
+                gyro[0], gyro[1], gyro[2],
+                accel[0], accel[1], accel[2]);
+
+            fclose(fp_cal);
+            return 0;
+        } else {
+            if (!(result & 0x1))
+                LOGE("Gyro failed.\n");
+            if (!(result & 0x2))
+                LOGE("Accel failed.\n");
+            if (!(result & 0x4))
+                LOGE("Compass failed.\n");
+
+            return 1;
+        }
+    }
+
     if (yaw)
-        dst_euler[YAW]   = (float)yaw;
+        dst_euler[YAW]   = yaw;
     if (pitch)
-        dst_euler[PITCH] = (float)pitch;
+        dst_euler[PITCH] = pitch;
     if (roll)
-        dst_euler[ROLL]  = (float)roll;
+        dst_euler[ROLL]  = roll;
 
     return 0;
 }
@@ -385,6 +465,6 @@ static int throttle_main(int fd, int argc, char *argv[])
     update_pwm();
 }
 
-DEFINE_MODULE(euler);
+DEFINE_MODULE_INIT_EXIT(euler);
 DEFINE_MODULE(altitude);
 DEFINE_MODULE(throttle);

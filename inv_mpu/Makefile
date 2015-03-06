@@ -8,19 +8,35 @@ INC_PATHS = core/driver/include \
 			core/mllite \
 			core/mpl \
 			core/driver \
-			../libbcm2835 \
 			../lib \
-			../libevent/include \
+			../libbcm2835 \
+			../libevent/include
 
 INCLUDES = $(addprefix -I, $(INC_PATHS))
 
-CFLAGS += $(INCLUDES)
-CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU9250 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
+MACRO_DEFS = EMPL_TARGET_BCM2835 \
+			 LINUX \
+			 USE_CAL_HW_REGISTERS \
+			 LOG_STD \
+			 MPU6050
+
+#MACRO_DEFS = EMPL_TARGET_BCM2835 \
+#			 LINUX \
+#			 USE_CAL_HW_REGISTERS \
+#			 LOG_STD \
+#			 MPU9250 \
+#			 COMPASS_ENABLED
+
+MACROS = $(addprefix -D, $(MACRO_DEFS))
+
+CFLAGS += $(INCLUDES) $(MACROS)
+#CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU9250 -DCOMPASS_ENABLED -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
+#CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
 LDFLAGS += -lm
 LIBS =
 
 STATIC_LIBS = libinv_mpu.a
-PROGS = mpu_test invmpu_dmp
+PROGS = invmpu_dmp
 
 SRCS_libinv_mpu = core/driver/eMPL/inv_mpu.c \
 				  core/driver/eMPL/inv_mpu_dmp_motion_driver.c \

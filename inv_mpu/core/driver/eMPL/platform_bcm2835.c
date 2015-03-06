@@ -53,19 +53,31 @@ static int set_reg_ptr(unsigned char regptr, size_t size)
 static int i2c_write(unsigned char slave_addr, unsigned char reg_addr,
     unsigned char length, unsigned char const *data)
 {
+    unsigned char buffer[64];
     unsigned char *buf;
-    buf = malloc(length + 1);
-    if (buf == NULL)
-        return -ENOMEM;
+
+    if (length <= 63) {
+        buf = buffer;
+    } else {
+        buf = malloc(length + 1);
+        if (buf == NULL)
+            return -ENOMEM;
+    }
 
     buf[0] = reg_addr;
     memcpy(&buf[1], data, length);
 
     bcm2835_i2c_setSlaveAddress(slave_addr);
-    if (bcm2835_i2c_write((const char *)buf, length + 1) != 0)
-        return -ENOTTY;
+    if (bcm2835_i2c_write((const char *)buf, length + 1) != 0) {
+        fprintf(stderr, "bcm2835_i2c_write(slave=%x, reg=%x, len=%d)\n",
+                slave_addr, reg_addr, length);
+        /* FIXME */
+        /*return -ENOTTY;*/
+    }
 
-    free(buf);
+    if (buf != buffer)
+        free(buf);
+
     return 0;
 }
 

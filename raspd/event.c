@@ -74,7 +74,8 @@ int rasp_event_init(void)
 void rasp_event_exit(void)
 {
     /* FIXME */
-    event_base_free(evbase);
+    if (evbase)
+        event_base_free(evbase);
 }
 
 int sched_realtime(void)

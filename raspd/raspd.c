@@ -271,8 +271,10 @@ int main(int argc, char *argv[])
     gpiolib_init();
 
     /* early init */
-    if ((err = foreach_module(modexec_early_init, NULL)) < 0)
+    if ((err = foreach_module(modexec_early_init, NULL)) < 0) {
+        fprintf(stderr, "foreach_module(modexec_early_init), err = %d\n", err);
         return 1;
+    }
 
     /* set realtime task */
     if ((err = sched_realtime()) < 0)
@@ -356,8 +358,10 @@ int main(int argc, char *argv[])
     }
 
     /* initialize all modules */
-    if ((err = foreach_module(modexec_init, NULL)) < 0)
+    if ((err = foreach_module(modexec_init, NULL)) < 0) {
+        fprintf(stderr, "foreach_module(modexec_init), err = %d\n", err);
         return 1;
+    }
 
     /* main loop */
     rasp_event_loop();
