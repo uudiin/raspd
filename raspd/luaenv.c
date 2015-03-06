@@ -333,6 +333,13 @@ static int lr_invmpu_init(lua_State *L)
     return 1;
 }
 
+static int lr_invmpu_set_sample_rate(lua_State *L)
+{
+    int rate = (int)luaL_checkinteger(L, 1);
+    invmpu_set_sample_rate(rate);
+    return 0;
+}
+
 static int lr_invmpu_set_calibrate_data(lua_State *L)
 {
     long gyro[3], accel[3];
@@ -873,9 +880,12 @@ static const luaL_Reg luaraspd_lib[] = {
 
     /* misc */
     { "i2c_init",     lr_i2c_init     },
-    { "invmpu_init",  lr_invmpu_init  },
-    { "invmpu_set_calibrate_data", lr_invmpu_set_calibrate_data },
     { "pidctrl_init", lr_pidctrl_init },
+
+    /* inv_imu */
+    { "invmpu_init",               lr_invmpu_init               },
+    { "invmpu_set_sample_rate",    lr_invmpu_set_sample_rate    },
+    { "invmpu_set_calibrate_data", lr_invmpu_set_calibrate_data },
 
     /* softpwm */
     { "softpwm_init", lr_softpwm_init },

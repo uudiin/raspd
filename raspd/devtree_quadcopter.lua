@@ -39,6 +39,7 @@ devroot = {
                 pin_int = 4,
                 -- XXX: must be it
                 sample_rate = 20,
+                sample_rate_final = 200,    -- FIXME
             }
         },
 

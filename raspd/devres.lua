@@ -152,6 +152,9 @@ function devicetree_init(dt)
                             io.stderr:write("invmpu_init() error\n")
                         end
 
+                        -- XXX FIXME TODO
+                        lr.invmpu_set_sample_rate(d.sample_rate_final)
+
                         -- use pin as dev pointer
                         register_device(d.pin_int, name)
 
