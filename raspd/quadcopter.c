@@ -271,11 +271,12 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
         quat_to_euler(quat, euler);
         attitude_control(dst_euler, euler, gyro, dt);
 
-        fprintf(stderr, "throttle: %d %d %d %d  -- gyro: %4d %4d %4d  -- euler: %ld %ld %ld\n",
-                esc_front.throttle, esc_rear.throttle,
-                esc_left.throttle, esc_right.throttle,
-                gyro[0], gyro[1], gyro[2],
-                euler[0], euler[1], euler[2]);
+        fprintf(stderr,
+            "throttle: %d %d %d %d  -- gyro: %4d %4d %4d  -- euler: %.2f %.2f %.2f\n",
+            esc_front.throttle, esc_rear.throttle,
+            esc_left.throttle, esc_right.throttle,
+            gyro[0], gyro[1], gyro[2],
+            euler[0] / 65536.f, euler[1] / 65536.f, euler[2] / 65536.f);
     }
 }
 
@@ -313,7 +314,7 @@ int pidctrl_init(int front, int rear, int left, int right,
     fptr_get_altitude = get_altitude;
 
     /* TODO FIXME : self-test */
-    /*invmpu_self_test();*/
+    invmpu_self_test();
 
     invmpu_register_tap_cb(tap_cb);
     invmpu_register_android_orient_cb(android_orient_cb);

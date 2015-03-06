@@ -213,8 +213,15 @@ void eMPL_send_data(unsigned char type, long *data)
     case PACKET_DATA_ACCEL:   PRINT3("ACCEL: "); break;
     case PACKET_DATA_GYRO:    PRINT3("GYRO:  "); break;
     case PACKET_DATA_COMPASS: PRINT3("COMPASS:"); break;
-    case PACKET_DATA_EULER:   PRINT3("EULER: "); break;
+    /*case PACKET_DATA_EULER:   PRINT3("EULER: "); break;*/
 #undef PRINT3
+
+    case PACKET_DATA_EULER:
+        fprintf(stdout, "EULER: %.2f %.2f %.2f\n",
+                data[0] / 65536.f,
+                data[1] / 65536.f,
+                data[2] / 65536.f);
+        break;
 
     case PACKET_DATA_HEADING:
         fprintf(stdout, "HEADING: %ld\n", data[0]);
@@ -993,7 +1000,7 @@ int main(int argc, char *argv[])
 #endif
     char *hostname = NULL;
     long long_port = 8899;
-    int pin_int = 17;
+    int pin_int = 4;
     int frequency = DEFAULT_MPU_HZ;
     int self_test = 0;
     static struct option options[] = {

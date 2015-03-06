@@ -36,7 +36,7 @@ devroot = {
         imu = {
             -- mpu6050, mpu9250
             mpu = {
-                pin_int = 17,
+                pin_int = 4,
                 -- XXX: must be it
                 sample_rate = 20,
             }
