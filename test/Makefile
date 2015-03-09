@@ -8,8 +8,7 @@ LIBS = -lm
 
 
 PROGS = blink_act motor breath_led pwm l298n test_unix softpwm_test \
-		rt_ssh test_gpioint sw2 rf24_test esc_test test_file mpu6050-raw \
-		mpu6050-dmp
+		rt_ssh test_gpioint sw2 rf24_test esc_test test_file ms5611
 
 $(foreach prog, $(PROGS), $(eval SRCS_$(prog) = $(prog).c))
 
@@ -23,8 +22,7 @@ SRCS_eMPL-test += ../raspd/event.c ../raspd/gpiolib.c
 
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) += \
-	../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a \
-	../libmpu6050/libmpu6050.a))
+	../libbcm2835/libbcm2835.a ../lib/libraspberry.a ../libevent/libevent.a ../librf24/librf24.a))
 
 .PHONY: all clean
 

@@ -130,6 +130,15 @@ void cbrecv(char *buf, int buflen)
 	}
 }
 
+int Java_com_client_nativef_ClientNative_sendcmd(JNIEnv *env, jobject thiz, jstring cmd)
+{
+    int err = 0;
+	char *buf = (char*)(*env)->GetStringUTFChars(env, cmd, 0);
+    err = client_send_cmd(buf, strlen(buf));
+	(*env)->ReleaseStringUTFChars(env, cmd, buf);
+    return err;
+}
+
 int Java_com_client_nativef_ClientNative_connect(JNIEnv *env, jobject thiz, jstring host, int port)
 {
 	char *hostname = (char*)(*env)->GetStringUTFChars(env, host, 0);

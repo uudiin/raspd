@@ -55,6 +55,7 @@ static int i2c_write(unsigned char slave_addr, unsigned char reg_addr,
 {
     unsigned char buffer[64];
     unsigned char *buf;
+
     int rs;
 
     if (length <= 63) {
@@ -69,9 +70,11 @@ static int i2c_write(unsigned char slave_addr, unsigned char reg_addr,
     memcpy(&buf[1], data, length);
 
     bcm2835_i2c_setSlaveAddress(slave_addr);
+
     if ((rs = bcm2835_i2c_write((const char *)buf, length + 1)) != 0) {
         fprintf(stderr, "bcm2835_i2c_write(slave=%x, reg=%x, len=%d), rs = %d\n",
                 slave_addr, reg_addr, length, rs);
+
         /* FIXME */
         /*return -ENOTTY;*/
     }

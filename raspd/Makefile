@@ -4,7 +4,7 @@ include ../rules.mak
 
 CFLAGS += -g -I../lib -I../libbcm2835 -I../libevent/include
 CFLAGS += -I../inv_mpu/core/driver/eMPL -I../inv_mpu/core/driver/include -I../inv_mpu/core/mllite
-CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
+CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD -DLUA_COMPAT_ALL
 LDFLAGS += -L ../lib -llua -ldl -lm
 LIBS =
 
