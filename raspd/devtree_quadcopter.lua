@@ -43,6 +43,10 @@ devroot = {
             }
         },
 
+        ms5611 = {
+            sea_press = 1025.25,
+        },
+
         barometer = {}
     },
 
