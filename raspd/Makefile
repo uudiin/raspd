@@ -16,7 +16,7 @@ SRCS_libraspd = event.c gpiolib.c
 SRCS_raspd = raspd.c module.c event.c luaenv.c softpwm.c \
 	gpiolib.c gpio.c pwm.c l298n.c ultrasonic.c \
 	tankcontrol.c motor.c modmisc.c inv_imu.c pid.c \
-	quadcopter.c
+	quadcopter.c ms5611.c
 
 DEPS_raspd = ../lib/libraspberry.a \
 			 ../libbcm2835/libbcm2835.a \

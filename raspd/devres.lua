@@ -169,6 +169,18 @@ function devicetree_init(dt)
                         --lr.invmpu_set_calibrate_data(cal_gyro, cal_accel)
                     end
                 end
+                if class == "ms5611" and type(devlist) == "table" then
+                    for name, d in pairs(devlist) do
+                        local ms5611
+
+                        ms5611 = lr.ms5611_new(d.sea_press)
+                        if ms5611 then
+                            register_device(ms5611, name)
+                        else
+                            io.stderr:write("ms5611_new() error\n")
+                        end
+                    end
+                end
             end
         elseif k == "spi" and type(v) == "table" then
         end

@@ -27,6 +27,7 @@
 #include "softpwm.h"
 #include "inv_imu.h"
 #include "quadcopter.h"
+#include "ms5611.h"
 
 #include "luaenv.h"
 
@@ -360,6 +361,45 @@ static int lr_invmpu_set_calibrate_data(lua_State *L)
 
     invmpu_set_calibrate_data(gyro, accel);
     return 0;
+}
+
+static int lr_ms5611_new(lua_State *L)
+{
+    double sea_press = luaL_checkinteger(L, 1);
+    struct ms5611_dev **devp;
+
+    devp = lua_newuserdata(L, sizeof(struct ms5611_dev *));
+    *devp = ms5611_new(sea_press);
+    if (*devp == NULL) {
+        /* TODO:  return 0; */
+        luaL_error(L, "ms5611_new() error\n");
+    }
+    return 1;
+}
+
+static int lr_ms5611_del(lua_State *L)
+{
+    struct ms5611_dev **devp = lua_touserdata(L, 1);
+    ms5611_del(*devp);
+    return 0;
+}
+
+static int lr_ms5611_get_altitude(lua_State *L)
+{
+    struct ms5611_dev **devp = lua_touserdata(L, 1);
+    double altitude;
+    altitude = ms5611_get_altitude(*devp);
+    lua_pushnumber(L, altitude);
+    return 1;
+}
+
+static int lr_ms5611_get_pressure(lua_State *L)
+{
+    struct ms5611_dev **devp = lua_touserdata(L, 1);
+    double pressure;
+    pressure = ms5611_get_pressure(*devp);
+    lua_pushnumber(L, pressure);
+    return 1;
 }
 
 static void *alti_dev;
@@ -887,6 +927,12 @@ static const luaL_Reg luaraspd_lib[] = {
     { "invmpu_init",               lr_invmpu_init               },
     { "invmpu_set_sample_rate",    lr_invmpu_set_sample_rate    },
     { "invmpu_set_calibrate_data", lr_invmpu_set_calibrate_data },
+
+    /* ms5611 */
+    { "ms5611_new",                lr_ms5611_new                },
+    { "ms5611_del",                lr_ms5611_del                },
+    { "ms5611_get_altitude",       lr_ms5611_get_altitude       },
+    { "ms5611_get_pressure",       lr_ms5611_get_pressure       },
 
     /* softpwm */
     { "softpwm_init", lr_softpwm_init },
