@@ -173,7 +173,7 @@ struct ms5611_dev *ms5611_new(double sea_press)
     dev = malloc(sizeof(*dev));
     if (dev) {
         uint8_t dummyData = 0;
-        struct timeval timeout = { 0, 10000 };
+        struct timeval timeout = { 0, 20000 };
 
         memset(dev, 0, sizeof(*dev));
         dev->sea_press = sea_press;
