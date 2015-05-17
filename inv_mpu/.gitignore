@@ -1,5 +1,8 @@
 !core/mpl/libmpllib.a
 *.pyc
+*.9250o
 libinv_mpu.a
+libinv_mpu_9250.a
 mpu_test
 invmpu_dmp
+invmpu_dmp_9250
