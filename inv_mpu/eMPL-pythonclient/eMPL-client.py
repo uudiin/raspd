@@ -1,22 +1,16 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # eMPL_client.py
 # A PC application for use with Embedded MotionApps.
 # Copyright 2012 InvenSense, Inc. All Rights Reserved.
 
-import socket, sys, time, string, pygame
+import socket, sys, time, string, pygame, signal, errno
 from ponycube import *
 
-DEFAULT_PORT = 8899
 
 class eMPL_packet_reader:
-    def __init__(self, port, quat_delegate=None, debug_delegate=None, data_delegate=None):
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.bind(('', port))
-        self.s.listen(5)
-        self.sock, self.address = self.s.accept()
-        self.sock.settimeout(0)
-        print "client connected"
+    def __init__(self, sock, quat_delegate=None, debug_delegate=None, data_delegate=None):
+        self.sock = sock
 
         if quat_delegate:
             self.quat_delegate = quat_delegate
@@ -39,23 +33,24 @@ class eMPL_packet_reader:
 
     def read(self):
         NUM_BYTES = 23
+        d= None
         p = None
-        rs = None
+        data = None
         try:
-            rs = self.sock.recv(NUM_BYTES)
+            data = self.sock.recv(NUM_BYTES)
         except:
             pass
-        if rs:
-            if ord(rs[0]) == ord('$'):
-                pkt_code = ord(rs[1])
+        if data:
+            if ord(data[0]) == ord('$'):
+                pkt_code = ord(data[1])
                 if pkt_code == 1:
-                    d = debug_packet(rs)
+                    d = debug_packet(data)
                     self.debug_delegate.dispatch(d)
                 elif pkt_code == 2:
-                    p = quat_packet(rs)
+                    p = quat_packet(data)
                     self.quat_delegate.dispatch(p) 
                 elif pkt_code == 3:
-                    d = data_packet(rs)
+                    d = data_packet(data)
                     self.data_delegate.dispatch(d)
                 else:
                     print "no handler for pkt_code",pkt_code
@@ -65,6 +60,10 @@ class eMPL_packet_reader:
                 while not ord(c) == ord('$'):
                     c = self.sock.recv(1)
                 self.sock.recv(NUM_BYTES-1)
+
+            return len(data)
+        else:
+            return 0
 
     def write(self,a):
         self.sock.send(a)
@@ -258,38 +257,74 @@ class quat_packet (object):
 
 # =============== MAIN ======================
 
+run = True
+DEFAULT_PORT = 8899
+
+def sigint_handler(signum, frame):
+    print 'signal occured'
+    global run
+    run = False
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         port = int(sys.argv[1])
     else:
         port = DEFAULT_PORT
 
-    print "port %d" % port
+    signal.signal(signal.SIGINT, sigint_handler)
+    signal.signal(signal.SIGTERM, sigint_handler)
 
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('', port))
+    s.listen(5)
+
+    print "listen on port %d" % port
+
+    # FIXME: this init() block the SIGINT
     pygame.init()
     viewer = cube_packet_viewer()
     debug  = debug_packet_viewer()
     data   = data_packet_viewer()
 
-    reader = eMPL_packet_reader(port, 
-                quat_delegate = viewer, 
-                debug_delegate = debug, 
-                data_delegate = data)
+    while run:
+        try:
+            sock, addr = s.accept()
+        except socket.error as e:
+            if e.errno == errno.EINTR:
+                print 'socket except EINTR'
+            else:
+                raise
+            continue
 
-    while 1:
-        event = pygame.event.poll()
-        # TODO: Allow exit via keystroke.
-        if event.type == pygame.QUIT:
-            viewer.close()
+        if run == False:
             break
-        if event.type == pygame.KEYDOWN:
-            reader.write(pygame.key.name(event.key))
 
-        reader.read()
-        viewer.loop(event)
-        debug.loop(event)
-        data.loop(event)
+        print "connect by ", addr
 
-        # TODO: If system load is too high, increase this sleep time.
-        pygame.time.delay(0)
+        reader = eMPL_packet_reader(sock,
+                    quat_delegate = viewer,
+                    debug_delegate = debug,
+                    data_delegate = data)
 
+        while run:
+            event = pygame.event.poll()
+            # TODO: Allow exit via keystroke.
+            if event.type == pygame.QUIT:
+                #viewer.close()             # TODO
+                print 'window closed'
+                run = False
+                break
+            if event.type == pygame.KEYDOWN:
+                reader.write(pygame.key.name(event.key))
+
+            n = reader.read()
+            if n == 0:
+                print 'client closed'
+                break
+
+            viewer.loop(event)
+            debug.loop(event)
+            data.loop(event)
+
+            # TODO: If system load is too high, increase this sleep time.
+            pygame.time.delay(0)
