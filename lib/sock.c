@@ -33,8 +33,11 @@ int resolve(const char *hostname, unsigned short port,
     if (result == NULL)
         return EAI_NONAME;
     if (result->ai_addrlen <= 0
-            || result->ai_addrlen > (int)sizeof(struct sockaddr_storage))
+            || result->ai_addrlen > (int)sizeof(struct sockaddr_storage)
+        ) {
+        freeaddrinfo(result);
         return EAI_SYSTEM;
+    }
 
     *sslen = result->ai_addrlen;
     memcpy(ss, result->ai_addr, *sslen);
