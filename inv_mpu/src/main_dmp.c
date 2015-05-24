@@ -150,8 +150,8 @@ int get_clock_ms(unsigned long *count)
 void eMPL_send_quat(long *quat)
 {
     char out[PACKET_LENGTH];
-    int i;
-    if (!quat)
+
+    if (!quat || fd < 0)
         return;
     memset(out, 0, PACKET_LENGTH);
     out[0] = '$';
@@ -175,10 +175,8 @@ void eMPL_send_quat(long *quat)
     out[21] = '\r';
     out[22] = '\n';
 
-    if (fd != -1) {
-        if (send(fd, out, PACKET_LENGTH, 0) == -1)
-            LOGE("send error, errno = %d\n", errno);
-    }
+    if (send(fd, out, PACKET_LENGTH, 0) == -1)
+        LOGE("send error, errno = %d\n", errno);
 }
 
 typedef enum {
@@ -804,7 +802,7 @@ static void reset_termios(void)
 }
 
 
-static void once_loop(void)
+static void invmpu_read(void)
 {
     unsigned char accel_fsr, new_temp = 0;
     unsigned long timestamp;
@@ -972,13 +970,13 @@ int invmpu_get_calibrate_data(long gyro[], long accel[])
 static void stdin_ready(int fd, short what, void *arg)
 {
     handle_input();
-    once_loop();
+    invmpu_read();
 }
 
 static void int_ready(int fd, short what, void *arg)
 {
     gyro_data_ready_cb();
-    once_loop();
+    invmpu_read();
 }
 
 /**
@@ -1011,7 +1009,7 @@ int main(int argc, char *argv[])
     };
     int c;
 
-    while ((c = getopt_long(argc, argv, "p:f:", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "p:f:s", options, NULL)) != -1) {
         switch (c) {
         case 'p': pin_int = atoi(optarg); break;
         case 'f': frequency = atoi(optarg); break;
@@ -1035,25 +1033,6 @@ int main(int argc, char *argv[])
             hostname = argv[optind];
         }
         optind++;
-    }
-
-    if (hostname && long_port) {
-        union sockaddr_u addr;
-        size_t ss_len = sizeof(addr);
-
-        err = resolve(hostname, (unsigned short)long_port,
-                        &addr.storage, &ss_len, AF_INET, 0);
-        if (err < 0) {
-            LOGE("Error hostname\n");
-            exit(1);
-        }
-
-        if ((fd = do_connect(SOCK_STREAM, &addr)) < 0) {
-            LOGE("Error connect\n");
-        } else {
-            unblock_socket(fd);
-            LOGI("connected  %s:%ld\n", hostname, long_port);
-        }
     }
 
     init_termios(0);
@@ -1152,6 +1131,8 @@ int main(int argc, char *argv[])
      * be used in combination with DMP_FEATURE_SEND_RAW_GYRO.
      */
     err = dmp_load_motion_driver_firmware();
+    if (err != 0)
+        LOGE("dmp_load_motion_driver_firmware(), err = %d\n", err);
     assert(err == 0);
     dmp_set_orientation(
         inv_orientation_matrix_to_scalar(gyro_pdata.orientation));
@@ -1176,6 +1157,8 @@ int main(int argc, char *argv[])
     dmp_enable_feature(hal.dmp_features);
     dmp_set_fifo_rate(frequency);
     err = mpu_set_dmp_state(1);
+    if (err != 0)
+        LOGE("mpu_set_dmp_state(), err = %d\n", err);
     assert(err == 0);
     hal.dmp_on = 1;
 
@@ -1214,6 +1197,25 @@ int main(int argc, char *argv[])
                 LOGE("Compass failed.\n");
 
             goto exit;
+        }
+    }
+
+    if (hostname && long_port) {
+        union sockaddr_u addr;
+        size_t ss_len = sizeof(addr);
+
+        err = resolve(hostname, (unsigned short)long_port,
+                        &addr.storage, &ss_len, AF_INET, 0);
+        if (err < 0) {
+            LOGE("Error hostname\n");
+            exit(1);
+        }
+
+        if ((fd = do_connect(SOCK_STREAM, &addr)) < 0) {
+            LOGE("Error connect\n");
+        } else {
+            unblock_socket(fd);
+            LOGI("connected  %s:%ld\n", hostname, long_port);
         }
     }
 

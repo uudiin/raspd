@@ -1,6 +1,7 @@
 # Object files
 *.o
 *.d
+*.9250o
 
 # Android
 *.class

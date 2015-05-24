@@ -17,25 +17,15 @@ INCLUDES = $(addprefix -I, $(INC_PATHS))
 MACRO_DEFS = EMPL_TARGET_BCM2835 \
 			 LINUX \
 			 USE_CAL_HW_REGISTERS \
-			 LOG_STD \
-			 MPU6050
-
-#MACRO_DEFS = EMPL_TARGET_BCM2835 \
-#			 LINUX \
-#			 USE_CAL_HW_REGISTERS \
-#			 LOG_STD \
-#			 MPU9250 \
-#			 COMPASS_ENABLED
+			 LOG_STD
 
 MACROS = $(addprefix -D, $(MACRO_DEFS))
 
 CFLAGS += $(INCLUDES) $(MACROS)
-#CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU9250 -DCOMPASS_ENABLED -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
-#CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD
 LDFLAGS += -lm
 LIBS =
 
-STATIC_LIBS = libinv_mpu.a
+STATIC_LIBS = libinv_mpu.a libinv_mpu_9250.a
 PROGS = invmpu_dmp
 
 SRCS_libinv_mpu = core/driver/eMPL/inv_mpu.c \
@@ -63,22 +53,45 @@ SRCS_invmpu_dmp = src/main_dmp.c \
 $(foreach prog, $(PROGS), $(eval OBJS_$(prog) = $(SRCS_$(prog):.c=.o)))
 
 OBJS_libinv_mpu = $(SRCS_libinv_mpu:.c=.o)
+OBJS_libinv_mpu_9250 = $(SRCS_libinv_mpu:.c=.9250o)
 
 EXT_LIBS = ../libbcm2835/libbcm2835.a \
 		   ../lib/libraspberry.a \
 		   ../libevent/libevent.a
 
+#OBJS_invmpu_dmp_9250 = $(addprefix objs9250/, $(OBJS_invmpu_dmp) $(OBJS_libinv_mpu))
+#
+#objs9250/%.o: %.c
+#	$(call quiet-command, $(CC) $(CFLAGS) $(DGFLAGS) -c -o $@ $<, "  CC    $(TARGET_DIR)$@")
+
+OBJS_invmpu_dmp_9250 = $(OBJS_invmpu_dmp:.o=.9250o)
+
+%.9250o: %.c
+	$(call quiet-command, $(CC) $(CFLAGS) $(DGFLAGS) -c -o $@ $<, "  CC    $(TARGET_DIR)$@")
+
+
 .PHONY: all clean
 
-all: $(STATIC_LIBS) $(PROGS)
+all: $(STATIC_LIBS) $(PROGS) invmpu_dmp_9250
+
+invmpu_dmp libinv_mpu.a: CFLAGS += -DMPU6050
+
+invmpu_dmp_9250 libinv_mpu_9250.a: CFLAGS += -DMPU9250 -DCOMPASS_ENABLED
+
 
 libinv_mpu.a: $(OBJS_libinv_mpu)
 
-mpu_test: $(OBJS_mpu_test) $(EXT_LIBS) libinv_mpu.a
+libinv_mpu_9250.a: $(OBJS_libinv_mpu_9250)
+
+mpu_test: $(OBJS_mpu_test) $(OBJS_libinv_mpu) $(EXT_LIBS)
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
 
 invmpu_dmp: $(OBJS_invmpu_dmp) $(EXT_LIBS) libinv_mpu.a
 	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
+
+invmpu_dmp_9250: $(OBJS_invmpu_dmp_9250) $(EXT_LIBS) libinv_mpu_9250.a
+	$(call quiet-command, $(LD) $(LDFLAGS) -o $@ $^ $(LIBS), "  LD    $(TARGET_DIR)$@")
+
 
 ifneq ($(MAKECMDGOALS), clean)
 $(foreach prog, $(PROGS), $(eval -include $(SRCS_$(prog):.c=.d)))
@@ -87,5 +100,5 @@ endif
 
 clean:
 	rm -f $(SRCS_libinv_mpu:.c=.d) $(SRCS_mpu_test:.c=.d) $(SRCS_invmpu_dmp:.c=.d)
-	rm -f $(OBJS_libinv_mpu) $(OBJS_mpu_test) $(OBJS_invmpu_dmp)
-	rm -f $(STATIC_LIBS) $(PROGS)
+	rm -f $(OBJS_libinv_mpu) $(OBJS_libinv_mpu_9250) $(OBJS_mpu_test) $(OBJS_invmpu_dmp) $(OBJS_invmpu_dmp_9250)
+	rm -f $(STATIC_LIBS) $(PROGS) invmpu_dmp_9250
