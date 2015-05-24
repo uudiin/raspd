@@ -4,9 +4,10 @@
 # A PC application for use with Embedded MotionApps.
 # Copyright 2012 InvenSense, Inc. All Rights Reserved.
 
-import socket, sys, time, string, pygame, signal, errno
+import socket, sys, time, string, pygame, signal, errno, getopt
 from ponycube import *
 
+use_udp = False
 
 class eMPL_packet_reader:
     def __init__(self, sock, quat_delegate=None, debug_delegate=None, data_delegate=None):
@@ -37,7 +38,10 @@ class eMPL_packet_reader:
         p = None
         data = None
         try:
-            data = self.sock.recv(NUM_BYTES)
+            if not use_udp:
+                data = self.sock.recv(NUM_BYTES)
+            else:
+                data, addr = self.sock.recvfrom(NUM_BYTES)
         except:
             pass
         if data:
@@ -57,16 +61,22 @@ class eMPL_packet_reader:
             else:
                 c = ' '
                 print "socket misaligned!"
-                while not ord(c) == ord('$'):
-                    c = self.sock.recv(1)
-                self.sock.recv(NUM_BYTES-1)
+                if not use_udp:
+                    while not ord(c) == ord('$'):
+                        c = self.sock.recv(1)
+                    self.sock.recv(NUM_BYTES-1)
+                else:
+                    while not ord(c) == ord('$'):
+                        c, a = self.sock.recvfrom(1)
+                    self.sock.recvfrom(NUM_BYTES-1)
 
             return len(data)
         else:
             return 0
 
     def write(self,a):
-        self.sock.send(a)
+        if not use_udp:
+            self.sock.send(a)
 
     def close(self):
         self.sock.close()
@@ -257,6 +267,10 @@ class quat_packet (object):
 
 # =============== MAIN ======================
 
+def usage(exitcode):
+    print "usage: ", sys.argv[0], "[-u] PORT"
+    sys.exit(exitcode)
+
 run = True
 DEFAULT_PORT = 8899
 
@@ -264,21 +278,38 @@ def sigint_handler(signum, frame):
     print 'signal occured'
     global run
     run = False
+    sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        port = int(sys.argv[1])
+    try:
+        options, args = getopt.getopt(sys.argv[1:], "uh",
+                                ["udp", "help"])
+    except getopt.GetoptError:
+        usage(1)
+
+    for name, value in options:
+        if name in ("-h", "--help"):
+            usage(0)
+        if name in ("-u", "--udp"):
+            use_udp = True
+
+    if len(args) == 1:
+        port = int(args[1])
     else:
         port = DEFAULT_PORT
 
     signal.signal(signal.SIGINT, sigint_handler)
     signal.signal(signal.SIGTERM, sigint_handler)
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('', port))
-    s.listen(5)
-
-    print "listen on port %d" % port
+    if not use_udp:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('', port))
+        s.listen(5)
+        print "listen on port %d" % port
+    else:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.bind(('', port))
+        print "listen on port %d (UDP)" % port
 
     # FIXME: this init() block the SIGINT
     pygame.init()
@@ -286,22 +317,52 @@ if __name__ == "__main__":
     debug  = debug_packet_viewer()
     data   = data_packet_viewer()
 
-    while run:
-        try:
-            sock, addr = s.accept()
-        except socket.error as e:
-            if e.errno == errno.EINTR:
-                print 'socket except EINTR'
-            else:
-                raise
-            continue
+    if not use_udp:
+        while run:
+            try:
+                sock, addr = s.accept()
+            except socket.error as e:
+                if e.errno == errno.EINTR:
+                    print 'socket except EINTR'
+                else:
+                    raise
+                continue
 
-        if run == False:
-            break
+            if run == False:
+                break
 
-        print "connect by ", addr
+            print "connect by ", addr
 
-        reader = eMPL_packet_reader(sock,
+            reader = eMPL_packet_reader(sock,
+                        quat_delegate = viewer,
+                        debug_delegate = debug,
+                        data_delegate = data)
+
+            while run:
+                event = pygame.event.poll()
+                # TODO: Allow exit via keystroke.
+                if event.type == pygame.QUIT:
+                    #viewer.close()             # TODO
+                    print 'window closed'
+                    run = False
+                    break
+                if event.type == pygame.KEYDOWN:
+                    reader.write(pygame.key.name(event.key))
+
+                n = reader.read()
+                if n == 0:
+                    print 'client closed'
+                    break
+
+                viewer.loop(event)
+                debug.loop(event)
+                data.loop(event)
+
+                # TODO: If system load is too high, increase this sleep time.
+                pygame.time.delay(0)
+    else:
+        # UDP
+        reader = eMPL_packet_reader(s,
                     quat_delegate = viewer,
                     debug_delegate = debug,
                     data_delegate = data)
@@ -310,7 +371,6 @@ if __name__ == "__main__":
             event = pygame.event.poll()
             # TODO: Allow exit via keystroke.
             if event.type == pygame.QUIT:
-                #viewer.close()             # TODO
                 print 'window closed'
                 run = False
                 break
@@ -319,8 +379,7 @@ if __name__ == "__main__":
 
             n = reader.read()
             if n == 0:
-                print 'client closed'
-                break
+                print 'NO READ'
 
             viewer.loop(event)
             debug.loop(event)

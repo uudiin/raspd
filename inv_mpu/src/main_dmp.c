@@ -29,7 +29,9 @@
 #include "../../raspd/event.h"
 #include "../../raspd/gpiolib.h"
 
+static int use_udp = 0;
 static int fd = -1;
+static union sockaddr_u addr;
 
 /* Private typedef -----------------------------------------------------------*/
 #undef LOGE
@@ -150,6 +152,7 @@ int get_clock_ms(unsigned long *count)
 void eMPL_send_quat(long *quat)
 {
     char out[PACKET_LENGTH];
+    ssize_t n;
 
     if (!quat || fd < 0)
         return;
@@ -175,7 +178,18 @@ void eMPL_send_quat(long *quat)
     out[21] = '\r';
     out[22] = '\n';
 
-    if (send(fd, out, PACKET_LENGTH, 0) == -1)
+    if (use_udp) {
+        size_t sa_len;
+#ifdef HAVE_SOCKADDR_SA_LEN
+        sa_len = addr.sockaddr.sa_len;
+#else
+        sa_len = sizeof(addr);
+#endif
+        n = sendto(fd, out, PACKET_LENGTH, 0, &addr.sockaddr, sa_len);
+    } else {
+        n = send(fd, out, PACKET_LENGTH, 0);
+    }
+    if (n < 0)
         LOGE("send error, errno = %d\n", errno);
 }
 
@@ -1005,15 +1019,17 @@ int main(int argc, char *argv[])
         { "pin-int", required_argument, NULL, 'p' },
         { "hz",      required_argument, NULL, 'f' },
         { "self-test",     no_argument, NULL, 's' },
+        { "udp",           no_argument, NULL, 'u' },
         { 0, 0, 0, 0 }
     };
     int c;
 
-    while ((c = getopt_long(argc, argv, "p:f:s", options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "p:f:su", options, NULL)) != -1) {
         switch (c) {
         case 'p': pin_int = atoi(optarg); break;
         case 'f': frequency = atoi(optarg); break;
         case 's': self_test = 1; break;
+        case 'u': use_udp = 1; break;
         default:
             LOGE("usage: %s --pin-int <n> [hostname] [port]\n", argv[0]);
             exit(1);
@@ -1201,7 +1217,6 @@ int main(int argc, char *argv[])
     }
 
     if (hostname && long_port) {
-        union sockaddr_u addr;
         size_t ss_len = sizeof(addr);
 
         err = resolve(hostname, (unsigned short)long_port,
@@ -1211,7 +1226,13 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        if ((fd = do_connect(SOCK_STREAM, &addr)) < 0) {
+        if (use_udp) {
+            fd = socket(addr.storage.ss_family, SOCK_DGRAM, 0);
+        } else {
+            fd = do_connect(SOCK_STREAM, &addr);
+        }
+
+        if (fd < 0) {
             LOGE("Error connect\n");
         } else {
             unblock_socket(fd);
