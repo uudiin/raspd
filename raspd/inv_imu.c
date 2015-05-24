@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 #include <event2/event.h>
 
 #include <inv_mpu.h>
@@ -12,6 +13,7 @@
 
 #include "inv_imu.h"
 
+#include "../lib/sock.h"
 
 /* Private typedef -----------------------------------------------------------*/
 #undef LOGE
@@ -111,6 +113,75 @@ static int get_clock_ms(unsigned long *count)
     return 0;
 }
 /* ---------------------------------------------------------------------------*/
+
+#define PACKET_LENGTH   (23)
+
+#define PACKET_DEBUG    (1)
+#define PACKET_QUAT     (2)
+#define PACKET_DATA     (3)
+
+static int fd = -1;
+
+static void eMPL_init_connect(char *hostname, long long_port)
+{
+    int err;
+    if (hostname && long_port) {
+        union sockaddr_u addr;
+        size_t ss_len = sizeof(addr);
+
+        err = resolve(hostname, (unsigned short)long_port,
+                        &addr.storage, &ss_len, AF_INET, 0);
+        if (err < 0) {
+            LOGE("Error hostname\n");
+            return;
+        }
+
+        if ((fd = do_connect(SOCK_STREAM, &addr)) < 0) {
+            LOGE("Error connect\n");
+        } else {
+            unblock_socket(fd);
+            LOGI("connected  %s:%ld\n", hostname, long_port);
+        }
+    }
+}
+
+static void eMPL_deinit_connect(void)
+{
+    // TODO: cleanup
+}
+
+static void eMPL_send_quat(long *quat)
+{
+    char out[PACKET_LENGTH];
+
+    if (!quat || fd < 0)
+        return;
+    memset(out, 0, PACKET_LENGTH);
+    out[0] = '$';
+    out[1] = PACKET_QUAT;
+    out[3] = (char)(quat[0] >> 24);
+    out[4] = (char)(quat[0] >> 16);
+    out[5] = (char)(quat[0] >> 8);
+    out[6] = (char)quat[0];
+    out[7] = (char)(quat[1] >> 24);
+    out[8] = (char)(quat[1] >> 16);
+    out[9] = (char)(quat[1] >> 8);
+    out[10] = (char)quat[1];
+    out[11] = (char)(quat[2] >> 24);
+    out[12] = (char)(quat[2] >> 16);
+    out[13] = (char)(quat[2] >> 8);
+    out[14] = (char)quat[2];
+    out[15] = (char)(quat[3] >> 24);
+    out[16] = (char)(quat[3] >> 16);
+    out[17] = (char)(quat[3] >> 8);
+    out[18] = (char)quat[3];
+    out[21] = '\r';
+    out[22] = '\n';
+
+    if (send(fd, out, PACKET_LENGTH, 0) == -1)
+        LOGE("send error, errno = %d\n", errno);
+}
+
 
 /* Handle sensor on/off combinations. */
 static void setup_sensors(unsigned char sensors)
@@ -400,6 +471,12 @@ have_data:
     sensors = 0;
     get_clock_ms(&timestamp);
 
+   /* Sends a quaternion packet to the PC. Since this is used by the Python
+    * test app to visually represent a 3D quaternion, it's sent each time
+    * the MPL has new data.
+    */
+    eMPL_send_quat(hal.quat);
+
 #ifdef COMPASS_ENABLED
     /* We're not using a data ready interrupt for the compass, so we'll
      * make our compass reads timer-based instead.
@@ -518,7 +595,7 @@ static void int_cb(int fd, short what, void *arg)
     read_from_mpu();
 }
 
-int invmpu_init(int pin_int, int sample_rate)
+int invmpu_init(int pin_int, int sample_rate, char *hostname, long long_port)
 {
     int result;
     struct int_param_s int_param;
@@ -647,6 +724,8 @@ int invmpu_init(int pin_int, int sample_rate)
         LOGE("mpu_set_dmp_state(), err = %d\n", err);
 
     hal.dmp_on = 1;
+
+    eMPL_init_connect(hostname, long_port);
 }
 
 void invmpu_exit(void)

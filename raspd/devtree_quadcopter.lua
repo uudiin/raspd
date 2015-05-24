@@ -31,7 +31,7 @@ devroot = {
 
     i2c = {
         -- XXX: must be it
-        divider = 64,
+        divider = 626,
 
         imu = {
             -- mpu6050, mpu9250
@@ -40,6 +40,9 @@ devroot = {
                 -- XXX: must be it
                 sample_rate = 20,
                 sample_rate_final = 200,    -- FIXME
+
+                hostname = "192.168.0.103",
+                port = 8899,
             }
         },
 

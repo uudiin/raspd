@@ -147,7 +147,7 @@ function devicetree_init(dt)
                         request_gpio(d, d.pin_int)
 
                         -- init mpu
-                        err = lr.invmpu_init(d.pin_int, d.sample_rate)
+                        err = lr.invmpu_init(d.pin_int, d.sample_rate, d.hostname, d.port)
                         if err < 0 then
                             io.stderr:write("invmpu_init() error\n")
                         end

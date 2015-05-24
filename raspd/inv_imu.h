@@ -13,7 +13,7 @@ void invmpu_set_sample_rate(int rate);
 void invmpu_register_tap_cb(void (*func)(unsigned char, unsigned char));
 void invmpu_register_android_orient_cb(void (*func)(unsigned char));
 void invmpu_register_data_ready_cb(__invmpu_data_ready_cb func);
-int invmpu_init(int pin_int, int sample_rate);
+int invmpu_init(int pin_int, int sample_rate, char *hostname, long long_port);
 void invmpu_exit(void);
 
 #endif /* __INV_IMU__ */

@@ -330,7 +330,9 @@ static int lr_invmpu_init(lua_State *L)
 {
     int pin_int = (int)luaL_checkinteger(L, 1);
     int sample_rate = (int)luaL_optint(L, 2, 200);
-    int err = invmpu_init(pin_int, sample_rate);
+    char *hostname = luaL_checkstring(L, 3);
+    long long_port = (long)luaL_checkinteger(L, 4);
+    int err = invmpu_init(pin_int, sample_rate, hostname, long_port);
     lua_pushinteger(L, err);
     return 1;
 }

@@ -4,7 +4,7 @@ include ../rules.mak
 
 CFLAGS += -g -I../lib -I../libbcm2835 -I../libevent/include
 CFLAGS += -I../inv_mpu/core/driver/eMPL -I../inv_mpu/core/driver/include -I../inv_mpu/core/mllite
-CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU6050 -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD -DLUA_COMPAT_ALL
+CFLAGS += -DEMPL_TARGET_BCM2835 -DMPU9250 -DCOMPASS_ENABLED -DLINUX -DUSE_CAL_HW_REGISTERS -DLOG_STD -DLUA_COMPAT_ALL
 LDFLAGS += -L ../lib -llua -ldl -lm
 LIBS =
 
@@ -21,7 +21,7 @@ SRCS_raspd = raspd.c module.c event.c luaenv.c softpwm.c \
 DEPS_raspd = ../lib/libraspberry.a \
 			 ../libbcm2835/libbcm2835.a \
 			 ../libevent/libevent.a \
-			 ../inv_mpu/libinv_mpu.a
+			 ../inv_mpu/libinv_mpu_9250.a
 
 OBJS_libraspd = $(SRCS_libraspd:.c=.o)
 
