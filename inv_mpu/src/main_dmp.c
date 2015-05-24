@@ -1041,7 +1041,7 @@ int main(int argc, char *argv[])
     gpiolib_init();
     rasp_event_init();
     bcm2835_i2c_begin();
-    bcm2835_i2c_setClockDivider(64);
+    bcm2835_i2c_setClockDivider(BCM2835_I2C_CLOCK_DIVIDER_626);
 
     err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
                     NULL, stdin_ready, NULL, NULL);
