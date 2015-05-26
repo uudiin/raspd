@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <event2/event.h>
 
+#define LUA_COMPAT_5_2
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -30,6 +31,11 @@
 #include "ms5611.h"
 
 #include "luaenv.h"
+
+
+#if LUA_VERSION_NUM >= 502
+#define lua_objlen lua_rawlen
+#endif
 
 static lua_State *_L;
 
