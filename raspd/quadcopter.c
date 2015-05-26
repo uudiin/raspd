@@ -15,6 +15,7 @@
 #include "inv_mpu.h"
 #include "luaenv.h"
 #include "pid.h"
+#include "inv_imu.h"
 
 #include "quadcopter.h"
 

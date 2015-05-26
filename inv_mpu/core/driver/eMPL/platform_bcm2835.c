@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <time.h>
 
+#include <sys/time.h>
 #include <bcm2835.h>
 
 #ifdef LOG_STD
