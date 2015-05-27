@@ -472,12 +472,6 @@ have_data:
     sensors = 0;
     get_clock_ms(&timestamp);
 
-   /* Sends a quaternion packet to the PC. Since this is used by the Python
-    * test app to visually represent a 3D quaternion, it's sent each time
-    * the MPL has new data.
-    */
-    eMPL_send_quat(hal.quat);
-
 #ifdef COMPASS_ENABLED
     /* We're not using a data ready interrupt for the compass, so we'll
      * make our compass reads timer-based instead.
@@ -581,9 +575,17 @@ have_data:
     }
 #endif
 
-    if (sensors && hal.data_ready_cb) {
-        hal.data_ready_cb(sensors, sensor_timestamp, hal.quat,
-            hal.accel_short, hal.gyro, hal.compass_short, hal.temperature);
+    if (sensors) {
+
+    	/* Sends a quaternion packet to the PC. Since this is used by the Python
+    	 * test app to visually represent a 3D quaternion, it's sent each time
+    	 * the MPL has new data.
+    	 */
+    	eMPL_send_quat(hal.quat);
+
+		if (hal.data_ready_cb)
+        	hal.data_ready_cb(sensors, sensor_timestamp, hal.quat,
+            	hal.accel_short, hal.gyro, hal.compass_short, hal.temperature);
     }
 
     if (hal.new_gyro)
