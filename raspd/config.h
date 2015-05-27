@@ -3,4 +3,8 @@
 
 #define DEFAULT_LUA_CONFIG  "config.lua"
 
+#define CUBE_HOSTNAME   "192.168.1.101"
+#define CUBE_PORT       8899
+#define CUBE_USE_UDP    1
+
 #endif /* __CONFIG_H__ */

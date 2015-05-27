@@ -18,8 +18,13 @@
 
 #include "quadcopter.h"
 
+#include "config.h"
+
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
+
+#define LOGE(...)   fprintf(stderr, __VA_ARGS__)
+#define LOGI(...)   fprintf(stdout, __VA_ARGS__)
 
 #define PITCH 0
 #define ROLL  1
@@ -47,6 +52,69 @@ static long dst_altitude;
 
 /* TODO */
 static long (*fptr_get_altitude)(unsigned long *timestamp);
+
+
+#ifdef CUBE_HOSTNAME
+
+#include <sock.h>
+
+static int use_udp = 1;
+static int fd = -1;
+static union sockaddr_u addr;
+
+#define BUF_SIZE        (256)
+#define PACKET_LENGTH   (23)
+
+#define PACKET_DEBUG    (1)
+#define PACKET_QUAT     (2)
+#define PACKET_DATA     (3)
+
+
+void eMPL_send_quat(long *quat)
+{
+    char out[PACKET_LENGTH];
+    ssize_t n;
+
+    if (!quat || fd < 0)
+        return;
+    memset(out, 0, PACKET_LENGTH);
+    out[0] = '$';
+    out[1] = PACKET_QUAT;
+    out[3] = (char)(quat[0] >> 24);
+    out[4] = (char)(quat[0] >> 16);
+    out[5] = (char)(quat[0] >> 8);
+    out[6] = (char)quat[0];
+    out[7] = (char)(quat[1] >> 24);
+    out[8] = (char)(quat[1] >> 16);
+    out[9] = (char)(quat[1] >> 8);
+    out[10] = (char)quat[1];
+    out[11] = (char)(quat[2] >> 24);
+    out[12] = (char)(quat[2] >> 16);
+    out[13] = (char)(quat[2] >> 8);
+    out[14] = (char)quat[2];
+    out[15] = (char)(quat[3] >> 24);
+    out[16] = (char)(quat[3] >> 16);
+    out[17] = (char)(quat[3] >> 8);
+    out[18] = (char)quat[3];
+    out[21] = '\r';
+    out[22] = '\n';
+
+    if (use_udp) {
+        size_t sa_len;
+#ifdef HAVE_SOCKADDR_SA_LEN
+        sa_len = addr.sockaddr.sa_len;
+#else
+        sa_len = sizeof(addr);
+#endif
+        n = sendto(fd, out, PACKET_LENGTH, 0, &addr.sockaddr, sa_len);
+    } else {
+        n = send(fd, out, PACKET_LENGTH, 0);
+    }
+    if (n < 0)
+        LOGE("send error, errno = %d\n", errno);
+}
+
+#endif /* ! CUBE_HOSTNAME */
 
 static void update_pwm(void)
 {
@@ -128,9 +196,6 @@ static void altitude_control(long target, long current,
     esc_right.throttle += pidout;
     update_pwm();
 }
-
-#define LOGE(...)   fprintf(stderr, __VA_ARGS__)
-#define LOGI(...)   fprintf(stdout, __VA_ARGS__)
 
 static void tap_cb(unsigned char direction, unsigned char count)
 {
@@ -271,12 +336,19 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
         quat_to_euler(quat, euler);
         attitude_control(dst_euler, euler, gyro, dt);
 
+
+#ifdef CUBE_HOSTNAME
+        eMPL_send_quat(quat);
+#endif /* ! CUBE_HOSTNAME */
+
+        /*
         fprintf(stderr,
             "throttle: %d %d %d %d  -- gyro: %4d %4d %4d  -- euler: %.2f %.2f %.2f\n",
             esc_front.throttle, esc_rear.throttle,
             esc_left.throttle, esc_right.throttle,
             gyro[0], gyro[1], gyro[2],
             euler[0] / 65536.f, euler[1] / 65536.f, euler[2] / 65536.f);
+        */
     }
 }
 
@@ -319,6 +391,36 @@ int pidctrl_init(int front, int rear, int left, int right,
     invmpu_register_tap_cb(tap_cb);
     invmpu_register_android_orient_cb(android_orient_cb);
     invmpu_register_data_ready_cb(imu_ready_cb);
+
+#ifdef CUBE_HOSTNAME
+    if (CUBE_HOSTNAME && CUBE_PORT) {
+        char *hostname = CUBE_HOSTNAME;
+        long long_port = CUBE_PORT;
+        size_t ss_len = sizeof(addr);
+        int err;
+
+        use_udp = CUBE_USE_UDP;
+        err = resolve(hostname, (unsigned short)long_port,
+                        &addr.storage, &ss_len, AF_INET, 0);
+        if (err < 0) {
+            LOGE("Error hostname\n");
+            exit(1);
+        }
+
+        if (use_udp) {
+            fd = socket(addr.storage.ss_family, SOCK_DGRAM, 0);
+        } else {
+            fd = do_connect(SOCK_STREAM, &addr);
+        }
+
+        if (fd < 0) {
+            LOGE("Error connect\n");
+        } else {
+            unblock_socket(fd);
+            LOGI("connected  %s:%ld\n", hostname, long_port);
+        }
+    }
+#endif /* ! CUBE_HOSTNAME */
 }
 
 void pidctrl_exit(void)

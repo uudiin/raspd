@@ -42,6 +42,7 @@ R.java
 client/test
 catnet/catnet
 raspd/raspd
+raspd/raspd_9250
 test/blink_act
 test/breath_led
 test/motor
