@@ -28,7 +28,7 @@ void pid_del(struct pid_struct *pid)
 }
 
 double pid_update(struct pid_struct *pid,
-        long setpoint, long input, double dt)
+        double setpoint, double input, double dt)
 {
     /* compute error */
     pid->error = setpoint - input;
