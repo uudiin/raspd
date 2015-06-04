@@ -45,7 +45,7 @@ static struct esc_info esc_right;
 
 /* TODO FIXME */
 static int min_throttle = 200;
-static int max_throttle = 400;
+static int max_throttle = 260;
 
 static long dst_euler[3];
 static long dst_altitude;
@@ -135,12 +135,19 @@ static void update_pwm(void)
 static void attitude_control(long target_euler[], long euler[],
                         short gyro_short[], long dt)
 {
-    long gyro[3];
-    long pidout[3];
+    double gyro[3];
+    double pidout[3];
 
-    gyro[0] = (long)gyro_short[0];
-    gyro[1] = (long)gyro_short[1];
-    gyro[2] = (long)gyro_short[2];
+    gyro[0] = (double)gyro_short[0];
+    gyro[1] = (double)gyro_short[1];
+    gyro[2] = (double)gyro_short[2];
+
+    fprintf(stdout, "euler: %ld %ld %ld\n",
+    		euler[YAW], euler[PITCH], euler[ROLL]);
+    fprintf(stdout, "target_euler: %ld %ld %ld\n",
+    		target_euler[YAW], target_euler[PITCH], target_euler[ROLL]);
+    fprintf(stdout, "gyro: %.3f %.3f %.3f\n",
+    		gyro[YAW], gyro[PITCH], gyro[ROLL]);
 
     /*
      * angle control is only done on PITCH and ROLL
@@ -153,6 +160,8 @@ static void attitude_control(long target_euler[], long euler[],
     PID(ROLL);
 #undef PID
 
+    fprintf(stdout, "angle: %.3f %.3f %.3f\n", pidout[YAW], pidout[PITCH], pidout[ROLL]);
+
     /* rate control */
 #define PID(x) \
     pidout[x] = pid_update(&pid_euler_rate[x], pidout[x], gyro[x], dt)
@@ -161,8 +170,9 @@ static void attitude_control(long target_euler[], long euler[],
     PID(ROLL);
 #undef PID
 
-    /*
-    fprintf(stdout, "pidout: %.3f %.3f %.3f %.3f\n",
+    fprintf(stdout, "rate: %.3f %.3f %.3f\n", pidout[YAW], pidout[PITCH], pidout[ROLL]);
+
+    /* fprintf(stdout, "pidout: %.3f %.3f %.3f %.3f\n",
             ( pidout[PITCH] + pidout[YAW]),
             (-pidout[PITCH] + pidout[YAW]),
             ( pidout[ROLL]  - pidout[YAW]),
@@ -175,13 +185,18 @@ static void attitude_control(long target_euler[], long euler[],
     esc_left.throttle  += ( pidout[ROLL]  - pidout[YAW]);
     esc_right.throttle += (-pidout[ROLL]  - pidout[YAW]);
     update_pwm();
+    fprintf(stdout, "pidout: %.3f %.3f %.3f %.3f\n",
+            ( pidout[PITCH] + pidout[YAW]),
+            (-pidout[PITCH] + pidout[YAW]),
+            ( pidout[ROLL]  - pidout[YAW]),
+            (-pidout[ROLL]  - pidout[YAW]));
 }
 
 static void altitude_control(long target, long current,
                         short accel_short[], long dt)
 {
     long accel[3];
-    long pidout;
+    double pidout;
 
     /* XXX: only Z axis */
     accel[2] = (long)accel_short[2];
@@ -355,7 +370,7 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
 /* TODO */
 int pidctrl_init(int front, int rear, int left, int right,
                 long (*get_altitude)(unsigned long *timestamp),
-                long angle[], long rate[], long alti[])
+                double angle[], double rate[], double alti[])
 {
     int i;
     /* set Kp, Ki, Kd */

@@ -31,7 +31,7 @@ devroot = {
 
     i2c = {
         -- XXX: must be it
-        divider = 64,
+        divider = 313,
 
         imu = {
             -- mpu6050, mpu9250
@@ -64,8 +64,8 @@ devroot = {
         altimeter = "ultrasonic",
 
         --            Kp Ki Kd min max
-        pid_angle = { 10, 1, 2, -6, 6 },
-        pid_rate  = { 10, 1, 2, -6, 6 },
-        pid_alti  = { 10, 1, 2, -6, 6 },
+        pid_angle = { 0.0001, 0, 0, -999999999, 999999999 },
+        pid_rate  = { 0.1,    0, 0, -999999999, 999999999 },
+        pid_alti  = { 0.0001, 0, 0, -999999999, 999999999 },
     }
 }
