@@ -74,10 +74,6 @@ class eMPL_packet_reader:
         else:
             return 0
 
-            return len(data)
-        else:
-            return 0
-
     def write(self,a):
         if not use_udp:
             self.sock.send(a)

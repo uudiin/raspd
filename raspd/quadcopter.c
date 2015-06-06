@@ -22,6 +22,9 @@
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 
+#define LOGE(...)   fprintf(stderr, __VA_ARGS__)
+#define LOGI(...)   fprintf(stdout, __VA_ARGS__)
+
 #define PITCH 0
 #define ROLL  1
 #define YAW   2
@@ -41,10 +44,10 @@ static struct esc_info esc_right;
 
 /* TODO FIXME */
 static int min_throttle = 200;
-static int max_throttle = 400;
+static int max_throttle = 260;
 
-static long dst_euler[3];
-static long dst_altitude;
+static double dst_euler[3];
+static double dst_altitude;
 
 /* TODO */
 static long (*fptr_get_altitude)(unsigned long *timestamp);
@@ -65,15 +68,17 @@ static void update_pwm(void)
 /*
  * executed period
  */
-static void attitude_control(long target_euler[], long euler[],
-                        short gyro_short[], long dt)
+static void attitude_control(double target_euler[], double euler[],
+                        short gyro_short[], long timestamp)
 {
-    long gyro[3];
-    long pidout[3];
+    double gyro[3];
+    double dt;
+    double pidout[3];
 
-    gyro[0] = (long)gyro_short[0];
-    gyro[1] = (long)gyro_short[1];
-    gyro[2] = (long)gyro_short[2];
+    gyro[0] = (double)(gyro_short[0] / 65536.f);
+    gyro[1] = (double)(gyro_short[1] / 65536.f);
+    gyro[2] = (double)(gyro_short[2] / 65536.f);
+    dt = (double)(timestamp / 1000.f);
 
     /*
      * angle control is only done on PITCH and ROLL
@@ -86,6 +91,10 @@ static void attitude_control(long target_euler[], long euler[],
     PID(ROLL);
 #undef PID
 
+    fprintf(stdout, "EULER: %.2f %.2f %.2f -- GYRO: %.2f %.2f %.2f -- PID: %.2f %.2f %.2f\n",
+            euler[0], euler[1], euler[2], gyro[0], gyro[1], gyro[2],
+            pidout[PITCH], pidout[ROLL], pidout[YAW]);
+
     /* rate control */
 #define PID(x) \
     pidout[x] = pid_update(&pid_euler_rate[x], pidout[x], gyro[x], dt)
@@ -94,13 +103,12 @@ static void attitude_control(long target_euler[], long euler[],
     PID(ROLL);
 #undef PID
 
-    /*
-    fprintf(stdout, "pidout: %.3f %.3f %.3f %.3f\n",
+    fprintf(stdout, "\t\t\t\t\t\t\t\t\t\tPIDRATE: %.2f %.2f %.2f -- THROTTLE: %.2f %.2f %.2f %.2f\n",
+            pidout[PITCH], pidout[ROLL], pidout[YAW],
             ( pidout[PITCH] + pidout[YAW]),
             (-pidout[PITCH] + pidout[YAW]),
             ( pidout[ROLL]  - pidout[YAW]),
             (-pidout[ROLL]  - pidout[YAW]));
-    */
 
     /* set throttle */
     esc_front.throttle += ( pidout[PITCH] + pidout[YAW]);
@@ -114,7 +122,7 @@ static void altitude_control(long target, long current,
                         short accel_short[], long dt)
 {
     long accel[3];
-    long pidout;
+    double pidout;
 
     /* XXX: only Z axis */
     accel[2] = (long)accel_short[2];
@@ -129,9 +137,6 @@ static void altitude_control(long target, long current,
     esc_right.throttle += pidout;
     update_pwm();
 }
-
-#define LOGE(...)   fprintf(stderr, __VA_ARGS__)
-#define LOGI(...)   fprintf(stdout, __VA_ARGS__)
 
 static void tap_cb(unsigned char direction, unsigned char count)
 {
@@ -185,7 +190,7 @@ static long q29_mult(long a, long b)
  *  @param[out] data        Euler angles in degrees, q16 fixed point.
  *  @return     1 if data was updated.
  */
-static void quat_to_euler(const long *quat, long *data)
+static void quat_to_euler(const long *quat, double *data)
 {
     long t1, t2, t3;
     long q00, q01, q02, q03, q11, q12, q13, q22, q23, q33;
@@ -239,9 +244,9 @@ static void quat_to_euler(const long *quat, long *data)
 
     if (values[1] < -90)
         values[1] = -180 - values[1];
-    data[0] = (long)(values[0] * 65536.f);
-    data[1] = (long)(values[1] * 65536.f);
-    data[2] = (long)(values[2] * 65536.f);
+    data[0] = (double)values[0];
+    data[1] = (double)values[1];
+    data[2] = (double)values[2];
 }
 
 static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
@@ -268,23 +273,25 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
         altitude_control(dst_altitude, cur_altitude, accel, dt);
 
     if ((sensors & INV_XYZ_GYRO) && (sensors & INV_WXYZ_QUAT)) {
-        long euler[3];
+        double euler[3];
         quat_to_euler(quat, euler);
         attitude_control(dst_euler, euler, gyro, dt);
 
+        /*
         fprintf(stderr,
             "throttle: %d %d %d %d  -- gyro: %4d %4d %4d  -- euler: %.2f %.2f %.2f\n",
             esc_front.throttle, esc_rear.throttle,
             esc_left.throttle, esc_right.throttle,
             gyro[0], gyro[1], gyro[2],
             euler[0] / 65536.f, euler[1] / 65536.f, euler[2] / 65536.f);
+        */
     }
 }
 
 /* TODO */
 int pidctrl_init(int front, int rear, int left, int right,
                 long (*get_altitude)(unsigned long *timestamp),
-                long angle[], long rate[], long alti[])
+                double angle[], double rate[], double alti[])
 {
     int i;
     /* set Kp, Ki, Kd */
