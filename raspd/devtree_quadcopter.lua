@@ -39,7 +39,7 @@ devroot = {
                 pin_int = 4,
                 -- XXX: must be it
                 sample_rate = 20,
-                sample_rate_final = 10,    -- FIXME
+                sample_rate_final = 200,    -- FIXME
             }
         },
 
@@ -64,8 +64,8 @@ devroot = {
         altimeter = "ultrasonic",
 
         --            Kp Ki Kd min max
-        pid_angle = { 0.5, 0, 0, -999999999, 999999999 },
-        pid_rate  = { 0.5, 0, 0, -999999999, 999999999 },
+        pid_angle = { 0.5, 0.5, 0.55, -30, 30 },
+        pid_rate  = { 0.2, 0, 0.9, -10, 10 },
         pid_alti  = { 0.5, 0, 0, -999999999, 999999999 },
     }
 }
