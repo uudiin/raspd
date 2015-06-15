@@ -9,7 +9,7 @@ struct pid_struct {
     double error;
     double sum_err;
     double dt_err;
-    double last_input;
+    double last_error;
     double min;
     double max;
     double output;

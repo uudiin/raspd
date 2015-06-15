@@ -33,15 +33,15 @@ double pid_update(struct pid_struct *pid,
     /* compute error */
     pid->error = setpoint - input;
     /* integrating errors */
-    pid->sum_err += pid->error * pid->ki * dt;
+    pid->sum_err += pid->error * dt;
 
     /*
      * calculating error derivative
      * input derivative is used to avoid derivative kick
      */
-    pid->dt_err = -pid->kd / dt * (input - pid->last_input);
+    pid->dt_err = (pid->error - pid->last_error) / dt;
 
-    pid->output = pid->kp * pid->error + pid->sum_err + pid->dt_err;
+    pid->output = pid->kp * pid->error + pid->ki * pid->sum_err + pid->kd * pid->dt_err;
     /* winds up boundaries */
     if (pid->output > pid->max) {
         pid->sum_err = 0.0;
@@ -50,7 +50,7 @@ double pid_update(struct pid_struct *pid,
         pid->sum_err = 0.0;
         pid->output = pid->min;
     }
-    pid->last_input = input;
+    pid->last_error = pid->error;
     return pid->output;
 }
 
@@ -82,5 +82,5 @@ void pid_reset(struct pid_struct *pid)
 {
     pid->sum_err = 0;
     pid->dt_err = 0;
-    pid->last_input = 0;
+    pid->last_error = 0;
 }
