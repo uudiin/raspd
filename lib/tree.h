@@ -525,6 +525,7 @@ name##_RB_REMOVE_COLOR(struct name *head, struct type *parent, struct type *elm)
 		RB_COLOR(elm, field) = RB_BLACK;			\
 }									\
 									\
+__attribute__((unused))							\
 attr struct type *							\
 name##_RB_REMOVE(struct name *head, struct type *elm)			\
 {									\
@@ -624,6 +625,7 @@ name##_RB_INSERT(struct name *head, struct type *elm)			\
 }									\
 									\
 /* Finds the node with the same key as elm */				\
+__attribute__((unused))							\
 attr struct type *							\
 name##_RB_FIND(struct name *head, struct type *elm)			\
 {									\
@@ -642,6 +644,7 @@ name##_RB_FIND(struct name *head, struct type *elm)			\
 }									\
 									\
 /* Finds the first node greater than or equal to the search key */	\
+__attribute__((unused))							\
 attr struct type *							\
 name##_RB_NFIND(struct name *head, struct type *elm)			\
 {									\
@@ -685,6 +688,7 @@ name##_RB_NEXT(struct type *elm)					\
 }									\
 									\
 /* ARGSUSED */								\
+__attribute__((unused))							\
 attr struct type *							\
 name##_RB_PREV(struct type *elm)					\
 {									\

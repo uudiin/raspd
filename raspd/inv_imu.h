@@ -1,5 +1,5 @@
-#ifndef __INV_IMU__
-#define __INV_IMU__
+#ifndef __INV_IMU_H__
+#define __INV_IMU_H__
 
 typedef void (*__invmpu_data_ready_cb)(short sensors, unsigned long timestamp,
                     long quat[], short accel[], short gyro[],
@@ -16,4 +16,4 @@ void invmpu_register_data_ready_cb(__invmpu_data_ready_cb func);
 int invmpu_init(int pin_int, int sample_rate);
 void invmpu_exit(void);
 
-#endif /* __INV_IMU__ */
+#endif /* __INV_IMU_H__ */

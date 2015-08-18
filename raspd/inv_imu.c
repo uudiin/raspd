@@ -4,6 +4,7 @@
 
 #include <inv_mpu.h>
 #include <inv_mpu_dmp_motion_driver.h>
+#include <ml_math_func.h>
 
 #include <bcm2835.h>
 
@@ -78,25 +79,10 @@ static struct platform_data_s gyro_pdata = {
 };
 
 #if defined MPU9150 || defined MPU9250
-static struct platform_data_s compass_pdata = {
-    .orientation = { 0, 1, 0,
-                     1, 0, 0,
-                     0, 0, -1}
-};
 #define COMPASS_ENABLED 1
 #elif defined AK8975_SECONDARY
-static struct platform_data_s compass_pdata = {
-    .orientation = {-1, 0, 0,
-                     0, 1, 0,
-                     0, 0,-1}
-};
 #define COMPASS_ENABLED 1
 #elif defined AK8963_SECONDARY
-static struct platform_data_s compass_pdata = {
-    .orientation = {-1, 0, 0,
-                     0,-1, 0,
-                     0, 0, 1}
-};
 #define COMPASS_ENABLED 1
 #endif
 
@@ -111,32 +97,6 @@ static int get_clock_ms(unsigned long *count)
     return 0;
 }
 /* ---------------------------------------------------------------------------*/
-
-/* Handle sensor on/off combinations. */
-static void setup_sensors(unsigned char sensors)
-{
-    unsigned char mask = 0, lp_accel_was_on = 0;
-    if (sensors & ACCEL_ON)
-        mask |= INV_XYZ_ACCEL;
-    if (sensors & GYRO_ON) {
-        mask |= INV_XYZ_GYRO;
-        lp_accel_was_on |= hal.lp_accel_mode;
-    }
-#ifdef COMPASS_ENABLED
-    if (sensors & COMPASS_ON) {
-        mask |= INV_XYZ_COMPASS;
-        lp_accel_was_on |= hal.lp_accel_mode;
-    }
-#endif
-    /* If you need a power transition, this function should be called with a
-     * mask of the sensors still enabled. The driver turns off any sensors
-     * excluded from this mask.
-     */
-    mpu_set_sensors(mask);
-    mpu_configure_fifo(mask);
-    if (lp_accel_was_on)
-        hal.lp_accel_mode = 0;
-}
 
 static void tap_cb(unsigned char direction, unsigned char count)
 {
@@ -245,77 +205,6 @@ void invmpu_set_calibrate_data(long gyro[], long accel[])
 #endif
 }
 
-static void handle_input(char c)
-{
-    switch (c) {
-	case ',':
-        /* Set hardware to interrupt on gesture event only. This feature is
-         * useful for keeping the MCU asleep until the DMP detects as a tap or
-         * orientation event.
-         */
-        dmp_set_interrupt_mode(DMP_INT_GESTURE);
-        break;
-    case '.':
-        /* Set hardware to interrupt periodically. */
-        dmp_set_interrupt_mode(DMP_INT_CONTINUOUS);
-        break;
-    case '6':
-        /* Toggle pedometer display. */
-        hal.report ^= PRINT_PEDO;
-        break;
-    case '7':
-        /* Reset pedometer. */
-        dmp_set_pedometer_step_count(0);
-        dmp_set_pedometer_walk_time(0);
-        break;
-    case 'm':
-        /* Test the motion interrupt hardware feature. */
-#ifndef MPU6050 /* not enabled for 6050 product */
-		hal.motion_int_mode = 1;
-#endif 
-        break;
-    }
-}
-
-static void set_lp_quat(int lp_quat_on)
-{
-    /* Toggle LP quaternion.
-     * The DMP features can be enabled/disabled at runtime. Use this same
-     * approach for other features.
-     */
-    if (lp_quat_on)
-        hal.dmp_features |= DMP_FEATURE_6X_LP_QUAT;
-    else
-        hal.dmp_features &= ~DMP_FEATURE_6X_LP_QUAT;
-    dmp_enable_feature(hal.dmp_features);
-
-    if (!(hal.dmp_features & DMP_FEATURE_6X_LP_QUAT))
-        LOGI("LP quaternion disabled.\n");
-    else
-        LOGI("LP quaternion enabled.\n");
-}
-
-/* Set low-power accel mode. */
-static void set_lp_accel(void)
-{
-    if (hal.dmp_on)
-        /* LP accel is not compatible with the DMP. */
-        return;
-    mpu_lp_accel_mode(20);
-    /* When LP accel mode is enabled, the driver automatically configures
-     * the hardware for latched interrupts. However, the MCU sometimes
-     * misses the rising/falling edge, and the hal.new_gyro flag is never
-     * set. To avoid getting locked in this state, we're overriding the
-     * driver's configuration and sticking to unlatched interrupt mode.
-     *
-     * TODO: The MCU supports level-triggered interrupts.
-     */
-    mpu_set_int_latched(0);
-    hal.sensors &= ~(GYRO_ON|COMPASS_ON);
-    hal.sensors |= ACCEL_ON;
-    hal.lp_accel_mode = 1;
-}
-
 void invmpu_set_dmp_state(int dmp_on)
 {
     if (hal.lp_accel_mode)
@@ -387,7 +276,7 @@ void invmpu_register_data_ready_cb(__invmpu_data_ready_cb func)
 
 static void read_from_mpu(void)
 {
-    unsigned char accel_fsr, new_temp;
+    unsigned char new_temp;
     unsigned long timestamp;
     unsigned long sensor_timestamp;
     int sensors;
@@ -647,6 +536,8 @@ int invmpu_init(int pin_int, int sample_rate)
         LOGE("mpu_set_dmp_state(), err = %d\n", err);
 
     hal.dmp_on = 1;
+
+    return err;
 }
 
 void invmpu_exit(void)

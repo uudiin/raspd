@@ -212,7 +212,7 @@ static int lr_modexec(lua_State *L)
         char *s, *cmdexec, *saveptr;
 
         err = 0;
-        for (s = buffer; cmdexec = strtok_r(s, ";", &saveptr); s = NULL)
+        for (s = buffer; (cmdexec = strtok_r(s, ";", &saveptr)) != NULL; s = NULL)
             err |= module_cmdexec(fd, cmdexec);
 
         free(buffer);
@@ -370,11 +370,6 @@ static long get_altitude_from_ultrasonic(unsigned long *timestamp)
     return -1;
     if (alti_dev)
         return ultrasonic_get_distance(alti_dev, timestamp);
-    return -1;
-}
-
-static long get_altitude_from_barometer(unsigned long *timestamp)
-{
     return -1;
 }
 
@@ -1084,7 +1079,7 @@ void *luaenv_getdev(const char *name)
     lua_pushstring(_L, name);
     if (lua_pcall(_L, 1, 1, 0) != 0)
         return NULL;
-    if (devp = lua_touserdata(_L, -1))
+    if ((devp = lua_touserdata(_L, -1)) != NULL)
         dev = *devp;
     lua_pop(_L, 1);
     return dev;

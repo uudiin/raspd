@@ -15,6 +15,7 @@
 
 #include <bcm2835.h>
 
+#include "inv_imu.h"
 #include "module.h"
 #include "event.h"
 #include "luaenv.h"
@@ -43,7 +44,7 @@ static int read_cmdexec(int fd, int wfd)
         else
             buffer[size] = '\0';
 
-        for (str = buffer; cmdexec = strtok_r(str, ";", &saveptr); str = NULL) {
+        for (str = buffer; (cmdexec = strtok_r(str, ";", &saveptr)) != NULL; str = NULL) {
             int retval;
             char errmsg[32];
             size_t len;
@@ -140,6 +141,7 @@ static void terminate(int dummy)
     foreach_module(modexec_exit, NULL);
 
     /* TODO */
+    invmpu_exit();
     softpwm_exit();
 
     luaenv_exit();

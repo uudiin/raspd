@@ -10,9 +10,9 @@
 #include <inv_mpu_dmp_motion_driver.h>
 #include <ml_math_func.h>
 
+#include "inv_imu.h"
 #include "module.h"
 #include "softpwm.h"
-#include "inv_mpu.h"
 #include "luaenv.h"
 #include "pid.h"
 
@@ -426,6 +426,7 @@ int pidctrl_init(int front, int rear, int left, int right,
         }
     }
 #endif /* ! CUBE_HOSTNAME */
+    return 0;
 }
 
 void pidctrl_exit(void)
@@ -554,6 +555,7 @@ static int altitude_main(int fd, int argc, char *argv[])
         temp = 0;
 
     dst_altitude = (long)temp;
+    return 0;
 }
 
 static int throttle_main(int fd, int argc, char *argv[])
@@ -571,6 +573,7 @@ static int throttle_main(int fd, int argc, char *argv[])
     esc_left.throttle  += temp;
     esc_right.throttle += temp;
     update_pwm();
+    return 0;
 }
 
 DEFINE_MODULE_INIT_EXIT(euler);

@@ -76,13 +76,13 @@ int module_execl(int wfd, const char *modname, /*const char *arg0, ..., 0,*/ ...
     int err;
 
     va_start(ap, modname);
-    while (p = va_arg(ap, char *))
+    while ((p = va_arg(ap, char *)) != NULL)
         argc += 1;
 
     va_start(ap, modname);
     argv = (char **)xmalloc((argc + 1) * sizeof(char *));
     argv[0] = (char *)modname;
-    for (i = 1; p = va_arg(ap, char *); i++)
+    for (i = 1; (p = va_arg(ap, char *)) != NULL; i++)
         argv[i] = p;
     argv[i] = NULL;
 
