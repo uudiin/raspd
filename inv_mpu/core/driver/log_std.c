@@ -18,8 +18,9 @@ int _MLPrintLog(int priority, const char *tag, const char *fmt, ...)
 
 void eMPL_send_quat(long *quat)
 {
-    fprintf(stdout, "quat: %ld %ld %ld %ld\n",
+    /* fprintf(stdout, "quat: %ld %ld %ld %ld\n",
             quat[0], quat[1], quat[2], quat[3]);
+    */
 }
 
 void eMPL_send_data(unsigned char type, long *data)

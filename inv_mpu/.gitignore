@@ -4,5 +4,6 @@
 libinv_mpu.a
 libinv_mpu_9250.a
 mpu_test
+mpu_test_9250
 invmpu_dmp
 invmpu_dmp_9250

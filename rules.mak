@@ -1,5 +1,6 @@
 # Makefile rule
 
+ARCH =
 SHELL = bash
 CROSS_COMPILE=
 CC = $(CROSS_COMPILE)gcc

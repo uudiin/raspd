@@ -2,8 +2,8 @@
 #define __INV_IMU_H__
 
 typedef void (*__invmpu_data_ready_cb)(short sensors, unsigned long timestamp,
-                    long quat[], short accel[], short gyro[],
-                    short compass[], long temperature);
+                    long quat[], long accel[], long gyro[],
+                    long compass[]);
 
 void invmpu_self_test(void);
 int invmpu_get_calibrate_data(long gyro[], long accel[]);

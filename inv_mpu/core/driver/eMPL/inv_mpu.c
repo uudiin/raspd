@@ -36,15 +36,16 @@
  * fabsf(float x)
  * min(int a, int b)
  */
-#if defined EMPL_TARGET_STM32L
+#if defined EMPL_TARGET_STM32F4
 #include "i2c.h"   
 #include "main.h"
 #include "log.h"
+#include "board-st_discovery.h"
    
-#define i2c_write   Sensors_I2C_WriteRegister_swap //Sensors_I2C_WriteRegister
-#define i2c_read    Sensors_I2C_ReadRegister_swap  
-#define delay_ms    Delay
-#define get_ms      stm32l_get_clock_ms
+#define i2c_write   Sensors_I2C_WriteRegister
+#define i2c_read    Sensors_I2C_ReadRegister 
+#define delay_ms    mdelay
+#define get_ms      get_tick_count
 #define log_i       MPL_LOGI
 #define log_e       MPL_LOGE
 #define min(a,b) ((a<b)?a:b)
@@ -772,7 +773,7 @@ int mpu_init(struct int_param_s *int_param)
     if (mpu_configure_fifo(0))
         return -1;
 
-#ifndef EMPL_TARGET_STM32L
+#ifndef EMPL_TARGET_STM32F4    
     if (int_param)
         reg_int_cb(int_param);
 #endif
@@ -1046,7 +1047,7 @@ int mpu_set_gyro_bias_reg(long *gyro_bias)
  *  @brief      Push biases to the accel bias 6050 registers.
  *  This function expects biases relative to the current sensor output, and
  *  these biases will be added to the factory-supplied values. Bias inputs are LSB
- *  in +-8G format.
+ *  in +-16G format.
  *  @param[in]  accel_bias  New biases.
  *  @return     0 if successful.
  */
@@ -1084,7 +1085,7 @@ int mpu_set_accel_bias_6050_reg(const long *accel_bias) {
  *  @brief      Push biases to the accel bias 6500 registers.
  *  This function expects biases relative to the current sensor output, and
  *  these biases will be added to the factory-supplied values. Bias inputs are LSB
- *  in +-8G format.
+ *  in +-16G format.
  *  @param[in]  accel_bias  New biases.
  *  @return     0 if successful.
  */

@@ -95,7 +95,7 @@ int inv_get_sensor_type_linear_acceleration(float *values, int8_t *accuracy,
     values[1] = accel[1] * ACCEL_CONVERSION;
     values[2] = accel[2] * ACCEL_CONVERSION;
 
-    return hal_out.nine_axis_status;
+    return 1;
 }
 
 /** Gravity vector (m/s^2) in Body Frame.
@@ -109,7 +109,6 @@ int inv_get_sensor_type_gravity(float *values, int8_t *accuracy,
                                  inv_time_t * timestamp)
 {
     long gravity[3];
-    int status;
 
     *accuracy = (int8_t) hal_out.accuracy_quat;
     *timestamp = hal_out.nav_timestamp;
@@ -117,11 +116,8 @@ int inv_get_sensor_type_gravity(float *values, int8_t *accuracy,
     values[0] = (gravity[0] >> 14) * ACCEL_CONVERSION;
     values[1] = (gravity[1] >> 14) * ACCEL_CONVERSION;
     values[2] = (gravity[2] >> 14) * ACCEL_CONVERSION;
-    if ((hal_out.accel_status & INV_NEW_DATA) || (hal_out.gyro_status & INV_NEW_DATA))
-        status = 1;
-    else
-        status = 0;
-    return status;
+
+    return 1;
 }
 
 /* Converts fixed point to rad/sec. Fixed point has 1 dps = 2^16.

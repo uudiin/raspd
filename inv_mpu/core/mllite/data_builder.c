@@ -944,7 +944,7 @@ inv_error_t inv_execute_on_data(void)
         mode |= INV_MAG_NEW;
     if (sensors.temp.status & INV_NEW_DATA)
         mode |= INV_TEMP_NEW;
-    if (sensors.quat.status & INV_QUAT_NEW)
+    if (sensors.quat.status & INV_NEW_DATA)
         mode |= INV_QUAT_NEW;
 
     first_error = INV_SUCCESS;

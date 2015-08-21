@@ -133,63 +133,65 @@ static void update_pwm(void)
  * executed period
  */
 static void attitude_control(double target_euler[], double euler[],
-                        short gyro_short[], long timestamp)
+                        long gyro_long[], long timestamp)
 {
     double gyro[3];
     double dt;
-    double pidout[3];
+    double pidout1[3];
+    double pidout2[3];
 
-    gyro[0] = (double)(gyro_short[0] / 65536.f);
-    gyro[1] = (double)(gyro_short[1] / 65536.f);
-    gyro[2] = (double)(gyro_short[2] / 65536.f);
-    dt = (double)(timestamp / 1000.f);
+    gyro[0] = (double)(gyro_long[0] / 65536.f);
+    gyro[1] = (double)(gyro_long[1] / 65536.f);
+    gyro[2] = (double)(gyro_long[2] / 65536.f);
+    dt = (double)timestamp;
 
     /*
      * angle control is only done on PITCH and ROLL
      * YAW is rate PID only
      */
-    pidout[YAW]   = target_euler[YAW];
+    pidout1[YAW]   = target_euler[YAW];
 #define PID(x) \
-    pidout[x] = pid_update(&pid_euler[x], target_euler[x], euler[x], dt)
+    pidout1[x] = pid_update(&pid_euler[x], target_euler[x], euler[x], dt)
     PID(PITCH);
     PID(ROLL);
 #undef PID
 
-    fprintf(stdout, "EULER: %.2f %.2f %.2f -- GYRO: %.2f %.2f %.2f -- PID: %.2f %.2f %.2f\n",
-            euler[0], euler[1], euler[2], gyro[0], gyro[1], gyro[2],
-            pidout[PITCH], pidout[ROLL], pidout[YAW]);
-
     /* rate control */
 #define PID(x) \
-    pidout[x] = pid_update(&pid_euler_rate[x], pidout[x], gyro[x], dt)
+    pidout2[x] = pid_update(&pid_euler_rate[x], pidout1[x], gyro[x], dt)
     PID(YAW);
     PID(PITCH);
     PID(ROLL);
 #undef PID
 
-    fprintf(stdout, "\t\t\t\t\t\t\t\t\t\tPIDRATE: %.2f %.2f %.2f -- THROTTLE: %.2f %.2f %.2f %.2f\n",
-            pidout[PITCH], pidout[ROLL], pidout[YAW],
-            ( pidout[PITCH] + pidout[YAW]),
-            (-pidout[PITCH] + pidout[YAW]),
-            ( pidout[ROLL]  - pidout[YAW]),
-            (-pidout[ROLL]  - pidout[YAW]));
+    fprintf(stdout, "E: %.2f %.2f %.2f E: %.2f %.2f %.2f P: %.2f %.2f %.2f "
+            "G: %.2f %.2f %.2f P: %.2f %.2f %.2f T: %.2f %.2f %.2f %.2f\n",
+            euler[PITCH], euler[ROLL], euler[YAW],
+            target_euler[PITCH], target_euler[ROLL], target_euler[YAW],
+            pidout1[PITCH], pidout1[ROLL], pidout1[YAW],
+            gyro[PITCH], gyro[ROLL], gyro[YAW],
+            pidout2[PITCH], pidout2[ROLL], pidout2[YAW],
+            ( pidout2[PITCH] + pidout2[YAW]),
+            (-pidout2[PITCH] + pidout2[YAW]),
+            ( pidout2[ROLL]  - pidout2[YAW]),
+            (-pidout2[ROLL]  - pidout2[YAW]));
 
     /* set throttle */
-    esc_front.throttle += ( pidout[PITCH] + pidout[YAW]);
-    esc_rear.throttle  += (-pidout[PITCH] + pidout[YAW]);
-    esc_left.throttle  += ( pidout[ROLL]  - pidout[YAW]);
-    esc_right.throttle += (-pidout[ROLL]  - pidout[YAW]);
+    esc_front.throttle += ( pidout2[PITCH] + pidout2[YAW]);
+    esc_rear.throttle  += (-pidout2[PITCH] + pidout2[YAW]);
+    esc_left.throttle  += ( pidout2[ROLL]  - pidout2[YAW]);
+    esc_right.throttle += (-pidout2[ROLL]  - pidout2[YAW]);
     update_pwm();
 }
 
 static void altitude_control(long target, long current,
-                        short accel_short[], long dt)
+                        long accel_long[], long dt)
 {
     long accel[3];
     double pidout;
 
     /* XXX: only Z axis */
-    accel[2] = (long)accel_short[2];
+    accel[2] = (long)accel_long[2];
 
     pidout = pid_update(&pid_altitude, target, current, dt);
     pidout = pid_update(&pid_altitude, pidout, accel[2], dt);
@@ -314,7 +316,7 @@ static void quat_to_euler(const long *quat, double *data)
 }
 
 static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
-            short accel[], short gyro[], short compass[], long temperature)
+            long accel[], long gyro[], long compass[])
 {
     static unsigned long prev_timestamp;
     unsigned long dt;
@@ -325,8 +327,9 @@ static void imu_ready_cb(short sensors, unsigned long timestamp, long quat[],
     else
         dt = timestamp - prev_timestamp;
 
-    if (dt == 0)
-        dt = 1;
+    if (dt == 0) {
+        return;
+    }
 
     prev_timestamp = timestamp;
 

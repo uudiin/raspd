@@ -28,15 +28,18 @@
 #include "../../raspd/event.h"
 #include "../../raspd/gpiolib.h"
 
-static int pin_int = 17;
+static int pin_int = 4;
 
 /* Private typedef -----------------------------------------------------------*/
+#ifndef MPL_STATIC_LIB
 #define inv_enable_quaternion()         do {} while (0)
 #define inv_enable_9x_sensor_fusion()   do {} while (0)
 #define inv_enable_fast_nomot()         do {} while (0)
 #define inv_enable_gyro_tc()            do {} while (0)
 #define inv_enable_vector_compass_cal() do {} while (0)
 #define inv_enable_magnetic_disturbance()   do {} while (0)
+#endif
+
 #undef MPL_LOGE
 #undef MPL_LOGI
 #define MPL_LOGE(...)   fprintf(stderr, __VA_ARGS__)
@@ -51,7 +54,9 @@ static int pin_int = 17;
 #define PRINT_HEADING   (0x40)
 #define PRINT_PEDO      (0x80)
 #define PRINT_LINEAR_ACCEL (0x100)
+#define PRINT_GRAVITY_VECTOR (0x200)
 
+volatile uint32_t hal_timestamp = 0;
 #define ACCEL_ON        (0x01)
 #define GYRO_ON         (0x02)
 #define COMPASS_ON      (0x04)
@@ -138,6 +143,10 @@ static struct platform_data_s compass_pdata = {
 #endif
 
 
+/* Private define ------------------------------------------------------------*/
+
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 int get_clock_ms(unsigned long *count)
 {
@@ -173,29 +182,35 @@ static void read_from_mpl(void)
     }
 
     if (hal.report & PRINT_ACCEL) {
-        if (inv_get_sensor_type_accel(data, &accuracy, (inv_time_t*)&timestamp))
+        if (inv_get_sensor_type_accel(data, &accuracy,
+            (inv_time_t*)&timestamp))
             eMPL_send_data(PACKET_DATA_ACCEL, data);
     }
     if (hal.report & PRINT_GYRO) {
-        if (inv_get_sensor_type_gyro(data, &accuracy, (inv_time_t*)&timestamp))
+        if (inv_get_sensor_type_gyro(data, &accuracy,
+            (inv_time_t*)&timestamp))
             eMPL_send_data(PACKET_DATA_GYRO, data);
     }
 #ifdef COMPASS_ENABLED
     if (hal.report & PRINT_COMPASS) {
-        if (inv_get_sensor_type_compass(data, &accuracy, (inv_time_t*)&timestamp))
+        if (inv_get_sensor_type_compass(data, &accuracy,
+            (inv_time_t*)&timestamp))
             eMPL_send_data(PACKET_DATA_COMPASS, data);
     }
 #endif
     if (hal.report & PRINT_EULER) {
-        if (inv_get_sensor_type_euler(data, &accuracy, (inv_time_t*)&timestamp))
+        if (inv_get_sensor_type_euler(data, &accuracy,
+            (inv_time_t*)&timestamp))
             eMPL_send_data(PACKET_DATA_EULER, data);
     }
     if (hal.report & PRINT_ROT_MAT) {
-        if (inv_get_sensor_type_rot_mat(data, &accuracy, (inv_time_t*)&timestamp))
+        if (inv_get_sensor_type_rot_mat(data, &accuracy,
+            (inv_time_t*)&timestamp))
             eMPL_send_data(PACKET_DATA_ROT, data);
     }
     if (hal.report & PRINT_HEADING) {
-        if (inv_get_sensor_type_heading(data, &accuracy, (inv_time_t*)&timestamp))
+        if (inv_get_sensor_type_heading(data, &accuracy,
+            (inv_time_t*)&timestamp))
             eMPL_send_data(PACKET_DATA_HEADING, data);
     }
     if (hal.report & PRINT_LINEAR_ACCEL) {
@@ -203,6 +218,12 @@ static void read_from_mpl(void)
         	MPL_LOGI("Linear Accel: %7.5f %7.5f %7.5f\r\n",
         			float_data[0], float_data[1], float_data[2]);                                        
          }
+    }
+    if (hal.report & PRINT_GRAVITY_VECTOR) {
+            if (inv_get_sensor_type_gravity(float_data, &accuracy,
+                (inv_time_t*)&timestamp))
+            	MPL_LOGI("Gravity Vector: %7.5f %7.5f %7.5f\r\n",
+            			float_data[0], float_data[1], float_data[2]);
     }
     if (hal.report & PRINT_PEDO) {
         unsigned long timestamp;
@@ -212,7 +233,8 @@ static void read_from_mpl(void)
             unsigned long step_count, walk_time;
             dmp_get_pedometer_step_count(&step_count);
             dmp_get_pedometer_walk_time(&walk_time);
-            MPL_LOGI("Walked %ld steps over %ld milliseconds..\n", step_count, walk_time);
+            MPL_LOGI("Walked %ld steps over %ld milliseconds..\n", step_count,
+            walk_time);
         }
     }
 
@@ -355,7 +377,7 @@ static inline void run_self_test(void)
 
         for(i = 0; i<3; i++) {
         	gyro[i] = (long)(gyro[i] * 32.8f); //convert to +-1000dps
-        	accel[i] *= 4096.f; //convert to +-8G
+        	accel[i] *= 2048.f; //convert to +-16G
         	accel[i] = accel[i] >> 16;
         	gyro[i] = (long)(gyro[i] >> 16);
         }
@@ -456,6 +478,9 @@ static void handle_input(void)
         break;
     case 'i':
         hal.report ^= PRINT_LINEAR_ACCEL;
+        break;
+    case 'o':
+        hal.report ^= PRINT_GRAVITY_VECTOR;
         break;
 #ifdef COMPASS_ENABLED
 	case 'w':
@@ -920,7 +945,7 @@ int main(int argc, char *argv[])
     gpiolib_init();
     rasp_event_init();
     bcm2835_i2c_begin();
-    bcm2835_i2c_setClockDivider(64);
+    bcm2835_i2c_setClockDivider(626);
 
     err = eventfd_add(STDIN_FILENO, EV_READ | EV_PERSIST,
                     NULL, stdin_ready, NULL, NULL);
@@ -1130,6 +1155,3 @@ int main(int argc, char *argv[])
     bcm2835_close();
     reset_termios();
 }
-
-/*---------------------------------------------------------------------------*/
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
